@@ -1,0 +1,350 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --color-margen-border: #ebebeb;
+  --color-margen-border-hover: #cccccc;
+  --color-margen-muted: #888888;
+  --color-margen-text-secondary: #555555;
+  --color-margen-text: #111111;
+  --color-margen-body: #333333;
+  --color-margen-surface: #fafaf8;
+  --color-margen-surface-elevated: #ffffff;
+  --color-margen-hover: #f5f5f5;
+}
+
+:root {
+  --margen-accent: #111111;
+  --margen-accent-fg: #ffffff;
+  --margen-accent-muted: color-mix(in srgb, #111111 10%, #fafaf8);
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--color-margen-body);
+  background: var(--color-margen-surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-margen-text);
+  letter-spacing: -0.02em;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--color-margen-text);
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-margen-text);
+}
+
+.label-caps {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--color-margen-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.margen-card {
+  border-radius: 12px;
+  border: 1px solid var(--color-margen-border);
+  background: var(--color-margen-surface-elevated);
+  padding: 24px;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.margen-card:hover {
+  border-color: var(--color-margen-border-hover);
+  transform: translateY(-1px);
+}
+
+.margen-card-static {
+  border-radius: 12px;
+  border: 1px solid var(--color-margen-border);
+  background: var(--color-margen-surface-elevated);
+  padding: 24px;
+}
+
+.margen-btn-primary-solid {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: #111111;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 16px;
+  transition:
+    background-color 0.2s ease,
+    transform 0.12s ease;
+}
+
+.margen-btn-primary-solid:hover {
+  background: #000000;
+}
+
+.margen-btn-primary-solid:active {
+  transform: scale(0.99);
+}
+
+.margen-btn-accent {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--margen-accent);
+  color: var(--margen-accent-fg);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 16px;
+  transition:
+    filter 0.2s ease,
+    transform 0.12s ease;
+}
+
+.margen-btn-accent:hover {
+  filter: brightness(0.92);
+}
+
+.margen-btn-accent:active {
+  transform: scale(0.99);
+}
+
+@keyframes margen-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(
+    110deg,
+    #ebebeb 0%,
+    #f5f5f5 45%,
+    #ebebeb 90%
+  );
+  background-size: 200% 100%;
+  animation: margen-shimmer 1.4s ease-in-out infinite;
+}
+
+.text-danger {
+  color: #991b1b;
+}
+
+.badge-pending,
+.badge-active,
+.badge-available,
+.badge-completed,
+.badge-late,
+.badge-overdue,
+.badge-emergency,
+.badge-off-duty,
+.badge-busy,
+.badge-on-break,
+.badge-info,
+.badge-neutral,
+.badge-cancelled,
+.invoice-paid,
+.invoice-sent,
+.invoice-draft,
+.invoice-void {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.badge-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.badge-active,
+.badge-available {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.badge-completed {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.badge-late,
+.badge-overdue {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-emergency {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+.badge-off-duty {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.badge-busy {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-on-break {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.badge-info {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-neutral {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.badge-cancelled {
+  background-color: #f3f4f6;
+  color: #555555;
+}
+
+.invoice-paid {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.invoice-sent {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.invoice-draft {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.invoice-void {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.alert-success {
+  border-radius: 8px;
+  background-color: #dcfce7;
+  color: #166534;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.alert-warning {
+  border-radius: 8px;
+  background-color: #fef3c7;
+  color: #92400e;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.alert-error {
+  border-radius: 8px;
+  background-color: #fee2e2;
+  color: #991b1b;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.alert-info {
+  border-radius: 8px;
+  background-color: #dbeafe;
+  color: #1e40af;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.text-late-strong {
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.text-absence-strong {
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.schedule-calendar .fc {
+  --fc-border-color: var(--color-margen-border);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: var(--color-margen-hover);
+  --fc-list-event-hover-bg-color: var(--color-margen-hover);
+  --fc-today-bg-color: color-mix(in srgb, var(--margen-accent) 8%, transparent);
+  --fc-button-text-color: var(--color-margen-text);
+  --fc-button-bg-color: var(--color-margen-surface-elevated);
+  --fc-button-border-color: var(--color-margen-border);
+  --fc-button-hover-bg-color: var(--color-margen-hover);
+  --fc-button-hover-border-color: var(--color-margen-border);
+  --fc-button-active-bg-color: var(--margen-accent-muted);
+  --fc-button-active-border-color: var(--color-margen-border);
+  --fc-event-border-color: transparent;
+  font-size: 14px;
+}
+
+.schedule-calendar .fc .fc-toolbar-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-margen-text);
+}
+
+.schedule-calendar .fc .fc-col-header-cell-cushion,
+.schedule-calendar .fc .fc-daygrid-day-number {
+  color: var(--color-margen-muted);
+  font-size: 12px;
+}
+
+.schedule-calendar .fc .fc-timegrid-slot-label-cushion {
+  color: var(--color-margen-muted);
+  font-size: 12px;
+}
+
+/* Sidebar active nav */
+.sidebar-nav-active {
+  border-left: 3px solid var(--margen-accent);
+  background-color: color-mix(in srgb, var(--margen-accent) 10%, #ffffff);
+  color: var(--margen-accent);
+}
