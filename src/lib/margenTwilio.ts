@@ -3,6 +3,23 @@ import type { Database } from '../types/database'
 
 export type Supabase = SupabaseClient<Database>
 
+/** Stored on `profiles.margen_phone_sid` until real Twilio provisioning is deployed. */
+export const PLACEHOLDER_MARGEN_PHONE_SID = 'placeholder'
+
+/**
+ * Deterministic fake U.S. number for onboarding before Edge Twilio provisioning exists.
+ * Stays unique enough for `profiles_margen_phone_digits_uidx` in normal use.
+ */
+export function placeholderMargenE164ForOwner(ownerId: string): string {
+  let h = 0
+  for (let i = 0; i < ownerId.length; i++) {
+    h = (Math.imul(31, h) + ownerId.charCodeAt(i)) | 0
+  }
+  const v = Math.abs(h) % 7_000_000
+  const last7 = String(2_000_000 + v).padStart(7, '0').slice(0, 7)
+  return `+1202${last7}`
+}
+
 export type ProvisionTwilioResponse = {
   ok?: boolean
   phone_number?: string

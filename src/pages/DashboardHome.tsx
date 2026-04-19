@@ -126,8 +126,8 @@ export function DashboardHome() {
   const [welcomeOpen, setWelcomeOpen] = useState(false)
   const [checklistDoneAt, setChecklistDoneAt] = useState<string | null>(null)
   const [setup, setSetup] = useState<{
-    branding: boolean
-    phone: boolean
+    companyName: boolean
+    aiReceptionist: boolean
     firstTechnician: boolean
     serviceArea: boolean
     stripe: boolean
@@ -201,9 +201,16 @@ export function DashboardHome() {
       const profileQ = supabase
         .from('profiles')
         .select(
-          'company_name, logo_url, business_phone, service_area_center_lat, service_area_center_lng, service_area_radius, onboarding_welcome_dismissed, onboarding_completed_at, stripe_charges_enabled',
+          'company_name, business_phone, service_area_center_lat, service_area_center_lng, service_area_radius, onboarding_welcome_dismissed, onboarding_completed_at, stripe_charges_enabled',
         )
         .eq('id', ownerId)
+        .abortSignal(s)
+        .maybeSingle()
+
+      const aiRsQ = supabase
+        .from('ai_receptionist_settings')
+        .select('retell_agent_id')
+        .eq('owner_id', ownerId)
         .abortSignal(s)
         .maybeSingle()
 
@@ -297,6 +304,7 @@ export function DashboardHome() {
 
       const [
         profileRes,
+        aiRsRes,
         techCountRes,
         jobsRes,
         techRes,
@@ -310,6 +318,7 @@ export function DashboardHome() {
         stripeLedger30Res,
       ] = await Promise.all([
         profileQ,
+        aiRsQ,
         techCountQ,
         jobsQ,
         techQ,
@@ -354,7 +363,6 @@ export function DashboardHome() {
         const prof = profileRes.data as
           | {
               company_name: string | null
-              logo_url: string | null
               business_phone: string | null
               service_area_center_lat: number | null
               service_area_center_lng: number | null
@@ -366,9 +374,11 @@ export function DashboardHome() {
           | null
           | undefined
 
+        const aiRow = (!aiRsRes.error ? aiRsRes.data : null) as { retell_agent_id?: string | null } | null
+
         const computed = {
-          branding: Boolean((prof?.company_name ?? '').trim()) && Boolean((prof?.logo_url ?? '').trim()),
-          phone: Boolean((prof?.business_phone ?? '').trim()),
+          companyName: Boolean((prof?.company_name ?? '').trim()),
+          aiReceptionist: Boolean((aiRow?.retell_agent_id ?? '').trim()),
           firstTechnician: (techCountRes.count ?? 0) > 0,
           serviceArea:
             prof?.service_area_center_lat != null &&
@@ -456,7 +466,13 @@ export function DashboardHome() {
 
   const setupProgress = useMemo(() => {
     if (!setup) return { done: 0, total: 5, pct: 0 }
-    const done = [setup.branding, setup.phone, setup.firstTechnician, setup.serviceArea, setup.stripe].filter(Boolean).length
+    const done = [
+      setup.companyName,
+      setup.aiReceptionist,
+      setup.firstTechnician,
+      setup.serviceArea,
+      setup.stripe,
+    ].filter(Boolean).length
     const total = 5
     return { done, total, pct: Math.round((done / total) * 100) }
   }, [setup])
@@ -466,8 +482,8 @@ export function DashboardHome() {
     if (checklistDoneAt) return
     const doneAll = setupProgress.done === setupProgress.total
     const payload = {
-      branding: setup.branding,
-      phone: setup.phone,
+      companyName: setup.companyName,
+      aiReceptionist: setup.aiReceptionist,
       firstTechnician: setup.firstTechnician,
       serviceArea: setup.serviceArea,
       stripe: setup.stripe,
@@ -581,11 +597,23 @@ export function DashboardHome() {
           </div>
 
           <div className="mt-4 space-y-2">
-            <ChecklistRow done={setup.branding} label="Add your company name and logo" to="/settings" />
-            <ChecklistRow done={setup.phone} label="Connect your business phone number" to="/settings" />
+            <ChecklistRow done={setup.companyName} label="Add your company name" to="/settings#settings-section-profile" />
+            <ChecklistRow
+              done={setup.aiReceptionist}
+              label="Set up your AI receptionist"
+              to="/settings/ai-receptionist"
+            />
             <ChecklistRow done={setup.firstTechnician} label="Add your first technician" to="/technicians" />
-            <ChecklistRow done={setup.serviceArea} label="Set your service area on the map" to="/settings" />
-            <ChecklistRow done={setup.stripe} label="Connect Stripe for payments" to="/settings" />
+            <ChecklistRow
+              done={setup.serviceArea}
+              label="Set your service area"
+              to="/settings#settings-section-service-area"
+            />
+            <ChecklistRow
+              done={setup.stripe}
+              label="Connect Stripe for payments"
+              to="/settings#settings-section-payments"
+            />
           </div>
         </div>
       ) : null}

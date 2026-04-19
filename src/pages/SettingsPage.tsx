@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { HexColorPicker } from 'react-colorful'
 import { easePremium } from '../lib/motion'
 import { foregroundOnAccent, normalizeHex } from '../lib/logoFilter'
@@ -113,6 +113,7 @@ function StripeHowItWorksAccordion() {
 }
 
 export function SettingsPage() {
+  const location = useLocation()
   const { user } = useAuth()
   const { accentHex, persistAccentColor, persistError, saving } = usePreferences()
   const [accentDraft, setAccentDraft] = useState(accentHex)
@@ -122,7 +123,6 @@ export function SettingsPage() {
   const [stripeDetailsSubmitted, setStripeDetailsSubmitted] = useState<boolean | null>(null)
   const [stripeBusy, setStripeBusy] = useState(false)
   const [stripeError, setStripeError] = useState<string | null>(null)
-  const [vipThresholdCents, setVipThresholdCents] = useState<number | null>(null)
   const [vipDraft, setVipDraft] = useState<string>('')
   const [vipBusy, setVipBusy] = useState(false)
   const [vipError, setVipError] = useState<string | null>(null)
@@ -175,6 +175,15 @@ export function SettingsPage() {
     setAccentDraft(accentHex)
     setHexDraft(accentHex)
   }, [accentHex])
+
+  useEffect(() => {
+    const id = location.hash?.replace(/^#/, '')
+    if (!id || !id.startsWith('settings-section-')) return
+    const t = window.setTimeout(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 120)
+    return () => window.clearTimeout(t)
+  }, [location.pathname, location.hash])
 
   useEffect(() => {
     if (!user) return
@@ -264,7 +273,6 @@ export function SettingsPage() {
       setStripeAnalyticsLastSyncAt(
         (data as { stripe_analytics_last_sync_at?: string | null })?.stripe_analytics_last_sync_at ?? null,
       )
-      setVipThresholdCents(data?.vip_threshold_cents ?? null)
       setVipDraft(
         typeof data?.vip_threshold_cents === 'number' && data.vip_threshold_cents > 0
           ? ((data.vip_threshold_cents ?? 0) / 100).toFixed(0)
@@ -393,7 +401,7 @@ export function SettingsPage() {
     const cents = Math.round(dollars * 100)
     const { error } = await supabase.from('profiles').update({ vip_threshold_cents: cents }).eq('id', user.id)
     if (error) setVipError(error.message)
-    else setVipThresholdCents(cents)
+    else setVipDraft(String(dollars))
     setVipBusy(false)
   }
 
@@ -864,12 +872,23 @@ export function SettingsPage() {
                   {callChangeBusy ? 'Working…' : 'Change Margen number'}
                 </button>
               </div>
-              <Link
-                to="/onboarding/call-setup"
-                className="mt-4 inline-block text-xs font-medium text-[var(--margen-accent)] underline-offset-2 hover:underline"
-              >
-                Open full-screen setup wizard
-              </Link>
+              <div className="mt-8 border-t border-[#ebebeb] pt-8">
+                <p className="text-sm leading-relaxed text-[#555555]">
+                  Get your dedicated Margen number and activate missed call forwarding in 3 easy steps.
+                </p>
+                <Link
+                  to="/onboarding/call-setup"
+                  className="mt-4 flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-[var(--margen-accent)] px-5 text-base font-semibold text-[var(--margen-accent-fg)] shadow-sm transition hover:opacity-95"
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+                    <path
+                      d="M6.6 10.8c1.4 2.6 3.6 4.8 6.2 6.2l2-2c.3-.3.8-.4 1.2-.2 1.1.4 2.3.6 3.6.6.7 0 1.2.5 1.2 1.2V20c0 .7-.5 1.2-1.2 1.2C9.4 21.2 2.8 14.6 2.8 6.2 2.8 5.5 3.3 5 4 5h3.5c.7 0 1.2.5 1.2 1.2 0 1.3.2 2.5.6 3.6.2.4 0 .9-.2 1.2l-2 2Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <span className="text-center leading-snug">Set up your AI phone number — Start here</span>
+                </Link>
+              </div>
             </SettingsSectionCard>
 
             <SettingsSectionCard id="ai-receptionist" title="AI Receptionist">
@@ -931,9 +950,11 @@ export function SettingsPage() {
                           {planById(saasSubscription.plan)?.name ?? saasSubscription.plan}
                         </p>
                         <p className="mt-1 text-sm text-[#555555]">
-                          {planById(saasSubscription.plan)
-                            ? `$${planById(saasSubscription.plan)!.priceUsd.toLocaleString()} / month`
-                            : '—'}
+                          {(() => {
+                            const p = planById(saasSubscription.plan)
+                            if (!p || !Number.isFinite(p.priceUsd) || p.priceUsd <= 0) return '—'
+                            return `$${p.priceUsd.toLocaleString()} / month`
+                          })()}
                         </p>
                       </div>
                       <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium capitalize text-[#111111] ring-1 ring-[#ebebeb]">
@@ -1109,12 +1130,6 @@ export function SettingsPage() {
                   className={fieldClass}
                   placeholder="e.g. 2000"
                 />
-                {vipThresholdCents != null && vipThresholdCents > 0 ? (
-                  <p className="mt-2 text-xs text-[#888888]">
-                    Current threshold:{' '}
-                    <span className="font-medium text-[#111111]">${(vipThresholdCents / 100).toLocaleString()}</span>
-                  </p>
-                ) : null}
               </div>
             </SettingsSectionCard>
 

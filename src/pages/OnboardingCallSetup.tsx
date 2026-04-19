@@ -8,19 +8,46 @@ import {
   CARRIER_OPTIONS,
   type CarrierId,
   forwardingActivationSnippet,
-  forwardingStepsHtml,
   formatUsDisplay,
-  guessAreaCodeForProvisioning,
 } from '../lib/forwardingDialCode'
-import { provisionMargenTwilioNumber, sendMargenForwardingSms } from '../lib/margenTwilio'
+import {
+  PLACEHOLDER_MARGEN_PHONE_SID,
+  placeholderMargenE164ForOwner,
+  sendMargenForwardingSms,
+} from '../lib/margenTwilio'
 import { supabase } from '../lib/supabase'
 
 type Step = 1 | 2 | 3
 
 const slide = {
-  initial: { opacity: 0, x: 28 },
+  initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -22 },
+  exit: { opacity: 0, x: -16 },
+}
+
+function WizardProgress({ step }: { step: Step }) {
+  const pct = (step / 3) * 100
+  return (
+    <div className="w-full shrink-0 px-5 pt-6 sm:px-8">
+      <p className="text-center text-lg font-medium text-[#5c5348]">Step {step} of 3</p>
+      <div className="mx-auto mt-3 h-3 max-w-lg overflow-hidden rounded-full bg-[#e8dfd4]">
+        <motion.div
+          className="h-full rounded-full bg-[#c4713b]"
+          initial={false}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.45, ease: easePremium }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function warmSteps(display: string): string[] {
+  return [
+    'Use the phone you carry for work.',
+    'Open your calling app. On the number pad, copy the numbers shown above, then press call.',
+    `When you hear a short sound, hang up. After that, missed calls can ring ${display} so someone friendly can answer for you.`,
+  ]
 }
 
 export function OnboardingCallSetup() {
@@ -39,30 +66,42 @@ export function OnboardingCallSetup() {
   const [smsError, setSmsError] = useState<string | null>(null)
   const [finishBusy, setFinishBusy] = useState(false)
 
-  const runProvision = useCallback(async () => {
+  const runPlaceholderSetup = useCallback(async () => {
     if (!user) return
     setProvisionBusy(true)
     setProvisionError(null)
     try {
-      const { data: prof, error: pe } = await supabase
+      const { data: existing, error: readErr } = await supabase
         .from('profiles')
-        .select('business_address, business_phone, margen_phone_number')
+        .select('margen_phone_number, margen_phone_sid')
         .eq('id', user.id)
         .maybeSingle()
-      if (pe) throw new Error(pe.message)
-      const ac = guessAreaCodeForProvisioning(
-        (prof as { business_address?: string | null })?.business_address ?? null,
-        (prof as { business_phone?: string | null })?.business_phone ?? null,
-      )
-      const { data, error } = await provisionMargenTwilioNumber(supabase, { area_code: ac })
-      if (error) throw error
-      const num = data?.phone_number ?? (prof as { margen_phone_number?: string | null })?.margen_phone_number
-      if (!num) throw new Error('No phone number was returned. Please try again.')
-      setMargenE164(num)
-      setDisplayNumber(data?.formatted ?? formatUsDisplay(num))
+      if (readErr) throw new Error(readErr.message)
+
+      const row = existing as { margen_phone_number?: string | null } | null
+      const num = row?.margen_phone_number?.trim()
+      if (num) {
+        setMargenE164(num)
+        setDisplayNumber(formatUsDisplay(num))
+        setStep(2)
+        return
+      }
+
+      const e164 = placeholderMargenE164ForOwner(user.id)
+      const { error: upErr } = await supabase
+        .from('profiles')
+        .update({
+          margen_phone_number: e164,
+          margen_phone_sid: PLACEHOLDER_MARGEN_PHONE_SID,
+        } as never)
+        .eq('id', user.id)
+      if (upErr) throw new Error(upErr.message)
+
+      setMargenE164(e164)
+      setDisplayNumber(formatUsDisplay(e164))
       setStep(2)
     } catch (e) {
-      setProvisionError(e instanceof Error ? e.message : 'Something went wrong setting up your line.')
+      setProvisionError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
     } finally {
       setProvisionBusy(false)
     }
@@ -71,8 +110,8 @@ export function OnboardingCallSetup() {
   useEffect(() => {
     if (!user || provisionStarted.current) return
     provisionStarted.current = true
-    void runProvision()
-  }, [user, runProvision])
+    void runPlaceholderSetup()
+  }, [user, runPlaceholderSetup])
 
   const persistCarrierAndCode = useCallback(
     async (c: CarrierId) => {
@@ -104,10 +143,10 @@ export function OnboardingCallSetup() {
     const { error } = await sendMargenForwardingSms(supabase)
     setSmsBusy(false)
     if (error) {
-      setSmsError(error.message)
+      setSmsError("We couldn't send a text right now. You can still finish using the steps above.")
       return
     }
-    setSmsNote('Sent! Check your texts on your business phone.')
+    setSmsNote('Sent! Check the texts on your business phone.')
   }
 
   const onFinishSetup = async () => {
@@ -126,143 +165,111 @@ export function OnboardingCallSetup() {
     navigate('/dashboard', { replace: true })
   }
 
-  const progress = (
-    <div className="flex items-center justify-center gap-2 px-4 pt-6">
-      {([1, 2, 3] as const).map((n) => (
-        <div key={n} className="flex items-center gap-2">
-          <div
-            className={[
-              'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors',
-              step >= n
-                ? 'bg-[var(--margen-accent)] text-[var(--margen-accent-fg)]'
-                : 'border border-white/20 bg-white/5 text-white/50',
-            ].join(' ')}
-          >
-            {n}
-          </div>
-          {n < 3 ? <div className="hidden h-px w-8 bg-white/15 sm:block" /> : null}
-        </div>
-      ))}
-      <p className="ml-3 text-xs font-medium text-white/60 sm:hidden">Step {step} of 3</p>
-    </div>
-  )
+  const btnPrimary =
+    'flex min-h-14 w-full items-center justify-center rounded-2xl bg-[#c4713b] px-5 text-lg font-semibold text-white shadow-md transition hover:opacity-95 disabled:opacity-50'
+  const btnSecondary =
+    'flex min-h-14 w-full items-center justify-center rounded-2xl border-2 border-[#d4c4b4] bg-white px-5 text-lg font-semibold text-[#3d3429] transition hover:bg-[#fff9f3] disabled:opacity-45'
 
   return (
-    <div className="min-h-dvh">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#fff8f0]">
       <AnimatePresence mode="wait">
         {step === 1 ? (
           <motion.div
             key="s1"
-            className="fixed inset-0 flex flex-col bg-[#071222]"
+            className="flex min-h-dvh flex-col"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35, ease: easePremium }}
           >
-            {progress}
-            <div className="flex flex-1 flex-col items-center justify-center px-6 pb-16">
+            <WizardProgress step={1} />
+            <div className="flex flex-1 flex-col items-center justify-center px-5 pb-20 pt-4 sm:px-10">
               <div className="relative flex items-center justify-center">
                 <motion.div
-                  className="absolute h-36 w-36 rounded-full border-2 border-[var(--margen-accent)]/35"
-                  animate={{ scale: [1, 1.12, 1], opacity: [0.45, 0.85, 0.45] }}
-                  transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                  className="absolute h-40 w-40 rounded-full border-2 border-[#e8b89a]/50"
+                  animate={{ scale: [1, 1.08, 1], opacity: [0.35, 0.7, 0.35] }}
+                  transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
                 />
-                <motion.div
-                  className="absolute h-44 w-44 rounded-full border border-white/10"
-                  animate={{ scale: [1, 1.08, 1], opacity: [0.2, 0.45, 0.2] }}
-                  transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
-                />
-                <div className="relative text-[var(--margen-accent)]">
-                  <MargenLogo className="h-20 w-auto" title="Margen" />
+                <div className="relative">
+                  <MargenLogo className="h-24 w-auto" title="Margen" />
                 </div>
               </div>
               <motion.h1
-                className="mt-10 max-w-md text-center text-xl font-semibold text-white"
+                className="mt-10 max-w-xl text-center text-[32px] font-semibold leading-tight tracking-tight text-[#2a241c]"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1, duration: 0.35, ease: easePremium }}
+                transition={{ delay: 0.08, duration: 0.35, ease: easePremium }}
               >
-                Setting up your AI receptionist
+                Let’s get your calls answered for you
               </motion.h1>
-              <p className="mt-3 max-w-sm text-center text-sm text-white/65">
-                Setting up your dedicated AI phone number…
+              <p className="mt-4 max-w-xl text-center text-[18px] leading-relaxed text-[#5c5348]">
+                We’re saving a friendly number to your account. This only takes a moment.
               </p>
               {provisionBusy ? (
-                <div className="mt-10 w-full max-w-xs space-y-3">
-                  <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div className="mt-12 w-full max-w-md space-y-4">
+                  <div className="h-3 overflow-hidden rounded-full bg-[#e8dfd4]">
                     <motion.div
-                      className="h-full rounded-full bg-[var(--margen-accent)]"
-                      initial={{ width: '12%' }}
-                      animate={{ width: ['12%', '88%', '55%', '100%'] }}
-                      transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                      className="h-full rounded-full bg-[#c4713b]"
+                      initial={{ width: '8%' }}
+                      animate={{ width: ['8%', '92%', '40%', '100%'] }}
+                      transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
                     />
                   </div>
-                  <p className="text-center text-xs text-white/70">This usually takes under a minute.</p>
+                  <p className="text-center text-[18px] text-[#7a6f63]">Almost there…</p>
                 </div>
               ) : null}
               {provisionError ? (
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-8 w-full max-w-md rounded-xl px-4 py-4 text-center alert-error"
+                  className="mt-10 w-full max-w-lg rounded-2xl border border-red-200 bg-red-50 px-5 py-5 text-center"
                 >
-                  <p className="text-sm">{provisionError}</p>
-                  <button
-                    type="button"
-                    onClick={() => void runProvision()}
-                    className="mt-4 rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)]"
-                  >
+                  <p className="text-[18px] leading-relaxed text-red-900">{provisionError}</p>
+                  <button type="button" onClick={() => void runPlaceholderSetup()} className={`${btnPrimary} mt-6`}>
                     Try again
                   </button>
                 </motion.div>
               ) : null}
             </div>
-            <p className="pb-6 text-center text-xs text-white/35">Step 1 of 3</p>
           </motion.div>
         ) : null}
 
         {step === 2 ? (
           <motion.div
             key="s2"
-            className="min-h-dvh bg-[var(--color-margen-surface)] px-4 py-10"
+            className="flex min-h-dvh flex-col"
             variants={slide}
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.38, ease: easePremium }}
+            transition={{ duration: 0.36, ease: easePremium }}
           >
-            <div className="mx-auto max-w-lg pt-4">
-              <div className="mb-6 flex items-center justify-center gap-2 text-[var(--color-margen-muted)]">
-                <span className="text-xs font-semibold uppercase tracking-wide">Step 2 of 3</span>
-              </div>
+            <WizardProgress step={2} />
+            <div className="flex flex-1 flex-col items-center px-5 pb-16 pt-6 sm:px-8">
               <motion.div
                 layout
-                className="rounded-2xl border border-[var(--color-margen-border)] bg-white px-6 py-10"
+                className="w-full max-w-lg rounded-3xl border border-[#e8dfd4] bg-white p-8 shadow-lg sm:p-10"
               >
                 <motion.div
-                  initial={{ scale: 0.6, opacity: 0 }}
+                  initial={{ scale: 0.7, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 320, damping: 22 }}
-                  className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#dcfce7] text-[#166534]"
+                  transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                  className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#ecf7ed] text-[#2f6b3a]"
                 >
-                  <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                  <svg className="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </motion.div>
-                <h2 className="mt-6 text-center text-lg font-semibold text-[var(--color-margen-text)]">
-                  Your AI number is ready
+                <h2 className="mt-8 text-center text-[32px] font-semibold leading-tight text-[#2a241c]">
+                  Here’s your new number
                 </h2>
-                <p className="mt-2 text-center text-sm text-[var(--color-margen-muted)]">
-                  Missed calls to your business will be answered by your AI receptionist.
+                <p className="mt-4 text-center text-[18px] leading-relaxed text-[#5c5348]">
+                  When you can’t pick up, this number can greet your caller for you and help book the visit.
                 </p>
-                <p className="mt-8 text-center font-mono text-2xl font-semibold tracking-tight text-[var(--color-margen-text)] sm:text-3xl">
+                <p className="mt-10 text-center font-mono text-3xl font-semibold tracking-tight text-[#2a241c] sm:text-4xl">
                   {displayNumber}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setStep(3)}
-                  className="mt-10 w-full rounded-xl bg-[var(--margen-accent)] py-3.5 text-sm font-semibold text-[var(--margen-accent-fg)] shadow-md transition hover:opacity-95"
-                >
+                <button type="button" onClick={() => setStep(3)} className={`${btnPrimary} mt-12`}>
                   Continue
                 </button>
               </motion.div>
@@ -273,36 +280,32 @@ export function OnboardingCallSetup() {
         {step === 3 ? (
           <motion.div
             key="s3"
-            className="min-h-dvh bg-[var(--color-margen-surface)] px-4 py-8 pb-12"
+            className="flex min-h-dvh flex-col"
             variants={slide}
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.38, ease: easePremium }}
+            transition={{ duration: 0.36, ease: easePremium }}
           >
-            <div className="mx-auto max-w-lg">
-              <p className="text-center text-xs font-semibold uppercase tracking-wide text-[var(--color-margen-muted)]">
-                Step 3 of 3
-              </p>
-              <h2 className="mt-4 text-center text-2xl font-semibold text-[var(--color-margen-text)]">One last step</h2>
-              <p className="mt-2 text-center text-sm text-[var(--color-margen-muted)]">
-                Forward your missed calls to your AI number in about 10 seconds.
+            <WizardProgress step={3} />
+            <div className="mx-auto w-full max-w-lg flex-1 px-5 pb-12 pt-6 sm:px-8">
+              <h2 className="text-center text-[32px] font-semibold leading-tight text-[#2a241c]">One easy last step</h2>
+              <p className="mt-4 text-center text-[18px] leading-relaxed text-[#5c5348]">
+                Tell us who provides your business cell service so we can show you the right short code to dial.
               </p>
 
-              <p className="mt-8 text-xs font-semibold uppercase tracking-wide text-[var(--color-margen-muted)]">
-                Who provides your business cell service?
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <p className="mt-10 text-[18px] font-medium text-[#3d3429]">Who is your cell phone company?</p>
+              <div className="mt-4 flex flex-col gap-3">
                 {CARRIER_OPTIONS.map((opt) => (
                   <button
                     key={opt.id}
                     type="button"
                     onClick={() => onPickCarrier(opt.id)}
                     className={[
-                      'rounded-full border px-3 py-2.5 text-sm font-medium transition',
+                      'min-h-14 w-full rounded-2xl border-2 px-4 text-lg font-semibold transition',
                       carrier === opt.id
-                        ? 'border-[var(--margen-accent)] bg-[var(--margen-accent-muted)] text-[var(--margen-accent)]'
-                        : 'border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] text-[var(--color-margen-text)] hover:border-[var(--margen-accent)]/40',
+                        ? 'border-[#c4713b] bg-[#fff4eb] text-[#8b4513]'
+                        : 'border-[#e8dfd4] bg-white text-[#3d3429] hover:border-[#d4c4b4]',
                     ].join(' ')}
                   >
                     {opt.label}
@@ -314,63 +317,49 @@ export function OnboardingCallSetup() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-8 rounded-2xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-5"
+                  className="mt-10 rounded-3xl border border-[#e8dfd4] bg-white p-6 shadow-md"
                 >
-                  <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                    Your activation code or steps
-                  </p>
-                  <p className="mt-3 break-words text-lg font-bold leading-snug text-[var(--margen-accent)] sm:text-xl">
+                  <p className="text-[18px] font-medium text-[#3d3429]">Your code to dial</p>
+                  <p className="mt-3 break-words font-mono text-2xl font-bold leading-snug text-[#c4713b] sm:text-3xl">
                     {forwardingActivationSnippet(carrier, margenE164)}
                   </p>
-                  <ul className="mt-5 space-y-3 text-sm leading-relaxed text-[var(--color-margen-text)]">
-                    {forwardingStepsHtml(carrier, margenE164).map((line) => (
-                      <li key={line} className="flex gap-2">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--margen-accent)]" />
+                  <ul className="mt-6 space-y-4 text-[18px] leading-relaxed text-[#3d3429]">
+                    {warmSteps(formatUsDisplay(margenE164)).map((line, i) => (
+                      <li key={i} className="flex gap-3">
+                        <span className="mt-2.5 h-2 w-2 shrink-0 rounded-full bg-[#c4713b]" />
                         <span>{line}</span>
                       </li>
                     ))}
                   </ul>
                 </motion.div>
               ) : (
-                <p className="mt-8 text-center text-sm text-[var(--color-margen-muted)]">
-                  Pick your carrier above to see simple steps for your phone.
-                </p>
+                <p className="mt-10 text-center text-[18px] text-[#7a6f63]">Choose your company above to see your code.</p>
               )}
 
-              <div className="mt-8 flex flex-col gap-3">
-                <button
-                  type="button"
-                  disabled={!carrier || smsBusy}
-                  onClick={() => void onSendSms()}
-                  className="w-full rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] py-3.5 text-sm font-semibold text-[var(--color-margen-text)] transition hover:border-[var(--margen-accent)]/50 disabled:opacity-45"
-                >
-                  {smsBusy ? 'Sending…' : 'Send to my phone'}
+              <div className="mt-10 flex flex-col gap-3">
+                <button type="button" disabled={!carrier || smsBusy} onClick={() => void onSendSms()} className={btnSecondary}>
+                  {smsBusy ? 'Sending…' : 'Text me these steps'}
                 </button>
-                <button
-                  type="button"
-                  disabled={finishBusy}
-                  onClick={() => void onFinishSetup()}
-                  className="w-full rounded-xl bg-[var(--margen-accent)] py-3.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-50"
-                >
-                  {finishBusy ? 'Saving…' : "I've set it up"}
+                <button type="button" disabled={finishBusy} onClick={() => void onFinishSetup()} className={btnPrimary}>
+                  {finishBusy ? 'Saving…' : 'All set — go to my home screen'}
                 </button>
               </div>
               {smsNote ? (
-                <p className="mt-3 rounded-md px-3 py-2 text-center text-sm alert-success">{smsNote}</p>
+                <p className="mt-4 rounded-2xl bg-[#ecf7ed] px-4 py-3 text-center text-[18px] text-[#2f6b3a]">{smsNote}</p>
               ) : null}
-              {smsError ? <p className="mt-3 text-center text-sm text-danger">{smsError}</p> : null}
+              {smsError ? <p className="mt-4 text-center text-[18px] text-red-700">{smsError}</p> : null}
 
               <button
                 type="button"
                 onClick={onSkip}
-                className="mx-auto mt-8 block text-sm text-[var(--color-margen-muted)] underline-offset-4 hover:text-[var(--color-margen-text)] hover:underline"
+                className="mx-auto mt-10 block min-h-12 text-[18px] font-medium text-[#7a6f63] underline-offset-4 hover:text-[#3d3429] hover:underline"
               >
                 Skip for now
               </button>
-              <p className="mt-6 text-center text-xs text-[var(--color-margen-muted)]">
-                Need help?{' '}
-                <Link to="/settings" className="font-medium text-[var(--margen-accent)] underline-offset-2 hover:underline">
-                  Settings
+              <p className="mt-8 text-center text-[16px] text-[#7a6f63]">
+                Questions?{' '}
+                <Link to="/settings" className="font-semibold text-[#c4713b] underline-offset-2 hover:underline">
+                  Open settings
                 </Link>
               </p>
             </div>
