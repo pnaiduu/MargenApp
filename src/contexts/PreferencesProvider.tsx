@@ -14,8 +14,6 @@ import { foregroundOnAccent, normalizeHex } from '../lib/logoFilter'
 import { useAuth } from './useAuth'
 import { PreferencesContext } from './preferences-context'
 
-const ACCENT_DEBOUNCE_MS = 500
-
 function accentStorageKey(userId: string) {
   return `margen_accent_v1:${userId}`
 }
@@ -25,8 +23,6 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [accentHex, setAccentHexState] = useState('#111111')
   const [persistError, setPersistError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const accentDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const pendingAccentHexRef = useRef<string | null>(null)
   const prevUserIdRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
@@ -94,21 +90,21 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   }, [accentHex])
 
   const persist = useCallback(
-    async (patch: { accent_color?: string }) => {
-      if (!user || !supabaseConfigured) return
+    async (patch: { accent_color?: string }): Promise<boolean> => {
+      if (!user || !supabaseConfigured) return false
       setSaving(true)
       setPersistError(null)
       const ensured = await ensureOwnerProfile(supabase, user)
       if (!ensured.ok) {
         setPersistError(ensured.error)
         setSaving(false)
-        return
+        return false
       }
       const { error } = await supabase.from('profiles').update(patch).eq('id', user.id)
       setSaving(false)
       if (error) {
         setPersistError(error.message)
-        return
+        return false
       }
       if (typeof patch.accent_color === 'string') {
         try {
@@ -117,53 +113,33 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
           /* ignore */
         }
       }
+      return true
     },
     [user],
   )
 
-  const setAccentHex = useCallback(
-    (hex: string) => {
+  const setAccentHex = useCallback((hex: string) => {
+    setAccentHexState(normalizeHex(hex))
+  }, [])
+
+  const persistAccentColor = useCallback(
+    async (hex: string) => {
       const n = normalizeHex(hex)
       setAccentHexState(n)
-      pendingAccentHexRef.current = n
-      if (!user) return
-      if (accentDebounceRef.current) clearTimeout(accentDebounceRef.current)
-      accentDebounceRef.current = setTimeout(() => {
-        void persist({ accent_color: n })
-      }, ACCENT_DEBOUNCE_MS)
+      return persist({ accent_color: n })
     },
-    [user, persist],
+    [persist],
   )
-
-  useEffect(() => {
-    const u = user
-    return () => {
-      if (accentDebounceRef.current) clearTimeout(accentDebounceRef.current)
-      if (!u || !supabaseConfigured) return
-      const hex = pendingAccentHexRef.current
-      if (!hex) return
-      void (async () => {
-        await ensureOwnerProfile(supabase, u)
-        const { error } = await supabase.from('profiles').update({ accent_color: hex }).eq('id', u.id)
-        if (!error) {
-          try {
-            localStorage.setItem(accentStorageKey(u.id), hex)
-          } catch {
-            /* ignore */
-          }
-        }
-      })()
-    }
-  }, [user])
 
   const value = useMemo(
     () => ({
       accentHex: normalizeHex(accentHex),
       setAccentHex,
+      persistAccentColor,
       persistError,
       saving,
     }),
-    [accentHex, setAccentHex, persistError, saving],
+    [accentHex, setAccentHex, persistAccentColor, persistError, saving],
   )
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>

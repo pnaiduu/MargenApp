@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { HexColorPicker } from 'react-colorful'
 import { easePremium } from '../lib/motion'
-import { normalizeHex } from '../lib/logoFilter'
+import { foregroundOnAccent, normalizeHex } from '../lib/logoFilter'
 import { stripeConnectStartDemo, stripeConnectSyncDemo } from '../lib/directSupabaseActions'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/useAuth'
@@ -29,6 +29,19 @@ import { StripeAnalyticsSetupModal } from '../components/settings/StripeAnalytic
 import { planById, type SubscriptionRow } from '../lib/plans'
 import { isDevBypassEmail } from '../lib/subscriptionAccess'
 
+const PAGE_BG = '#fafaf8'
+const CARD_BORDER = '#ebebeb'
+
+const NAV: { id: string; label: string }[] = [
+  { id: 'profile', label: 'Profile' },
+  { id: 'call-setup', label: 'Call Setup' },
+  { id: 'ai-receptionist', label: 'AI Receptionist' },
+  { id: 'service-area', label: 'Service Area' },
+  { id: 'subscription', label: 'Subscription' },
+  { id: 'payments', label: 'Payments' },
+  { id: 'appearance', label: 'Appearance' },
+]
+
 function tryParseHex(s: string): string | null {
   const t = s.trim()
   if (/^#[0-9A-Fa-f]{6}$/i.test(t)) return normalizeHex(t)
@@ -36,9 +49,73 @@ function tryParseHex(s: string): string | null {
   return null
 }
 
+function scrollToSection(id: string) {
+  document.getElementById(`settings-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function SettingsSectionCard({
+  id,
+  title,
+  children,
+  footer,
+}: {
+  id: string
+  title: string
+  children: ReactNode
+  footer?: ReactNode
+}) {
+  return (
+    <section id={`settings-section-${id}`} className="scroll-mt-8">
+      <div
+        className="rounded-xl border bg-white p-6 shadow-sm"
+        style={{ borderColor: CARD_BORDER }}
+      >
+        <h2 className="text-[18px] font-medium leading-snug text-[#111111]">{title}</h2>
+        <div className="mt-5">{children}</div>
+        {footer ? (
+          <div
+            className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t pt-5"
+            style={{ borderColor: CARD_BORDER }}
+          >
+            {footer}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
+function StripeHowItWorksAccordion() {
+  return (
+    <details className="group mt-5 rounded-xl border border-[#ebebeb] bg-[#fafafa]">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3.5 text-sm font-medium text-[#111111] marker:hidden [&::-webkit-details-marker]:hidden">
+        <span>How does this work?</span>
+        <span className="text-[#888888] transition group-open:rotate-180">▾</span>
+      </summary>
+      <div
+        className="space-y-3 border-t border-[#ebebeb] px-4 py-4 text-sm leading-relaxed text-[#555555]"
+      >
+        <p>
+          <span className="font-medium text-[#111111]">Margen subscription</span> — Your Starter, Growth, or Scale plan is billed by Margen through Stripe Checkout or the customer portal. You never paste an API key for that; use{' '}
+          <strong className="text-[#111111]">View plans</strong> or <strong className="text-[#111111]">Manage billing</strong> in the subscription card above.
+        </p>
+        <p>
+          <span className="font-medium text-[#111111]">Your business Stripe (customers)</span> —{' '}
+          <strong className="text-[#111111]">Stripe Connect</strong> links your Stripe account so customer invoice payments can reach your bank.
+        </p>
+        <p>
+          <span className="font-medium text-[#111111]">Charts &amp; revenue (optional)</span> — To graph your own money movement, add a secret or restricted key from{' '}
+          <em>your</em> Stripe Dashboard → Developers → API keys. Use a restricted key with permission to read Balance Transactions if you prefer. That key is only for syncing ledger data into Margen; it is not your Margen subscription charge.
+        </p>
+      </div>
+    </details>
+  )
+}
+
 export function SettingsPage() {
   const { user } = useAuth()
-  const { accentHex, setAccentHex, persistError, saving } = usePreferences()
+  const { accentHex, persistAccentColor, persistError, saving } = usePreferences()
+  const [accentDraft, setAccentDraft] = useState(accentHex)
   const [hexDraft, setHexDraft] = useState(accentHex)
   const [stripeAccountId, setStripeAccountId] = useState<string | null>(null)
   const [stripeEnabled, setStripeEnabled] = useState<boolean | null>(null)
@@ -51,7 +128,6 @@ export function SettingsPage() {
   const [vipError, setVipError] = useState<string | null>(null)
 
   const [companyDraft, setCompanyDraft] = useState('')
-  const [logoUrlDraft, setLogoUrlDraft] = useState('')
   const [businessPhoneDraft, setBusinessPhoneDraft] = useState('')
   const [ringsBeforeAiDraft, setRingsBeforeAiDraft] = useState('3')
   const [bizHoursEnabled, setBizHoursEnabled] = useState(false)
@@ -67,8 +143,12 @@ export function SettingsPage() {
   })
   const [serviceAreaInitial, setServiceAreaInitial] = useState<ServiceAreaInitial | null>(null)
   const [serviceAreaResetToken, setServiceAreaResetToken] = useState(0)
-  const [bizBusy, setBizBusy] = useState(false)
-  const [bizError, setBizError] = useState<string | null>(null)
+  const [profileBusy, setProfileBusy] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [profileOk, setProfileOk] = useState<string | null>(null)
+  const [areaBusy, setAreaBusy] = useState(false)
+  const [areaError, setAreaError] = useState<string | null>(null)
+  const [areaOk, setAreaOk] = useState<string | null>(null)
   const [saasSubscription, setSaasSubscription] = useState<SubscriptionRow | null>(null)
   const [billingBusy, setBillingBusy] = useState(false)
   const [billingError, setBillingError] = useState<string | null>(null)
@@ -88,8 +168,11 @@ export function SettingsPage() {
   const [callSmsBusy, setCallSmsBusy] = useState(false)
   const [callTestBusy, setCallTestBusy] = useState(false)
   const [callChangeBusy, setCallChangeBusy] = useState(false)
+  const [appearanceBusy, setAppearanceBusy] = useState(false)
+  const [appearanceOk, setAppearanceOk] = useState<string | null>(null)
 
   useEffect(() => {
+    setAccentDraft(accentHex)
     setHexDraft(accentHex)
   }, [accentHex])
 
@@ -102,7 +185,7 @@ export function SettingsPage() {
         supabase
           .from('profiles')
           .select(
-            'company_name, logo_url, business_phone, rings_before_ai, business_hours, after_hours_message, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, stripe_analytics_key_hint, stripe_analytics_last_sync_at, vip_threshold_cents, margen_phone_number, margen_phone_sid, carrier, call_forwarding_active, twilio_forwarding_code',
+            'company_name, business_phone, rings_before_ai, business_hours, after_hours_message, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, stripe_analytics_key_hint, stripe_analytics_last_sync_at, vip_threshold_cents, margen_phone_number, margen_phone_sid, carrier, call_forwarding_active, twilio_forwarding_code',
           )
           .eq('id', userId)
           .maybeSingle(),
@@ -124,7 +207,6 @@ export function SettingsPage() {
         setSaasSubscription(null)
       }
       setCompanyDraft(data?.company_name ?? '')
-      setLogoUrlDraft(data?.logo_url ?? '')
       setBusinessPhoneDraft(data?.business_phone ?? '')
       const rawRings = typeof data?.rings_before_ai === 'number' ? data.rings_before_ai : 3
       const clampedRings = Math.min(5, Math.max(1, Math.round(rawRings)))
@@ -184,7 +266,7 @@ export function SettingsPage() {
       )
       setVipThresholdCents(data?.vip_threshold_cents ?? null)
       setVipDraft(
-        typeof data?.vip_threshold_cents === 'number'
+        typeof data?.vip_threshold_cents === 'number' && data.vip_threshold_cents > 0
           ? ((data.vip_threshold_cents ?? 0) / 100).toFixed(0)
           : '',
       )
@@ -315,34 +397,16 @@ export function SettingsPage() {
     setVipBusy(false)
   }
 
-  async function saveBusinessSettings() {
+  async function saveProfileSection() {
     if (!user) return
-    setBizBusy(true)
-    setBizError(null)
-    const lat = serviceAreaSnapshot.business_lat
-    const lng = serviceAreaSnapshot.business_lng
-    const radius = serviceAreaSnapshot.service_radius_miles
-    if (lat != null && !Number.isFinite(lat)) {
-      setBizError('Service area latitude is invalid.')
-      setBizBusy(false)
-      return
-    }
-    if (lng != null && !Number.isFinite(lng)) {
-      setBizError('Service area longitude is invalid.')
-      setBizBusy(false)
-      return
-    }
-    if (radius != null && (!Number.isFinite(radius) || radius < 0)) {
-      setBizError('Service area radius is invalid.')
-      setBizBusy(false)
-      return
-    }
+    setProfileBusy(true)
+    setProfileError(null)
+    setProfileOk(null)
     if (!/^\d{2}:\d{2}$/.test(bizHoursOpenDraft.trim()) || !/^\d{2}:\d{2}$/.test(bizHoursCloseDraft.trim())) {
-      setBizError('Business hours must be in HH:MM format.')
-      setBizBusy(false)
+      setProfileError('Business hours must be in HH:MM format.')
+      setProfileBusy(false)
       return
     }
-
     const business_hours = {
       enabled: bizHoursEnabled,
       days: {
@@ -353,27 +417,64 @@ export function SettingsPage() {
         fri: { open: bizHoursOpenDraft.trim(), close: bizHoursCloseDraft.trim() },
       },
     }
-    const patch: Record<string, unknown> = {
-      company_name: companyDraft.trim() || null,
-      logo_url: logoUrlDraft.trim() || null,
-      business_phone: businessPhoneDraft.trim() || null,
-      business_hours,
-      after_hours_message: afterHoursMsgDraft.trim() || null,
-    }
-    if (lat != null && lng != null && radius != null) {
-      patch.business_address = serviceAreaSnapshot.business_address
-      patch.business_lat = lat
-      patch.business_lng = lng
-      patch.service_radius_miles = radius
-      patch.covered_cities = serviceAreaSnapshot.covered_cities
-      patch.service_area_center_lat = lat
-      patch.service_area_center_lng = lng
-      patch.service_area_radius = radius
-    }
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        company_name: companyDraft.trim() || null,
+        business_phone: businessPhoneDraft.trim() || null,
+        business_hours,
+        after_hours_message: afterHoursMsgDraft.trim() || null,
+      } as never)
+      .eq('id', user.id)
+    if (error) setProfileError(error.message)
+    else setProfileOk('Profile saved.')
+    setProfileBusy(false)
+  }
 
-    const { error } = await supabase.from('profiles').update(patch as never).eq('id', user.id)
-    if (error) setBizError(error.message)
-    setBizBusy(false)
+  async function saveServiceAreaSection() {
+    if (!user) return
+    setAreaBusy(true)
+    setAreaError(null)
+    setAreaOk(null)
+    const lat = serviceAreaSnapshot.business_lat
+    const lng = serviceAreaSnapshot.business_lng
+    const radius = serviceAreaSnapshot.service_radius_miles
+    if (lat != null && !Number.isFinite(lat)) {
+      setAreaError('Latitude is invalid.')
+      setAreaBusy(false)
+      return
+    }
+    if (lng != null && !Number.isFinite(lng)) {
+      setAreaError('Longitude is invalid.')
+      setAreaBusy(false)
+      return
+    }
+    if (radius != null && (!Number.isFinite(radius) || radius < 0)) {
+      setAreaError('Radius is invalid.')
+      setAreaBusy(false)
+      return
+    }
+    if (lat == null || lng == null || radius == null) {
+      setAreaError('Choose a location on the map and a service radius.')
+      setAreaBusy(false)
+      return
+    }
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        business_address: serviceAreaSnapshot.business_address,
+        business_lat: lat,
+        business_lng: lng,
+        service_radius_miles: radius,
+        covered_cities: serviceAreaSnapshot.covered_cities,
+        service_area_center_lat: lat,
+        service_area_center_lng: lng,
+        service_area_radius: radius,
+      } as never)
+      .eq('id', user.id)
+    if (error) setAreaError(error.message)
+    else setAreaOk('Service area saved.')
+    setAreaBusy(false)
   }
 
   async function saveCallPreferences() {
@@ -398,7 +499,7 @@ export function SettingsPage() {
     }
     const { error } = await supabase.from('profiles').update(patch as never).eq('id', user.id)
     if (error) setCallSetupError(error.message)
-    else setCallSetupOk('Call preferences saved.')
+    else setCallSetupOk('Call setup saved.')
     setCallSetupBusy(false)
   }
 
@@ -466,599 +567,638 @@ export function SettingsPage() {
     }
   }
 
+  async function saveAppearanceSection() {
+    setAppearanceBusy(true)
+    setAppearanceOk(null)
+    const parsed = tryParseHex(hexDraft) ?? tryParseHex(accentDraft)
+    if (!parsed) {
+      setAppearanceBusy(false)
+      return
+    }
+    setAccentDraft(parsed)
+    setHexDraft(parsed)
+    const ok = await persistAccentColor(parsed)
+    setAppearanceBusy(false)
+    if (ok) setAppearanceOk('Accent saved.')
+  }
+
+  const fieldClass =
+    'w-full rounded-lg border border-[#ebebeb] bg-white px-3 py-2.5 text-sm text-[#111111] outline-none transition focus:border-[var(--margen-accent)] focus:ring-2 focus:ring-[var(--margen-accent-muted)]'
+  const labelClass = 'mb-1.5 block text-xs font-medium text-[#555555]'
+
+  const previewFg = foregroundOnAccent(accentDraft)
+
   return (
-    <div className="mx-auto max-w-3xl">
-      <motion.div
-        className="mb-8"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
-      >
-        <h1 className="page-title">Settings</h1>
-        <p className="mt-1 text-sm leading-relaxed text-[#555555]">
-          Company profile, payments, integrations, and accent color.
-        </p>
-      </motion.div>
+    <div className="min-h-dvh" style={{ backgroundColor: PAGE_BG }}>
+      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
+        >
+          <h1 className="page-title">Settings</h1>
+          <p className="mt-1 text-sm leading-relaxed text-[#555555]">Manage your workspace, phone, billing, and appearance.</p>
+        </motion.div>
 
-      <div className="space-y-10">
-        <section>
-          <h2 className="section-title">
-            Business profile
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-margen-muted)]">
-            These settings power branding, call matching, and service area.
-          </p>
-          <div className="mt-4 space-y-3 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-4">
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                Company name
-              </label>
-              <input
-                value={companyDraft}
-                onChange={(e) => setCompanyDraft(e.target.value)}
-                className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-                placeholder="Your company"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                Logo URL
-              </label>
-              <input
-                value={logoUrlDraft}
-                onChange={(e) => setLogoUrlDraft(e.target.value)}
-                className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-                placeholder="https://…"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                Business phone number
-              </label>
-              <input
-                value={businessPhoneDraft}
-                onChange={(e) => setBusinessPhoneDraft(e.target.value)}
-                className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 font-mono text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-                placeholder="+15551234567"
-              />
-              <p className="mt-2 text-xs text-[var(--color-margen-muted)]">
-                Set your existing business number to enable click-to-callback and call routing.
-              </p>
-            </div>
+        <div className="flex flex-col gap-10 lg:flex-row lg:gap-12">
+          <aside className="shrink-0 lg:w-52">
+            <nav className="sticky top-8 space-y-0.5 rounded-xl border border-[#ebebeb] bg-white p-2 shadow-sm">
+              {NAV.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => scrollToSection(item.id)}
+                  className="w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-[#555555] transition hover:bg-[#f5f5f5] hover:text-[#111111]"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </aside>
 
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                After-hours message
-              </label>
-              <input
-                value={afterHoursMsgDraft}
-                onChange={(e) => setAfterHoursMsgDraft(e.target.value)}
-                className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-                placeholder="Thanks for calling — we’re closed right now…"
-              />
-            </div>
-
-            <div className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-3">
-              <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-8 pb-16">
+            <SettingsSectionCard
+              id="profile"
+              title="Business profile"
+              footer={
+                <>
+                  {profileError ? <p className="mr-auto text-sm text-danger">{profileError}</p> : null}
+                  {profileOk ? <p className="mr-auto text-sm text-[#555555]">{profileOk}</p> : null}
+                  <button
+                    type="button"
+                    disabled={profileBusy}
+                    onClick={() => void saveProfileSection()}
+                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
+                  >
+                    {profileBusy ? 'Saving…' : 'Save'}
+                  </button>
+                </>
+              }
+            >
+              <div className="space-y-5">
                 <div>
-                  <p className="text-sm font-medium text-[var(--color-margen-text)]">Business hours</p>
-                  <p className="mt-1 text-xs text-[var(--color-margen-muted)]">
-                    When enabled, calls outside business hours will play the after-hours message and route to the AI receptionist.
+                  <label className={labelClass} htmlFor="settings-company">
+                    Company name
+                  </label>
+                  <input
+                    id="settings-company"
+                    value={companyDraft}
+                    onChange={(e) => setCompanyDraft(e.target.value)}
+                    className={fieldClass}
+                    placeholder="Your company"
+                  />
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="settings-phone">
+                    Business phone number
+                  </label>
+                  <input
+                    id="settings-phone"
+                    value={businessPhoneDraft}
+                    onChange={(e) => setBusinessPhoneDraft(e.target.value)}
+                    className={`${fieldClass} font-mono`}
+                    placeholder="+15551234567"
+                  />
+                  <p className="mt-1.5 text-xs leading-relaxed text-[#888888]">
+                    Your existing number — customers call this.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setBizHoursEnabled((v) => !v)}
+                <div>
+                  <label className={labelClass} htmlFor="settings-after-hours">
+                    After-hours message
+                  </label>
+                  <input
+                    id="settings-after-hours"
+                    value={afterHoursMsgDraft}
+                    onChange={(e) => setAfterHoursMsgDraft(e.target.value)}
+                    className={fieldClass}
+                    placeholder="Thanks for calling — we’re closed right now…"
+                  />
+                </div>
+                <div className="rounded-xl border border-[#ebebeb] bg-[#fafafa] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-[#111111]">Business hours</p>
+                      <p className="mt-1 text-xs leading-relaxed text-[#888888]">
+                        When enabled, callers outside these hours hear your after-hours message and can reach your AI receptionist.
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs font-medium tabular-nums text-[#555555]">{bizHoursEnabled ? 'On' : 'Off'}</span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={bizHoursEnabled}
+                        onClick={() => setBizHoursEnabled((v) => !v)}
+                        className={[
+                          'relative h-8 w-14 rounded-full border transition',
+                          bizHoursEnabled
+                            ? 'border-[var(--margen-accent)] bg-[var(--margen-accent)]'
+                            : 'border-[#ebebeb] bg-[#e8e8e8]',
+                        ].join(' ')}
+                      >
+                        <span
+                          className={[
+                            'absolute top-1 h-6 w-6 rounded-full bg-white shadow transition',
+                            bizHoursEnabled ? 'left-7' : 'left-1',
+                          ].join(' ')}
+                        />
+                        <span className="sr-only">{bizHoursEnabled ? 'On' : 'Off'}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass} htmlFor="settings-open">
+                        Opens (Mon–Fri)
+                      </label>
+                      <input
+                        id="settings-open"
+                        value={bizHoursOpenDraft}
+                        onChange={(e) => setBizHoursOpenDraft(e.target.value)}
+                        className={`${fieldClass} font-mono`}
+                        placeholder="09:00"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass} htmlFor="settings-close">
+                        Closes (Mon–Fri)
+                      </label>
+                      <input
+                        id="settings-close"
+                        value={bizHoursCloseDraft}
+                        onChange={(e) => setBizHoursCloseDraft(e.target.value)}
+                        className={`${fieldClass} font-mono`}
+                        placeholder="17:00"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </SettingsSectionCard>
+
+            <SettingsSectionCard
+              id="call-setup"
+              title="Call setup"
+              footer={
+                <>
+                  {callSetupError ? <p className="mr-auto text-sm text-danger">{callSetupError}</p> : null}
+                  {callSetupOk ? <p className="mr-auto text-sm text-[#555555]">{callSetupOk}</p> : null}
+                  <button
+                    type="button"
+                    disabled={callSetupBusy}
+                    onClick={() => void saveCallPreferences()}
+                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
+                  >
+                    {callSetupBusy ? 'Saving…' : 'Save'}
+                  </button>
+                </>
+              }
+            >
+              <p className="text-sm leading-relaxed text-[#555555]">
+                Your Margen line receives forwarded missed calls, then routes callers to your AI receptionist.
+              </p>
+              <div className="mt-6 flex flex-wrap items-start justify-between gap-3 border-b border-[#ebebeb] pb-6">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-[#888888]">Margen AI number</p>
+                  <p className="mt-1 font-mono text-lg font-semibold text-[#111111]">
+                    {margenPhone ? formatUsDisplay(margenPhone) : 'Not set up yet'}
+                  </p>
+                </div>
+                <span
                   className={[
-                    'rounded-md border px-3 py-1.5 text-xs font-medium',
-                    bizHoursEnabled
-                      ? 'border-[var(--margen-accent)] bg-[var(--margen-accent-muted)] text-[var(--margen-accent)]'
-                      : 'border-[var(--color-margen-border)] text-[var(--color-margen-muted)] hover:bg-[var(--color-margen-hover)] hover:text-[var(--color-margen-text)]',
+                    'shrink-0 rounded-full px-2.5 py-1 text-xs font-medium',
+                    callForwardingActive ? 'bg-[#ecfdf3] text-[#166534]' : 'bg-[#f4f4f4] text-[#666666]',
                   ].join(' ')}
                 >
-                  {bizHoursEnabled ? 'Enabled' : 'Disabled'}
+                  {callForwardingActive ? 'Forwarding active' : 'Not active'}
+                </span>
+              </div>
+              <p className="mt-6 text-xs font-medium uppercase tracking-wide text-[#888888]">Your business cell carrier</p>
+              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {CARRIER_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => void persistCarrierChoice(opt.id)}
+                    className={[
+                      'rounded-lg border px-2 py-2 text-xs font-medium transition sm:text-sm',
+                      carrierDraft === opt.id
+                        ? 'border-[var(--margen-accent)] bg-[var(--margen-accent-muted)] text-[var(--margen-accent)]'
+                        : 'border-[#ebebeb] bg-white text-[#111111] hover:border-[#cccccc]',
+                    ].join(' ')}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {margenPhone && carrierDraft ? (
+                <div className="mt-4 rounded-xl border border-[#ebebeb] bg-[#fafafa] px-4 py-3">
+                  <p className="text-xs text-[#888888]">Forwarding activation</p>
+                  <p className="mt-1 font-mono text-sm font-semibold text-[var(--margen-accent)]">
+                    {forwardingActivationSnippet(carrierDraft, margenPhone)}
+                  </p>
+                </div>
+              ) : null}
+              <div className="mt-6">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-sm font-medium text-[#111111]" htmlFor="rings-range">
+                    Rings before AI answers
+                  </label>
+                  <span className="font-mono text-sm text-[var(--margen-accent)]">{ringsBeforeAiDraft}</span>
+                </div>
+                <input
+                  id="rings-range"
+                  type="range"
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={ringsBeforeAiDraft}
+                  onChange={(e) => setRingsBeforeAiDraft(e.target.value)}
+                  className="mt-2 w-full accent-[var(--margen-accent)]"
+                />
+                <p className="mt-1 text-xs text-[#888888]">About 6 seconds per ring before the call goes to Margen.</p>
+              </div>
+              {!callForwardingActive ? (
+                <button
+                  type="button"
+                  className="mt-4 text-left text-xs font-medium text-[var(--margen-accent)] underline-offset-2 hover:underline"
+                  onClick={async () => {
+                    if (!user) return
+                    setCallSetupError(null)
+                    const { error } = await supabase
+                      .from('profiles')
+                      .update({ call_forwarding_active: true } as never)
+                      .eq('id', user.id)
+                    if (error) setCallSetupError(error.message)
+                    else setCallForwardingActive(true)
+                  }}
+                >
+                  I’ve turned on forwarding — mark as active
+                </button>
+              ) : null}
+              <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <button
+                  type="button"
+                  disabled={callSmsBusy || !margenPhone}
+                  onClick={() => void handleForwardingSms()}
+                  className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#fafafa] disabled:opacity-50"
+                >
+                  {callSmsBusy ? 'Sending…' : 'Text forwarding steps'}
+                </button>
+                <button
+                  type="button"
+                  disabled={callTestBusy || !margenPhone}
+                  onClick={() => void handleTestAiCall()}
+                  className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#fafafa] disabled:opacity-50"
+                >
+                  {callTestBusy ? 'Calling…' : 'Test AI receptionist'}
+                </button>
+                <button
+                  type="button"
+                  disabled={callChangeBusy || !margenPhoneSid}
+                  onClick={() => void handleChangeMargenNumber()}
+                  className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2.5 text-sm font-medium text-[#111111] hover:bg-[#fafafa] disabled:opacity-50"
+                >
+                  {callChangeBusy ? 'Working…' : 'Change Margen number'}
                 </button>
               </div>
+              <Link
+                to="/onboarding/call-setup"
+                className="mt-4 inline-block text-xs font-medium text-[var(--margen-accent)] underline-offset-2 hover:underline"
+              >
+                Open full-screen setup wizard
+              </Link>
+            </SettingsSectionCard>
 
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                    Open (Mon–Fri)
-                  </label>
-                  <input
-                    value={bizHoursOpenDraft}
-                    onChange={(e) => setBizHoursOpenDraft(e.target.value)}
-                    className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 font-mono text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-                    placeholder="09:00"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                    Close (Mon–Fri)
-                  </label>
-                  <input
-                    value={bizHoursCloseDraft}
-                    onChange={(e) => setBizHoursCloseDraft(e.target.value)}
-                    className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 font-mono text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-                    placeholder="17:00"
-                  />
-                </div>
+            <SettingsSectionCard id="ai-receptionist" title="AI Receptionist">
+              <p className="text-sm leading-relaxed text-[#555555]">
+                Call flow, voice, hours, and deploy to your phone agent.
+              </p>
+              <div className="mt-5">
+                <Link
+                  to="/settings/ai-receptionist"
+                  className="inline-flex rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)]"
+                >
+                  Open AI Receptionist
+                </Link>
               </div>
-            </div>
-            <div className="border-t border-[var(--color-margen-border)] pt-5">
-              <div className="mb-3">
-                <p className="text-sm font-semibold text-[var(--color-margen-text)]">Service area</p>
-                <p className="mt-1 text-xs text-[var(--color-margen-muted)]">
-                  Set where you operate and how far you travel. Your map, presets, and coverage summary save with business settings.
-                </p>
-              </div>
+            </SettingsSectionCard>
+
+            <SettingsSectionCard
+              id="service-area"
+              title="Service area"
+              footer={
+                <>
+                  {areaError ? <p className="mr-auto text-sm text-danger">{areaError}</p> : null}
+                  {areaOk ? <p className="mr-auto text-sm text-[#555555]">{areaOk}</p> : null}
+                  <button
+                    type="button"
+                    disabled={areaBusy}
+                    onClick={() => void saveServiceAreaSection()}
+                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
+                  >
+                    {areaBusy ? 'Saving…' : 'Save'}
+                  </button>
+                </>
+              }
+            >
               <ServiceAreaEditor
                 resetToken={serviceAreaResetToken}
                 initial={serviceAreaInitial}
                 onChange={onServiceAreaChange}
               />
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <div>{bizError ? <p className="text-sm text-danger">{bizError}</p> : null}</div>
-              <button
-                type="button"
-                disabled={bizBusy}
-                onClick={() => void saveBusinessSettings()}
-                className="rounded-md bg-[var(--margen-accent)] px-3 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
-              >
-                Save business settings
-              </button>
-            </div>
-          </div>
-        </section>
+            </SettingsSectionCard>
 
-        <section>
-          <h2 className="section-title">
-            AI call setup
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-margen-muted)]">
-            Your Margen phone line receives forwarded missed calls, then routes callers to your AI receptionist.
-          </p>
-          <div className="mt-4 rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                  Margen AI number
-                </p>
-                <p className="mt-1 font-mono text-lg font-semibold text-[var(--color-margen-text)]">
-                  {margenPhone ? formatUsDisplay(margenPhone) : 'Not set up yet'}
-                </p>
+            <SettingsSectionCard id="subscription" title="Subscription">
+              <div className="flex flex-wrap items-center gap-2">
+                {isDevBypassEmail(user?.email) ? (
+                  <span className="inline-flex rounded-full border border-[#ebebeb] bg-[#f0f0f0] px-2.5 py-0.5 text-[11px] font-medium text-[#666666]">
+                    Dev account · full access
+                  </span>
+                ) : null}
               </div>
-              <span
-                className={[
-                  'shrink-0 rounded-full px-3 py-1 text-xs font-semibold',
-                  callForwardingActive ? 'badge-available' : 'badge-pending',
-                ].join(' ')}
+
+              <div
+                className="mt-5 rounded-xl border border-[#ebebeb] bg-[#fafafa] p-5"
               >
-                {callForwardingActive ? 'Active' : 'Not set up yet'}
-              </span>
-            </div>
-
-            <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-[var(--color-margen-muted)]">
-              Your business cell carrier
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {CARRIER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => void persistCarrierChoice(opt.id)}
-                  className={[
-                    'rounded-full border px-2 py-2 text-xs font-medium transition sm:text-sm',
-                    carrierDraft === opt.id
-                      ? 'border-[var(--margen-accent)] bg-[var(--margen-accent-muted)] text-[var(--margen-accent)]'
-                      : 'border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] text-[var(--color-margen-text)] hover:border-[var(--margen-accent)]/40',
-                  ].join(' ')}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            {margenPhone && carrierDraft ? (
-              <div className="mt-4 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-3">
-                <p className="text-xs text-[var(--color-margen-muted)]">Forwarding activation</p>
-                <p className="mt-1 text-sm font-semibold text-[var(--margen-accent)]">
-                  {forwardingActivationSnippet(carrierDraft, margenPhone)}
-                </p>
-              </div>
-            ) : null}
-
-            <div className="mt-6">
-              <div className="flex items-center justify-between gap-3">
-                <label className="text-sm font-medium text-[var(--color-margen-text)]">Rings before AI picks up</label>
-                <span className="font-mono text-sm text-[var(--margen-accent)]">{ringsBeforeAiDraft}</span>
-              </div>
-              <input
-                type="range"
-                min={1}
-                max={5}
-                step={1}
-                value={ringsBeforeAiDraft}
-                onChange={(e) => setRingsBeforeAiDraft(e.target.value)}
-                className="mt-2 w-full accent-[var(--margen-accent)]"
-              />
-              <p className="mt-1 text-xs text-[var(--color-margen-muted)]">
-                How long your phone rings before the call goes to your Margen line (about 6 seconds per ring).
-              </p>
-            </div>
-
-            {!callForwardingActive ? (
-              <button
-                type="button"
-                className="mt-4 text-left text-xs font-medium text-[var(--margen-accent)] underline-offset-2 hover:underline"
-                onClick={async () => {
-                  if (!user) return
-                  setCallSetupError(null)
-                  const { error } = await supabase
-                    .from('profiles')
-                    .update({ call_forwarding_active: true } as never)
-                    .eq('id', user.id)
-                  if (error) setCallSetupError(error.message)
-                  else setCallForwardingActive(true)
-                }}
-              >
-                I&apos;ve turned on forwarding — mark as active
-              </button>
-            ) : null}
-
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <button
-                type="button"
-                disabled={callSmsBusy || !margenPhone}
-                onClick={() => void handleForwardingSms()}
-                className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-4 py-2.5 text-sm font-semibold text-[var(--color-margen-text)] hover:border-[var(--margen-accent)]/45 disabled:opacity-50"
-              >
-                {callSmsBusy ? 'Sending…' : 'Send forwarding code to my phone'}
-              </button>
-              <button
-                type="button"
-                disabled={callTestBusy || !margenPhone}
-                onClick={() => void handleTestAiCall()}
-                className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-50"
-              >
-                {callTestBusy ? 'Calling…' : 'Test AI receptionist'}
-              </button>
-              <button
-                type="button"
-                disabled={callChangeBusy || !margenPhoneSid}
-                onClick={() => void handleChangeMargenNumber()}
-                className="rounded-lg border border-[var(--color-margen-border)] px-4 py-2.5 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
-              >
-                {callChangeBusy ? 'Working…' : 'Change number'}
-              </button>
-              <button
-                type="button"
-                disabled={callSetupBusy}
-                onClick={() => void saveCallPreferences()}
-                className="rounded-lg border border-[var(--margen-accent)] bg-[var(--margen-accent-muted)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent)] disabled:opacity-50"
-              >
-                {callSetupBusy ? 'Saving…' : 'Save call preferences'}
-              </button>
-            </div>
-            <Link
-              to="/onboarding/call-setup"
-              className="mt-3 inline-block text-xs font-medium text-[var(--margen-accent)] underline-offset-2 hover:underline"
-            >
-              Open full-screen setup wizard
-            </Link>
-            {callSetupError ? <p className="mt-3 text-sm text-danger">{callSetupError}</p> : null}
-            {callSetupOk ? (
-              <p className="mt-3 rounded-md px-3 py-2 text-sm alert-success">{callSetupOk}</p>
-            ) : null}
-          </div>
-        </section>
-
-        <section>
-          <h2 className="section-title">
-            AI Receptionist
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-margen-muted)]">
-            Build your call flow, choose a voice, set business hours, and deploy to your phone agent.
-          </p>
-          <div className="mt-4 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-4">
-            <button
-              type="button"
-              onClick={() => window.location.assign('/settings/ai-receptionist')}
-              className="rounded-md bg-[var(--margen-accent)] px-3 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
-            >
-              Open AI Receptionist settings
-            </button>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="section-title">
-            VIP customers
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-margen-muted)]">
-            Customers are flagged VIP when lifetime value exceeds your threshold.
-          </p>
-          <div className="mt-4 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-4">
-            <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-              VIP lifetime value threshold (USD)
-            </label>
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                value={vipDraft}
-                onChange={(e) => setVipDraft(e.target.value)}
-                inputMode="decimal"
-                className="w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-                placeholder="2000"
-              />
-              <button
-                type="button"
-                disabled={vipBusy}
-                onClick={() => void saveVipThreshold()}
-                className="shrink-0 rounded-md bg-[var(--margen-accent)] px-3 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
-              >
-                Save
-              </button>
-            </div>
-            <p className="mt-2 text-xs text-[var(--color-margen-muted)]">
-              Current: {vipThresholdCents == null ? '—' : `$${(vipThresholdCents / 100).toFixed(0)}`}
-            </p>
-            {vipError ? <p className="mt-2 text-sm text-danger">{vipError}</p> : null}
-          </div>
-        </section>
-
-        <section>
-          <h2 className="section-title">
-            Margen subscription
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-margen-muted)]">
-            Your workspace plan is billed separately from Stripe Connect (customer invoice payments).
-          </p>
-          {isDevBypassEmail(user?.email) ? (
-            <div className="mt-3 rounded-md px-3 py-2 text-xs alert-success">
-              <span className="font-semibold">Developer access.</span> This workspace is tied to a dev email — you can
-              test the full product without an active Margen subscription or card charges. Plan limits in the app match
-              Scale for QA.
-            </div>
-          ) : null}
-          <div className="mt-4 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-4">
-            {saasSubscription ? (
-              <>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold capitalize text-[var(--color-margen-text)]">
-                      {planById(saasSubscription.plan)?.name ?? saasSubscription.plan} plan
+                {saasSubscription ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-lg font-semibold capitalize text-[#111111]">
+                          {planById(saasSubscription.plan)?.name ?? saasSubscription.plan}
+                        </p>
+                        <p className="mt-1 text-sm text-[#555555]">
+                          {planById(saasSubscription.plan)
+                            ? `$${planById(saasSubscription.plan)!.priceUsd.toLocaleString()} / month`
+                            : '—'}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium capitalize text-[#111111] ring-1 ring-[#ebebeb]">
+                        {saasSubscription.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#555555]">
+                      <span className="text-[#888888]">Next billing</span>{' '}
+                      <span className="font-medium text-[#111111]">
+                        {saasSubscription.current_period_end
+                          ? new Date(saasSubscription.current_period_end).toLocaleDateString(undefined, {
+                              dateStyle: 'long',
+                            })
+                          : '—'}
+                      </span>
                     </p>
-                    <p className="mt-1 text-sm text-[var(--color-margen-muted)]">
-                      {planById(saasSubscription.plan)
-                        ? `$${planById(saasSubscription.plan)!.priceUsd.toLocaleString()} / month`
-                        : '—'}
-                      <span className="mx-2 text-[var(--color-margen-border)]">·</span>
-                      Status: <span className="font-medium text-[var(--color-margen-text)]">{saasSubscription.status}</span>
-                    </p>
-                    <p className="mt-2 text-xs text-[var(--color-margen-muted)]">
-                      Next billing:{' '}
-                      {saasSubscription.current_period_end
-                        ? new Date(saasSubscription.current_period_end).toLocaleDateString(undefined, {
-                            dateStyle: 'medium',
-                          })
-                        : '—'}
-                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Link
+                        to="/pricing"
+                        className="inline-flex items-center justify-center rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
+                      >
+                        Change plan
+                      </Link>
+                      <button
+                        type="button"
+                        disabled={billingBusy || ['canceled', 'unpaid', 'incomplete_expired'].includes(saasSubscription.status)}
+                        onClick={() => void handleCancelSubscription()}
+                        className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#f5f5f5] disabled:opacity-50"
+                      >
+                        Cancel at period end
+                      </button>
+                      <button
+                        type="button"
+                        disabled={billingBusy}
+                        onClick={() => void handleBillingPortal()}
+                        className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#f5f5f5] disabled:opacity-50"
+                      >
+                        Manage billing
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Link
-                    to="/pricing"
-                    className="inline-flex items-center justify-center rounded-md bg-[var(--margen-accent)] px-3 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
-                  >
-                    Upgrade plan
-                  </Link>
-                  <button
-                    type="button"
-                    disabled={billingBusy || ['canceled', 'unpaid', 'incomplete_expired'].includes(saasSubscription.status)}
-                    onClick={() => void handleCancelSubscription()}
-                    className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
-                  >
-                    Cancel subscription
-                  </button>
-                  <button
-                    type="button"
-                    disabled={billingBusy}
-                    onClick={() => void handleBillingPortal()}
-                    className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
-                  >
-                    Manage billing
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-[var(--color-margen-muted)]">No active Margen subscription on file yet.</p>
-                <Link
-                  to="/pricing"
-                  className="inline-flex shrink-0 items-center justify-center rounded-md bg-[var(--margen-accent)] px-3 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
-                >
-                  View plans
-                </Link>
+                ) : (
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-[#555555]">No active Margen subscription on file yet.</p>
+                    <Link
+                      to="/pricing"
+                      className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
+                    >
+                      View plans
+                    </Link>
+                  </div>
+                )}
+                {billingError ? <p className="mt-3 text-sm text-danger">{billingError}</p> : null}
               </div>
-            )}
-            {billingError ? <p className="mt-3 text-sm text-danger">{billingError}</p> : null}
-          </div>
-        </section>
 
-        <section className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-4 py-4">
-          <h2 className="section-title">
-            Stripe in Margen — quick guide
-          </h2>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-[var(--color-margen-muted)]">
-            <li>
-              <span className="font-medium text-[var(--color-margen-text)]">Paying Margen (subscription)</span> — Your
-              Starter / Growth / Scale plan is billed by Margen through Stripe Checkout or the customer portal. You never
-              paste an API key for that; use <strong className="text-[var(--color-margen-text)]">View plans</strong> /{' '}
-              <strong className="text-[var(--color-margen-text)]">Manage billing</strong> above.
-            </li>
-            <li>
-              <span className="font-medium text-[var(--color-margen-text)]">Your business Stripe (customers)</span> —{' '}
-              <strong className="text-[var(--color-margen-text)]">Stripe Connect</strong> links{' '}
-              <em>your</em> Stripe account so customer invoice payments can go to your bank.
-            </li>
-            <li>
-              <span className="font-medium text-[var(--color-margen-text)]">Charts &amp; Revenue (optional)</span> — To
-              graph <em>your</em> money movement in Margen, paste a key from <strong className="text-[var(--color-margen-text)]">your</strong>{' '}
-              Stripe Dashboard → Developers → API keys (secret key <code className="rounded bg-[var(--color-margen-surface-elevated)] px-1 text-xs">sk_…</code>) or create a{' '}
-              <strong className="text-[var(--color-margen-text)]">restricted</strong> key (
-              <code className="rounded bg-[var(--color-margen-surface-elevated)] px-1 text-xs">rk_…</code>) with permission to{' '}
-              <strong className="text-[var(--color-margen-text)]">read Balance Transactions</strong>. That key is only for
-              pulling ledger data into Margen — it is not your Margen subscription charge.
-            </li>
-          </ul>
-        </section>
+              <StripeHowItWorksAccordion />
+            </SettingsSectionCard>
 
-        <section>
-          <h2 className="section-title">
-            Payments (Stripe)
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-margen-muted)]">
-            Connect your business Stripe account for customer payments. Optionally add an API key from the same account for
-            analytics charts.
-          </p>
+            <SettingsSectionCard
+              id="payments"
+              title="Payments"
+              footer={
+                <>
+                  {vipError ? <p className="mr-auto text-sm text-danger">{vipError}</p> : null}
+                  <button
+                    type="button"
+                    disabled={vipBusy}
+                    onClick={() => void saveVipThreshold()}
+                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
+                  >
+                    {vipBusy ? 'Saving…' : 'Save'}
+                  </button>
+                </>
+              }
+            >
+              <p className="text-sm leading-relaxed text-[#555555]">
+                Connect Stripe for customer invoices. Optional analytics key syncs revenue charts.
+              </p>
 
-          <div className="mt-4 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-[var(--color-margen-text)]">Stripe Connect</p>
-                <p className="mt-1 text-xs text-[var(--color-margen-muted)]">
+              <div className="mt-6 rounded-xl border border-[#ebebeb] bg-white p-5">
+                <p className="text-sm font-medium text-[#111111]">Stripe Connect</p>
+                <p className="mt-1 text-xs text-[#888888]">
                   {stripeAccountId ? (
                     <>
-                      Account: <span className="font-mono">{stripeAccountId}</span>
-                      <span className="mx-2 text-[var(--color-margen-border)]">·</span>
-                      Charges enabled: <span className="font-medium">{stripeEnabled ? 'Yes' : 'No'}</span>
+                      Account <span className="font-mono text-[#111111]">{stripeAccountId}</span>
+                      <span className="mx-2 text-[#cccccc]">·</span>
+                      Charges {stripeEnabled ? 'enabled' : 'disabled'}
                     </>
                   ) : (
                     'Not connected yet.'
                   )}
                 </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={stripeBusy}
+                    onClick={() => void startStripeConnect()}
+                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
+                  >
+                    {stripeAccountId ? 'Reconnect Stripe' : 'Connect Stripe'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={stripeBusy || !stripeAccountId}
+                    onClick={() => void syncStripeConnect()}
+                    className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#fafafa] disabled:opacity-60"
+                  >
+                    Refresh status
+                  </button>
+                </div>
+                {stripeDetailsSubmitted === false ? (
+                  <p className="mt-3 text-xs text-[#888888]">Finish Stripe onboarding to accept payments.</p>
+                ) : null}
+                {stripeError ? <p className="mt-2 text-sm text-danger">{stripeError}</p> : null}
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={stripeBusy}
-                  onClick={() => void startStripeConnect()}
-                  className="rounded-md bg-[var(--margen-accent)] px-3 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
-                >
-                  {stripeAccountId ? 'Reconnect Stripe' : 'Connect Stripe'}
-                </button>
-                <button
-                  type="button"
-                  disabled={stripeBusy || !stripeAccountId}
-                  onClick={() => void syncStripeConnect()}
-                  className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-60"
-                >
-                  Refresh status
-                </button>
+
+              <div className="mt-5 rounded-xl border border-[#ebebeb] bg-white p-5">
+                <p className="text-sm font-medium text-[#111111]">Revenue analytics key</p>
+                <p className="mt-1 text-xs leading-relaxed text-[#888888]">
+                  Optional. Encrypted on save. See <span className="text-[#111111]">How does this work?</span> under Subscription.
+                </p>
+                {stripeAnalyticsHint ? (
+                  <p className="mt-3 text-xs text-[#888888]">
+                    Key <span className="font-mono text-[#111111]">{stripeAnalyticsHint}</span>
+                    <span className="mx-2 text-[#cccccc]">·</span>
+                    Last sync{' '}
+                    <span className="font-medium text-[#111111]">
+                      {stripeAnalyticsLastSyncAt
+                        ? new Date(stripeAnalyticsLastSyncAt).toLocaleString(undefined, {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          })
+                        : 'Never'}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="mt-3 text-xs text-[#888888]">No key saved.</p>
+                )}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={stripeAnalyticsOpBusy}
+                    onClick={() => {
+                      setStripeAnalyticsOpError(null)
+                      setStripeAnalyticsModalOpen(true)
+                    }}
+                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
+                  >
+                    {stripeAnalyticsHint ? 'Change API key' : 'Add API key'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={stripeAnalyticsOpBusy || !stripeAnalyticsHint}
+                    onClick={() => void handleSyncStripeLedger()}
+                    className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#fafafa] disabled:opacity-60"
+                  >
+                    {stripeAnalyticsOpBusy ? 'Syncing…' : 'Sync from Stripe'}
+                  </button>
+                </div>
+                {stripeAnalyticsOpError ? <p className="mt-2 text-sm text-danger">{stripeAnalyticsOpError}</p> : null}
               </div>
-            </div>
-            {stripeDetailsSubmitted === false ? (
-              <p className="mt-2 text-xs text-[var(--color-margen-muted)]">
-                Stripe onboarding not completed yet. Finish onboarding to accept payments.
-              </p>
-            ) : null}
-            {stripeError ? <p className="mt-2 text-sm text-danger">{stripeError}</p> : null}
+
+              <div className="mt-6 border-t border-[#ebebeb] pt-6">
+                <label className={labelClass} htmlFor="vip-threshold">
+                  VIP lifetime value threshold (USD)
+                </label>
+                <p className="mb-2 text-xs text-[#888888]">Flag customers when lifetime value exceeds this amount.</p>
+                <input
+                  id="vip-threshold"
+                  value={vipDraft}
+                  onChange={(e) => setVipDraft(e.target.value)}
+                  inputMode="decimal"
+                  className={fieldClass}
+                  placeholder="e.g. 2000"
+                />
+                {vipThresholdCents != null && vipThresholdCents > 0 ? (
+                  <p className="mt-2 text-xs text-[#888888]">
+                    Current threshold:{' '}
+                    <span className="font-medium text-[#111111]">${(vipThresholdCents / 100).toLocaleString()}</span>
+                  </p>
+                ) : null}
+              </div>
+            </SettingsSectionCard>
+
+            <StripeAnalyticsSetupModal
+              open={stripeAnalyticsModalOpen}
+              onClose={() => setStripeAnalyticsModalOpen(false)}
+              onSaved={() => void refreshStripeAnalyticsFromProfile()}
+              hasExistingKey={Boolean(stripeAnalyticsHint)}
+            />
+
+            <SettingsSectionCard
+              id="appearance"
+              title="Appearance"
+              footer={
+                <>
+                  {persistError ? <p className="mr-auto text-sm text-danger">{persistError}</p> : null}
+                  {appearanceOk ? <p className="mr-auto text-sm text-[#555555]">{appearanceOk}</p> : null}
+                  <button
+                    type="button"
+                    disabled={appearanceBusy || saving}
+                    onClick={() => void saveAppearanceSection()}
+                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
+                  >
+                    {appearanceBusy || saving ? 'Saving…' : 'Save'}
+                  </button>
+                </>
+              }
+            >
+              <div>
+                <label className="text-sm font-medium text-[#111111]">Accent color</label>
+                <p className="mt-1 text-xs leading-relaxed text-[#888888]">
+                  Applied to buttons, active states, and highlights.
+                </p>
+                <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-start">
+                  <div className="max-w-[220px] flex-1 overflow-hidden rounded-xl border border-[#ebebeb] p-3">
+                    <HexColorPicker
+                      color={accentDraft}
+                      onChange={(c) => {
+                        setAccentDraft(c)
+                        setHexDraft(c)
+                      }}
+                      style={{ width: '100%', height: 180 }}
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-4">
+                    <div>
+                      <label htmlFor="accent-hex" className={labelClass}>
+                        Hex
+                      </label>
+                      <input
+                        id="accent-hex"
+                        type="text"
+                        value={hexDraft}
+                        onChange={(e) => setHexDraft(e.target.value)}
+                        onBlur={() => {
+                          const parsed = tryParseHex(hexDraft)
+                          if (parsed) {
+                            setAccentDraft(parsed)
+                            setHexDraft(parsed)
+                          } else {
+                            setHexDraft(accentDraft)
+                          }
+                        }}
+                        spellCheck={false}
+                        className={`${fieldClass} font-mono`}
+                        placeholder="#111111"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-[#888888]">Preview</p>
+                      <button
+                        type="button"
+                        className="mt-2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:opacity-95"
+                        style={{ backgroundColor: accentDraft, color: previewFg }}
+                      >
+                        Sample button
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </SettingsSectionCard>
           </div>
-
-          <div className="mt-4 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-4">
-            <p className="text-sm font-medium text-[var(--color-margen-text)]">Stripe account analytics</p>
-            <p className="mt-1 text-xs text-[var(--color-margen-muted)]">
-              Use a <strong className="text-[var(--color-margen-text)]">secret</strong> or{' '}
-              <strong className="text-[var(--color-margen-text)]">restricted</strong> key from{' '}
-              <em>your</em> Stripe account (dashboard.stripe.com → Developers → API keys). Margen encrypts it and syncs
-              Balance Transactions for Revenue / Dashboard — separate from your Margen subscription billing.
-            </p>
-            {stripeAnalyticsHint ? (
-              <p className="mt-2 text-xs text-[var(--color-margen-muted)]">
-                Saved key <span className="font-mono text-[var(--color-margen-text)]">{stripeAnalyticsHint}</span>
-                <span className="mx-2 text-[var(--color-margen-border)]">·</span>
-                Last sync:{' '}
-                <span className="font-medium text-[var(--color-margen-text)]">
-                  {stripeAnalyticsLastSyncAt
-                    ? new Date(stripeAnalyticsLastSyncAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-                    : 'Never'}
-                </span>
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-[var(--color-margen-muted)]">No analytics key saved yet.</p>
-            )}
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={stripeAnalyticsOpBusy}
-                onClick={() => {
-                  setStripeAnalyticsOpError(null)
-                  setStripeAnalyticsModalOpen(true)
-                }}
-                className="rounded-md bg-[var(--margen-accent)] px-3 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
-              >
-                {stripeAnalyticsHint ? 'Change API key…' : 'Add API key…'}
-              </button>
-              <button
-                type="button"
-                disabled={stripeAnalyticsOpBusy || !stripeAnalyticsHint}
-                onClick={() => void handleSyncStripeLedger()}
-                className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-60"
-              >
-                {stripeAnalyticsOpBusy ? 'Syncing…' : 'Sync from Stripe'}
-              </button>
-            </div>
-            {stripeAnalyticsOpError ? <p className="mt-2 text-sm text-danger">{stripeAnalyticsOpError}</p> : null}
-          </div>
-        </section>
-
-        <StripeAnalyticsSetupModal
-          open={stripeAnalyticsModalOpen}
-          onClose={() => setStripeAnalyticsModalOpen(false)}
-          onSaved={() => void refreshStripeAnalyticsFromProfile()}
-          hasExistingKey={Boolean(stripeAnalyticsHint)}
-        />
-
-        <section>
-          <h2 className="section-title">
-            Accent color
-          </h2>
-          <p className="mt-1 text-sm text-[var(--color-margen-muted)]">
-            Used for primary actions, active navigation, links, and highlights.
-          </p>
-          <div className="mt-4 space-y-4">
-            <div className="overflow-hidden rounded-lg border border-[var(--color-margen-border)] p-3">
-              <HexColorPicker
-                color={accentHex}
-                onChange={(c) => setAccentHex(c)}
-                style={{ width: '100%', height: 180 }}
-              />
-            </div>
-            <div>
-              <label htmlFor="accent-hex" className="mb-1 block text-xs font-medium text-[var(--color-margen-text)]">
-                Hex code
-              </label>
-              <input
-                id="accent-hex"
-                type="text"
-                value={hexDraft}
-                onChange={(e) => setHexDraft(e.target.value)}
-                onBlur={() => {
-                  const parsed = tryParseHex(hexDraft)
-                  if (parsed) setAccentHex(parsed)
-                  else setHexDraft(accentHex)
-                }}
-                placeholder="#FF5733"
-                spellCheck={false}
-                className="w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 font-mono text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-              />
-            </div>
-          </div>
-        </section>
-
-        {persistError ? <p className="text-sm text-danger">{persistError}</p> : null}
-        {saving ? <p className="text-sm text-[var(--color-margen-muted)]">Saving…</p> : null}
+        </div>
       </div>
     </div>
   )

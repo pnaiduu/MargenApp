@@ -306,7 +306,7 @@ function ServiceAreaMapInner({ apiKey, resetToken, initial, onChange }: InnerPro
   const mapZoom = center ? 10 : 4
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
         <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
           Where is your business located?
@@ -387,15 +387,17 @@ function ServiceAreaMapInner({ apiKey, resetToken, initial, onChange }: InnerPro
       </div>
 
       {center ? (
-        <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-2.5 text-sm text-[var(--color-margen-text)]">
-          <span className="font-medium text-[var(--color-margen-muted)]">Covering: </span>
-          {citiesLoading ? (
-            <span className="text-[var(--color-margen-muted)]">Updating places…</span>
-          ) : cities.length ? (
-            <span>{cities.join(', ')}</span>
-          ) : (
-            <span className="text-[var(--color-margen-muted)]">Places will appear here as we scan your radius.</span>
-          )}
+        <div className="rounded-xl border border-[#ebebeb] bg-[#fafafa] px-4 py-3.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-[#888888]">Places covered</p>
+          <p className="mt-2 text-sm leading-relaxed text-[#111111]">
+            {citiesLoading ? (
+              <span className="text-[#888888]">Updating places…</span>
+            ) : cities.length ? (
+              cities.join(', ')
+            ) : (
+              <span className="text-[#888888]">Places will appear here as we scan your radius.</span>
+            )}
+          </p>
         </div>
       ) : null}
 
@@ -427,24 +429,28 @@ function ServiceAreaMapInner({ apiKey, resetToken, initial, onChange }: InnerPro
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: easePremium }}
-          className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-4 shadow-sm"
+          className="rounded-xl border border-[#ebebeb] bg-white p-5 shadow-sm"
         >
-          <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Coverage summary</p>
-          <dl className="mt-3 grid gap-3 sm:grid-cols-3">
-            <div>
-              <dt className="text-xs text-[var(--color-margen-muted)]">Area (approx.)</dt>
-              <dd className="mt-0.5 text-lg font-semibold tabular-nums text-[var(--color-margen-text)]">{sqMi.toLocaleString(undefined, { maximumFractionDigits: 0 })} mi²</dd>
+          <p className="text-xs font-medium uppercase tracking-wide text-[#888888]">Coverage summary</p>
+          <dl className="mt-4 grid gap-5 sm:grid-cols-3 sm:gap-6">
+            <div className="min-w-0">
+              <dt className="text-[13px] leading-snug text-[#555555]">Area (approx.)</dt>
+              <dd className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight text-[#111111]">
+                {sqMi.toLocaleString(undefined, { maximumFractionDigits: 0 })} mi²
+              </dd>
             </div>
-            <div>
-              <dt className="text-xs text-[var(--color-margen-muted)]">Population served (est.)</dt>
-              <dd className="mt-0.5 text-lg font-semibold tabular-nums text-[var(--color-margen-text)]">~{approxPop.toLocaleString()}</dd>
+            <div className="min-w-0">
+              <dt className="text-[13px] leading-snug text-[#555555]">Population served (est.)</dt>
+              <dd className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight text-[#111111]">
+                ~{approxPop.toLocaleString()}
+              </dd>
             </div>
-            <div>
-              <dt className="text-xs text-[var(--color-margen-muted)]">Places named</dt>
-              <dd className="mt-0.5 text-lg font-semibold tabular-nums text-[var(--color-margen-text)]">{cities.length}</dd>
+            <div className="min-w-0">
+              <dt className="text-[13px] leading-snug text-[#555555]">Places named</dt>
+              <dd className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight text-[#111111]">{cities.length}</dd>
             </div>
           </dl>
-          <p className="mt-3 text-[11px] leading-relaxed text-[var(--color-margen-muted)]">
+          <p className="mt-4 text-xs leading-relaxed text-[#888888]">
             Population is a rough density estimate for planning—not a census count. Places are sampled across your circle using Google Geocoding.
           </p>
         </motion.div>
