@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import { approveDraftJobDirect, callCallbackDirect } from '../lib/directSupabaseActions'
+import { formatUsdFromCents } from '../lib/formatUsd'
 import { supabase } from '../lib/supabase'
 import { easePremium } from '../lib/motion'
 import type { PhoneCallStatus } from '../types/database'
@@ -42,14 +43,6 @@ function StatusPill({ status }: { status: PhoneCallStatus }) {
       {statusLabel[status]}
     </span>
   )
-}
-
-function formatUsd(cents: number) {
-  return (cents / 100).toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  })
 }
 
 export function CallsLeadsPage() {
@@ -257,7 +250,7 @@ export function CallsLeadsPage() {
                     <StatusPill status={r.status} />
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
-                    {r.status === 'missed' ? formatUsd(r.estimated_value_cents) : '—'}
+                    {r.status === 'missed' ? formatUsdFromCents(r.estimated_value_cents) : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">

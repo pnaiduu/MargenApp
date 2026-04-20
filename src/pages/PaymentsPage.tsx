@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/useAuth'
 import { localMonthRangeIso } from '../lib/dates'
 import { easePremium } from '../lib/motion'
 import { sendInvoiceReminderDirect } from '../lib/directSupabaseActions'
+import { formatUsdFromCents } from '../lib/formatUsd'
 import { supabase } from '../lib/supabase'
 
 type InvoiceRow = {
@@ -17,10 +18,6 @@ type InvoiceRow = {
   payment_method: string | null
   customers: { name: string } | null
   jobs: { title: string; job_type: string } | null
-}
-
-function formatUsd(cents: number) {
-  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 }
 
 function formatWhen(iso: string | null) {
@@ -133,11 +130,11 @@ export function PaymentsPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Collected this month</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--color-margen-text)]">{formatUsd(collectedThisMonthCents)}</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--color-margen-text)]">{formatUsdFromCents(collectedThisMonthCents)}</p>
         </div>
         <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Outstanding balance</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--color-margen-text)]">{formatUsd(outstandingCents)}</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--color-margen-text)]">{formatUsdFromCents(outstandingCents)}</p>
         </div>
       </div>
 
@@ -190,7 +187,7 @@ export function PaymentsPage() {
                   ) : null}
                 </div>
                 <div className="col-span-2 text-right font-medium tabular-nums text-[var(--color-margen-text)]">
-                  {formatUsd(r.amount_cents)}
+                  {formatUsdFromCents(r.amount_cents)}
                 </div>
                 <div className="col-span-2 text-sm text-[var(--color-margen-muted)]">{formatWhen(r.created_at)}</div>
                 <div className="col-span-2 flex justify-end gap-2">

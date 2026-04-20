@@ -13,14 +13,7 @@ import { DashboardRevenueChart, type DailyRevenue } from '../components/dashboar
 import { MissedCallsPanel, type MissedCallRow } from '../components/dashboard/MissedCallsPanel'
 import { RecentJobsPanel, type RecentJobRow } from '../components/dashboard/RecentJobsPanel'
 import { TechniciansMap, type TechMapPoint } from '../components/dashboard/TechniciansMap'
-
-function formatUsd(cents: number) {
-  return (cents / 100).toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  })
-}
+import { formatUsdFromCents } from '../lib/formatUsd'
 
 function StatCard({
   label,
@@ -669,7 +662,7 @@ export function DashboardHome() {
             />
             <StatCard
               label="Revenue today"
-              value={revenueToday === null ? '—' : formatUsd(revenueToday)}
+              value={revenueToday === null ? '—' : formatUsdFromCents(revenueToday)}
               hint="From completed work"
             />
             <StatCard

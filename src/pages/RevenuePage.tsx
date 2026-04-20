@@ -14,23 +14,12 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
+import { formatUsdFromCents, formatUsdFromDollarsPlain } from '../lib/formatUsd'
 import { localMonthRangeIso } from '../lib/dates'
 import { supabase } from '../lib/supabase'
 import { easePremium } from '../lib/motion'
 
 const PIE_COLORS = ['#6366f1', '#0ea5e9', '#14b8a6', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b']
-
-function formatUsd(cents: number) {
-  return (cents / 100).toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  })
-}
-
-function formatUsdNumber(n: number) {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-}
 
 type JobRevRow = {
   amount_cents: number
@@ -290,7 +279,7 @@ export function RevenuePage() {
                 Total revenue · {monthLabel}
               </p>
               <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--color-margen-text)]">
-                {formatUsd(monthTotalCents)}
+                {formatUsdFromCents(monthTotalCents)}
               </p>
             </div>
             <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-5 py-4">
@@ -301,7 +290,7 @@ export function RevenuePage() {
                 Sum of estimated job value on unanswered calls still marked missed.
               </p>
               <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--color-margen-text)]">
-                {formatUsd(missedSumCents)}
+                {formatUsdFromCents(missedSumCents)}
               </p>
             </div>
           </div>
@@ -322,7 +311,7 @@ export function RevenuePage() {
                       <CartesianGrid stroke="var(--color-margen-border)" horizontal={false} strokeDasharray="3 3" />
                       <XAxis
                         type="number"
-                        tickFormatter={(v) => formatUsdNumber(v)}
+                        tickFormatter={(v) => formatUsdFromDollarsPlain(v)}
                         tick={{ fill: 'var(--color-margen-muted)', fontSize: 11 }}
                         axisLine={{ stroke: 'var(--color-margen-border)' }}
                         tickLine={false}
@@ -345,7 +334,7 @@ export function RevenuePage() {
                         }}
                         formatter={(value) => {
                           const n = typeof value === 'number' ? value : Number(value)
-                          return Number.isFinite(n) ? formatUsdNumber(n) : ''
+                          return Number.isFinite(n) ? formatUsdFromDollarsPlain(n) : ''
                         }}
                       />
                       <Bar dataKey="revenue" fill="var(--margen-accent)" radius={[0, 4, 4, 0]} />
@@ -391,7 +380,7 @@ export function RevenuePage() {
                         }}
                         formatter={(value) => {
                           const n = typeof value === 'number' ? value : Number(value)
-                          return Number.isFinite(n) ? formatUsdNumber(n) : ''
+                          return Number.isFinite(n) ? formatUsdFromDollarsPlain(n) : ''
                         }}
                       />
                     </PieChart>
@@ -437,7 +426,7 @@ export function RevenuePage() {
                         Net on Stripe (MTD)
                       </p>
                       <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--color-margen-text)]">
-                        {formatUsd(stripeMonthNetCents)}
+                        {formatUsdFromCents(stripeMonthNetCents)}
                       </p>
                       <p className="mt-2 text-xs text-[var(--color-margen-muted)]">
                         Sum of net amounts on balance transactions (charges, refunds, payouts, etc.).
@@ -448,7 +437,7 @@ export function RevenuePage() {
                         Stripe fees (MTD)
                       </p>
                       <p className="mt-1 text-2xl font-semibold tabular-nums text-[var(--color-margen-text)]">
-                        {formatUsd(stripeMonthFeesCents)}
+                        {formatUsdFromCents(stripeMonthFeesCents)}
                       </p>
                       <p className="mt-2 text-xs text-[var(--color-margen-muted)]">Processing fees Stripe reported on those lines.</p>
                     </div>
@@ -469,7 +458,7 @@ export function RevenuePage() {
                               <CartesianGrid stroke="var(--color-margen-border)" horizontal={false} strokeDasharray="3 3" />
                               <XAxis
                                 type="number"
-                                tickFormatter={(v) => formatUsdNumber(v)}
+                                tickFormatter={(v) => formatUsdFromDollarsPlain(v)}
                                 tick={{ fill: 'var(--color-margen-muted)', fontSize: 11 }}
                                 axisLine={{ stroke: 'var(--color-margen-border)' }}
                                 tickLine={false}
@@ -492,7 +481,7 @@ export function RevenuePage() {
                                 }}
                                 formatter={(value) => {
                                   const n = typeof value === 'number' ? value : Number(value)
-                                  return Number.isFinite(n) ? formatUsdNumber(n) : ''
+                                  return Number.isFinite(n) ? formatUsdFromDollarsPlain(n) : ''
                                 }}
                               />
                               <Bar dataKey="net" fill="#0ea5e9" radius={[0, 4, 4, 0]} />
@@ -541,8 +530,8 @@ export function RevenuePage() {
                                 formatter={(value, name) => {
                                   const v = typeof value === 'number' ? value : Number(value)
                                   const row = stripeByCategory.find((x) => x.category === name)
-                                  const absPart = Number.isFinite(v) ? formatUsdNumber(v) : ''
-                                  const netPart = row ? ` · signed net ${formatUsdNumber(row.net)}` : ''
+                                  const absPart = Number.isFinite(v) ? formatUsdFromDollarsPlain(v) : ''
+                                  const netPart = row ? ` · signed net ${formatUsdFromDollarsPlain(row.net)}` : ''
                                   return [`${absPart}${netPart}`, 'Category']
                                 }}
                               />

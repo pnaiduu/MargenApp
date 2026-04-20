@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
 import { createJobDirect } from '../lib/directSupabaseActions'
+import { formatUsdFromCents } from '../lib/formatUsd'
 import { supabase } from '../lib/supabase'
 import { easePremium } from '../lib/motion'
 
@@ -24,10 +25,6 @@ type HistoryRow = {
   technicians: { name: string } | null
   invoices: { amount_cents: number; status: string; paid_at: string | null }[] | null
   rating: { rating: number | null; comment: string | null; submitted_at: string | null } | null
-}
-
-function formatUsd(cents: number) {
-  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 }
 
 function formatWhen(iso: string | null) {
@@ -243,7 +240,7 @@ export function CustomerProfilePage() {
             <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-5 py-4">
               <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Value</p>
               <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--color-margen-text)]">
-                {formatUsd(lifetimeValueCents)}
+                {formatUsdFromCents(lifetimeValueCents)}
               </p>
               <p className="mt-2 text-sm text-[var(--color-margen-muted)]">
                 Last service: <span className="font-medium">{formatWhen(lastServiceAt)}</span>
@@ -298,7 +295,7 @@ export function CustomerProfilePage() {
                         </div>
                         <div className="text-right">
                           <p className="font-semibold tabular-nums text-[var(--color-margen-text)]">
-                            {paidInv ? formatUsd(paidInv.amount_cents) : '—'}
+                            {paidInv ? formatUsdFromCents(paidInv.amount_cents) : '—'}
                           </p>
                           <p className="text-xs text-[var(--color-margen-muted)]">{paidInv ? 'Paid' : 'Not paid'}</p>
                         </div>

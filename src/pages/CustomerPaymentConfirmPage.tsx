@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { formatUsdFromCents } from '../lib/formatUsd'
 import { supabase } from '../lib/supabase'
 import { easePremium, tapButton } from '../lib/motion'
 
@@ -23,10 +24,6 @@ type Details = {
   company_name?: string
   already_confirmed?: boolean
   payment_method?: string | null
-}
-
-function formatUsd(cents: number) {
-  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
 function methodLabel(m: string | null | undefined) {
@@ -139,7 +136,7 @@ export function CustomerPaymentConfirmPage() {
 
   const company = details.company_name ?? 'Margen'
   const title = details.job_title ?? 'Service'
-  const amount = formatUsd(details.amount_cents ?? 0)
+  const amount = formatUsdFromCents(details.amount_cents)
 
   return (
     <div className="flex min-h-dvh flex-col bg-[#111827] px-5 py-10">

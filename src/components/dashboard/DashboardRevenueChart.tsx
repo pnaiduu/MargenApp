@@ -8,12 +8,9 @@ import {
   YAxis,
 } from 'recharts'
 
-export type DailyRevenue = { day: string; revenue: number }
+import { formatUsdFromDollarsChart, formatUsdFromDollarsPlain } from '../../lib/formatUsd'
 
-function formatUsd(n: number) {
-  if (n >= 1000) return `$${(n / 1000).toFixed(1)}k`
-  return `$${Math.round(n)}`
-}
+export type DailyRevenue = { day: string; revenue: number }
 
 export function DashboardRevenueChart({
   data,
@@ -48,7 +45,7 @@ export function DashboardRevenueChart({
               tickLine={false}
             />
             <YAxis
-              tickFormatter={(v) => formatUsd(v)}
+              tickFormatter={(v) => formatUsdFromDollarsChart(v)}
               tick={{ fill: '#888888', fontSize: 12 }}
               axisLine={false}
               tickLine={false}
@@ -64,15 +61,8 @@ export function DashboardRevenueChart({
               }}
               formatter={(value) => {
                 const n = typeof value === 'number' ? value : Number(value)
-                const safe = Number.isFinite(n) ? n : 0
-                return [
-                  safe.toLocaleString('en-US', {
-                    style: 'currency',
-                    currency: 'USD',
-                    maximumFractionDigits: 0,
-                  }),
-                  valueLabel,
-                ]
+                const safe = Number.isFinite(n) ? n : NaN
+                return [formatUsdFromDollarsPlain(safe), valueLabel]
               }}
             />
             <Line

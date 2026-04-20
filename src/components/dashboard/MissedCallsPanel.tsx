@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatUsdFromCents } from '../../lib/formatUsd'
 import { supabase } from '../../lib/supabase'
 
 export type MissedCallRow = {
@@ -6,10 +7,6 @@ export type MissedCallRow = {
   caller_phone: string | null
   occurred_at: string
   estimated_value_cents: number
-}
-
-function formatUsd(cents: number) {
-  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 }
 
 export function MissedCallsPanel({
@@ -60,7 +57,7 @@ export function MissedCallsPanel({
                     minute: '2-digit',
                   })}
                   {row.estimated_value_cents > 0 ? (
-                    <span className="ml-2">· est. {formatUsd(row.estimated_value_cents)}</span>
+                    <span className="ml-2">· est. {formatUsdFromCents(row.estimated_value_cents)}</span>
                   ) : null}
                 </p>
               </div>

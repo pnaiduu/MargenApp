@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
+import { formatUsdFromCents } from '../lib/formatUsd'
 import { supabase } from '../lib/supabase'
 import { easePremium } from '../lib/motion'
 
@@ -14,10 +15,6 @@ type CustomerSummaryRow = {
   lifetime_value_cents: number
   last_service_at: string | null
   is_vip: boolean
-}
-
-function formatUsd(cents: number) {
-  return (cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 }
 
 function formatWhen(iso: string | null) {
@@ -173,7 +170,7 @@ export function CustomersPage() {
                 </div>
                 <div className="col-span-2 text-sm text-[var(--color-margen-muted)]">{formatWhen(c.last_service_at)}</div>
                 <div className="col-span-3 text-right font-semibold tabular-nums text-[var(--color-margen-text)]">
-                  {formatUsd(c.lifetime_value_cents)}
+                  {formatUsdFromCents(c.lifetime_value_cents)}
                 </div>
               </li>
             ))}
