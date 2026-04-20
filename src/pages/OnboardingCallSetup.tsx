@@ -48,7 +48,7 @@ export function OnboardingCallSetup() {
   const [smsBusy, setSmsBusy] = useState(false)
   const [smsNote, setSmsNote] = useState<string | null>(null)
   const [smsError, setSmsError] = useState<string | null>(null)
-  const [copyFlash, setCopyFlash] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const runPlaceholderSetup = useCallback(async () => {
     if (!user) return
@@ -97,21 +97,10 @@ export function OnboardingCallSetup() {
     void runPlaceholderSetup()
   }, [user, runPlaceholderSetup])
 
-  const rawMargenNumber = (margenE164 ?? '').trim()
+  const margenPhone = (margenE164 ?? '').trim()
+  const displayPhone = displayNumber
 
-  const onCopyNumber = async () => {
-    if (!rawMargenNumber) return
-    setSmsError(null)
-    try {
-      await navigator.clipboard.writeText(rawMargenNumber)
-      setCopyFlash(true)
-      window.setTimeout(() => setCopyFlash(false), 2000)
-    } catch {
-      setSmsError('Copy did not work. Try highlighting the number instead.')
-    }
-  }
-
-  const onTextMyself = async () => {
+  const handleSendSms = async () => {
     setSmsBusy(true)
     setSmsError(null)
     setSmsNote(null)
@@ -122,10 +111,6 @@ export function OnboardingCallSetup() {
       return
     }
     setSmsNote('Sent! Check your business phone for a text.')
-  }
-
-  const onGoDashboard = () => {
-    window.location.href = '/dashboard'
   }
 
   const btnAccent =
@@ -251,32 +236,55 @@ export function OnboardingCallSetup() {
             <WizardProgress step={3} />
             <div className="mx-auto w-full max-w-lg flex-1 px-5 pb-12 pt-6 sm:px-8">
               <div className="rounded-xl border border-[#ebebeb] bg-white p-6 sm:p-8">
-                <h2 className="text-center text-[32px] font-semibold leading-tight text-[#111111] sm:text-[36px]">
-                  You&apos;re all set
-                </h2>
-                <p className="mt-3 text-center text-lg text-[var(--color-margen-text-secondary)]">
-                  Your AI receptionist is ready to answer calls
-                </p>
-
-                <p className="mt-10 text-center font-mono text-3xl font-bold tracking-tight text-[#111111] sm:text-4xl">
-                  {displayNumber}
-                </p>
-
-                <p className="mx-auto mt-6 max-w-md text-center text-[17px] leading-relaxed text-[var(--color-margen-text-secondary)]">
-                  Share this as your business phone number. Every call goes straight to your AI receptionist — 24 hours
-                  a day.
-                </p>
-
-                <div className="mt-10 flex flex-col gap-3">
-                  <button type="button" onClick={() => void onCopyNumber()} disabled={!rawMargenNumber} className={btnAccent}>
-                    {copyFlash ? 'Copied!' : 'Copy number'}
-                  </button>
-                  <button type="button" disabled={smsBusy} onClick={() => void onTextMyself()} className={btnAccent}>
-                    {smsBusy ? 'Sending…' : 'Text it to myself'}
-                  </button>
-                  <button type="button" onClick={onGoDashboard} className={btnAccent}>
-                    Go to my dashboard
-                  </button>
+                <div className="flex flex-col items-center gap-6 text-center">
+                  <h2 style={{ fontSize: 32, fontWeight: 600, color: '#111111' }}>You&apos;re all set</h2>
+                  <p style={{ fontSize: 18, color: '#555555' }}>Your AI receptionist is ready to answer calls</p>
+                  <p style={{ fontSize: 36, fontWeight: 700, fontFamily: 'monospace', color: '#111111' }}>
+                    {displayPhone}
+                  </p>
+                  <p style={{ fontSize: 15, color: '#555555', maxWidth: 400 }}>
+                    Share this as your business phone number. Every call goes straight to your AI receptionist — 24
+                    hours a day.
+                  </p>
+                  <div className="flex w-full flex-col gap-3">
+                    <button
+                      type="button"
+                      className="margen-btn-accent inline-flex w-full items-center justify-center disabled:opacity-60"
+                      style={{ minHeight: 56 }}
+                      disabled={!margenPhone}
+                      onClick={() => {
+                        setSmsError(null)
+                        void navigator.clipboard.writeText(margenPhone).then(
+                          () => {
+                            setCopied(true)
+                            window.setTimeout(() => setCopied(false), 2000)
+                          },
+                          () => setSmsError('Copy did not work. Try highlighting the number instead.'),
+                        )
+                      }}
+                    >
+                      {copied ? 'Copied!' : 'Copy number'}
+                    </button>
+                    <button
+                      type="button"
+                      className="margen-btn-accent inline-flex w-full items-center justify-center disabled:opacity-60"
+                      style={{ minHeight: 56 }}
+                      disabled={smsBusy}
+                      onClick={() => void handleSendSms()}
+                    >
+                      {smsBusy ? 'Sending…' : 'Text it to myself'}
+                    </button>
+                    <button
+                      type="button"
+                      className="margen-btn-accent inline-flex w-full items-center justify-center"
+                      style={{ minHeight: 56 }}
+                      onClick={() => {
+                        window.location.href = '/dashboard'
+                      }}
+                    >
+                      Go to my dashboard
+                    </button>
+                  </div>
                 </div>
               </div>
 
