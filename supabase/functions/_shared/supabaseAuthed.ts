@@ -12,3 +12,11 @@ export function supabaseAuthed(req: Request) {
   })
 }
 
+/** Same body/semantics as `new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })` but includes CORS headers for browser clients. */
+export function unauthorizedResponse(): Response {
+  return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    status: 401,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+

@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { forwardingActivationSnippet, formatUsDisplay } from '../_shared/forwardingDialCode.ts'
-import { supabaseAuthed } from '../_shared/supabaseAuthed.ts'
+import { getUserFromAuthHeader } from '../_shared/supabaseAuthed.ts'
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { twilioClient, twilioFromNumber } from '../_shared/twilio.ts'
 
@@ -17,9 +17,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed' })
 
-  const sb = supabaseAuthed(req)
-  const { data: userRes, error: userErr } = await sb.auth.getUser()
-  const user = userRes?.user
+  const { user, error: userErr } = await getUserFromAuthHeader(req)
   if (userErr || !user) return json(401, { error: 'Unauthorized' })
 
   const body = (await req.json().catch(() => ({}))) as Body | null

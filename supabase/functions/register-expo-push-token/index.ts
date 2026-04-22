@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts'
-import { supabaseAuthed } from '../_shared/supabaseAuthed.ts'
+import { getUserFromAuthHeader, unauthorizedResponse } from '../_shared/supabaseAuthed.ts'
 
 type Body = { token: string; platform?: string }
 
@@ -15,10 +15,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed' })
 
-  const sb = supabaseAuthed(req)
-  const { data: userRes, error: userErr } = await sb.auth.getUser()
-  const user = userRes?.user
-  if (userErr || !user) return json(401, { error: 'Unauthorized' })
+  const { user, error } = await getUserFromAuthHeader(req)
+  if (error || !user) return unauthorizedResponse()
 
   let body: Body
   try {

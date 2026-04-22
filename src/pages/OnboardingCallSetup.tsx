@@ -7,7 +7,6 @@ import { formatUsDisplay } from '../lib/forwardingDialCode'
 import {
   PLACEHOLDER_MARGEN_PHONE_SID,
   placeholderMargenE164ForOwner,
-  sendMargenForwardingSms,
 } from '../lib/margenTwilio'
 import { supabase } from '../lib/supabase'
 
@@ -45,9 +44,7 @@ export function OnboardingCallSetup() {
   const [provisionBusy, setProvisionBusy] = useState(false)
   const provisionStarted = useRef(false)
 
-  const [smsBusy, setSmsBusy] = useState(false)
-  const [smsNote, setSmsNote] = useState<string | null>(null)
-  const [smsError, setSmsError] = useState<string | null>(null)
+  const [copyError, setCopyError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   const runPlaceholderSetup = useCallback(async () => {
@@ -99,19 +96,6 @@ export function OnboardingCallSetup() {
 
   const margenPhone = (margenE164 ?? '').trim()
   const displayPhone = displayNumber
-
-  const handleSendSms = async () => {
-    setSmsBusy(true)
-    setSmsError(null)
-    setSmsNote(null)
-    const { error } = await sendMargenForwardingSms(supabase)
-    setSmsBusy(false)
-    if (error) {
-      setSmsError(error.message)
-      return
-    }
-    setSmsNote('Sent! Check your business phone for a text.')
-  }
 
   const btnAccent =
     'margen-btn-accent inline-flex w-full items-center justify-center disabled:opacity-60'
@@ -253,26 +237,17 @@ export function OnboardingCallSetup() {
                       style={{ minHeight: 56 }}
                       disabled={!margenPhone}
                       onClick={() => {
-                        setSmsError(null)
+                        setCopyError(null)
                         void navigator.clipboard.writeText(margenPhone).then(
                           () => {
                             setCopied(true)
                             window.setTimeout(() => setCopied(false), 2000)
                           },
-                          () => setSmsError('Copy did not work. Try highlighting the number instead.'),
+                          () => setCopyError('Copy did not work. Try highlighting the number instead.'),
                         )
                       }}
                     >
                       {copied ? 'Copied!' : 'Copy number'}
-                    </button>
-                    <button
-                      type="button"
-                      className="margen-btn-accent inline-flex w-full items-center justify-center disabled:opacity-60"
-                      style={{ minHeight: 56 }}
-                      disabled={smsBusy}
-                      onClick={() => void handleSendSms()}
-                    >
-                      {smsBusy ? 'Sending…' : 'Text it to myself'}
                     </button>
                     <button
                       type="button"
@@ -288,14 +263,9 @@ export function OnboardingCallSetup() {
                 </div>
               </div>
 
-              {smsNote ? (
-                <p className="mt-4 rounded-md border border-[#ebebeb] bg-white px-4 py-3 text-center text-sm text-[#111111]">
-                  {smsNote}
-                </p>
-              ) : null}
-              {smsError ? (
+              {copyError ? (
                 <p className="mt-4 text-center text-sm text-danger" role="alert">
-                  {smsError}
+                  {copyError}
                 </p>
               ) : null}
             </div>
