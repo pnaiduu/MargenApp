@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
-import { colors, typography } from '../theme'
+import { useTheme } from '../context/ThemeContext'
+import { typography } from '../theme'
 
 const labels: Record<string, string> = {
   low: 'Low',
@@ -10,10 +11,17 @@ const labels: Record<string, string> = {
 }
 
 export function UrgencyBadge({ urgency }: { urgency: string }) {
+  const { colors } = useTheme()
   const u = urgency || 'normal'
   const bg =
-    u === 'emergency' ? colors.danger : u === 'urgent' ? colors.urgent : u === 'high' ? colors.high : colors.surface2
-  const fg = u === 'emergency' || u === 'urgent' || u === 'high' ? '#111827' : colors.muted
+    u === 'emergency'
+      ? colors.urgent
+      : u === 'urgent'
+        ? '#F97316'
+        : u === 'high'
+          ? '#FB923C'
+          : colors.surfaceMuted
+  const fg = u === 'emergency' || u === 'urgent' || u === 'high' ? '#FFFFFF' : colors.muted
 
   return (
     <View style={[styles.wrap, { backgroundColor: bg }]}>
@@ -32,6 +40,6 @@ const styles = StyleSheet.create({
   },
   txt: {
     fontSize: typography.caption,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 })

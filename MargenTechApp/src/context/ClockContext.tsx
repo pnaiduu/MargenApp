@@ -16,6 +16,48 @@ import { useTechnician } from './TechnicianContext'
 import { enqueueOp, flushQueue, type QueuedOperation } from '../lib/offlineQueue'
 import { supabase } from '../lib/supabase'
 
+/** Best-effort: dashboard `technicians_live` row (requires RLS policy for technicians — see MargenTechApp/schema). */
+async function syncTechniciansLiveRow(
+  technicianId: string,
+  ownerId: string,
+  displayName: string,
+  latitude: number,
+  longitude: number,
+) {
+  const ts = new Date().toISOString()
+  const { data: existing, error: selErr } = await supabase
+    .from('technicians_live')
+    .select('id')
+    .eq('technician_id', technicianId)
+    .maybeSingle()
+  if (selErr) return
+  const row = existing as { id?: string } | null
+  if (row?.id) {
+    const { error } = await supabase
+      .from('technicians_live')
+      .update({
+        last_lat: latitude,
+        last_lng: longitude,
+        last_location_at: ts,
+        updated_at: ts,
+        name: displayName,
+      })
+      .eq('id', row.id)
+    if (error) return
+  } else {
+    const { error } = await supabase.from('technicians_live').insert({
+      technician_id: technicianId,
+      owner_id: ownerId,
+      last_lat: latitude,
+      last_lng: longitude,
+      last_location_at: ts,
+      updated_at: ts,
+      name: displayName,
+    })
+    if (error) return
+  }
+}
+
 type ClockCtx = {
   isClockedIn: boolean
   activeSessionId: string | null
@@ -109,6 +151,14 @@ export function ClockProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('technicians').update(patch).eq('id', technician.id)
     if (error) await enqueueOp({ kind: 'technician_patch', technicianId: technician.id, patch })
 
+    await syncTechniciansLiveRow(
+      technician.id,
+      technician.owner_id,
+      technician.name,
+      loc.coords.latitude,
+      loc.coords.longitude,
+    )
+
     // Location history for technician (today). Owner does not have access via RLS.
     try {
       await supabase.from('technician_location_events').insert({
@@ -197,7 +247,11 @@ export function ClockProvider({ children }: { children: ReactNode }) {
     const state = await NetInfo.fetch()
     if (!state.isConnected) {
       await enqueueOp({ kind: 'clock_in', technicianId: technician.id, ownerId: technician.owner_id })
-      await enqueueOp({ kind: 'technician_patch', technicianId: technician.id, patch: { status: 'available' } })
+      await enqueueOp({
+        kind: 'technician_patch',
+        technicianId: technician.id,
+        patch: { status: 'available', clocked_in: true },
+      })
       setIsClockedIn(true)
       setActiveSessionId('local-pending')
       return
@@ -208,7 +262,10 @@ export function ClockProvider({ children }: { children: ReactNode }) {
       .select('id')
       .single()
     if (error) throw error
-    await supabase.from('technicians').update({ status: 'available' }).eq('id', technician.id)
+    await supabase
+      .from('technicians')
+      .update({ status: 'available', clocked_in: true })
+      .eq('id', technician.id)
     setActiveSessionId(data.id)
     setIsClockedIn(true)
   }, [technician])
@@ -223,7 +280,11 @@ export function ClockProvider({ children }: { children: ReactNode }) {
       } else {
         await enqueueOp({ kind: 'clock_out_open', technicianId: technician.id })
       }
-      await enqueueOp({ kind: 'technician_patch', technicianId: technician.id, patch: { status: 'off_duty' } })
+      await enqueueOp({
+        kind: 'technician_patch',
+        technicianId: technician.id,
+        patch: { status: 'off_duty', clocked_in: false },
+      })
       setIsClockedIn(false)
       setActiveSessionId(null)
       return
@@ -244,12 +305,14 @@ export function ClockProvider({ children }: { children: ReactNode }) {
           .update({ clock_out_at: new Date().toISOString() })
           .eq('id', row.id)
       }
+      await supabase.from('technicians').update({ clocked_in: false }).eq('id', technician.id)
       setIsClockedIn(false)
       setActiveSessionId(null)
       return
     }
     const sid = activeSessionId
     if (!sid) {
+      await supabase.from('technicians').update({ clocked_in: false }).eq('id', technician.id)
       setIsClockedIn(false)
       setActiveSessionId(null)
       return
@@ -261,7 +324,7 @@ export function ClockProvider({ children }: { children: ReactNode }) {
     if (error) {
       await enqueueOp({ kind: 'clock_out', sessionId: sid })
     }
-    await supabase.from('technicians').update({ status: 'off_duty' }).eq('id', technician.id)
+    await supabase.from('technicians').update({ status: 'off_duty', clocked_in: false }).eq('id', technician.id)
     setIsClockedIn(false)
     setActiveSessionId(null)
   }, [activeSessionId, loadOpenSession, stopLocationInterval, technician])

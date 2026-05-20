@@ -60,17 +60,14 @@ export function LandingPage() {
       <main>
         <section className="border-b border-[#ebebeb] px-6 py-16 sm:px-8 sm:py-24">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="text-sm font-medium leading-snug text-[#555555] sm:text-base">
-              AI operations platform for home service companies
-            </p>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-[#111111] sm:text-4xl md:text-[2.5rem] md:leading-tight">
-              Your business is losing money in more ways than one
+            <h1 className="text-3xl font-semibold tracking-tight text-[#111111] sm:text-4xl md:text-[2.5rem] md:leading-tight">
+              Run your entire field operation from one place
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-[#555555] sm:text-lg">
-              Margen is an all-in-one AI platform that answers your calls, dispatches your technicians, tracks your team,
-              and shows you exactly where revenue is slipping through the cracks — all in one place.
+              Margen gives home service businesses a smarter way to manage jobs, track technicians, handle payments, and
+              see exactly where their business stands — all in real time.
             </p>
-            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
+            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
               {user ? (
                 <Link
                   to="/dashboard"
@@ -79,21 +76,12 @@ export function LandingPage() {
                   Go to dashboard
                 </Link>
               ) : (
-                <>
-                  <Link
-                    to="/signup"
-                    className="margen-btn-primary-solid inline-flex w-full justify-center px-6 py-3 text-center text-sm sm:w-auto"
-                  >
-                    Create account
-                  </Link>
-                  <SpaLink
-                    to="/login"
-                    state={{ from: '/pricing' }}
-                    className="inline-flex w-full justify-center rounded-md border border-[#111111] bg-transparent px-6 py-3 text-center text-sm font-semibold text-[#111111] transition hover:bg-[#111111]/5 sm:w-auto"
-                  >
-                    Sign in to choose a plan
-                  </SpaLink>
-                </>
+                <Link
+                  to="/signup"
+                  className="margen-btn-primary-solid inline-flex w-full justify-center px-6 py-3 text-center text-sm sm:w-auto"
+                >
+                  Create account
+                </Link>
               )}
               <a
                 href="#features"
@@ -108,9 +96,9 @@ export function LandingPage() {
         <section className="border-b border-[#ebebeb] bg-[#f2f2ec] px-6 py-14 sm:px-8 sm:py-20">
           <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-3">
             {[
-              { stat: '62%', label: 'of calls go unanswered every day' },
-              { stat: '$180K+', label: 'lost annually to operational inefficiency' },
-              { stat: '3 hours', label: 'average time wasted per technician per day' },
+              { stat: '47%', label: 'of jobs get delayed due to poor scheduling and dispatching' },
+              { stat: '$120K+', label: 'lost annually to untracked hours and missed invoices' },
+              { stat: '3 hours', label: 'saved per technician per day with smart job management' },
             ].map((item) => (
               <div
                 key={item.label}
@@ -129,20 +117,20 @@ export function LandingPage() {
             <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
               {[
                 {
-                  title: 'AI call handling',
-                  body: 'Your calls are answered 24/7. Every lead qualified, every job booked — even at 11pm. No more missed revenue from unanswered phones.',
-                },
-                {
                   title: 'Smart dispatching',
-                  body: 'The right technician gets the right job automatically. Assigned by skill, location, and availability. No more scheduling chaos.',
+                  body: 'Assign the right technician to every job automatically, based on skill, location, and availability. No more scheduling chaos or double bookings.',
                 },
                 {
                   title: 'Live team tracking',
-                  body: 'See every technician on a live map in real time. Know who is available, who is busy, and who is running late — instantly.',
+                  body: "See every technician on a live map in real time. Know who's available, who's busy, and who's running late — the moment it happens.",
+                },
+                {
+                  title: 'Payments & invoicing',
+                  body: "Create invoices, collect payments, and track what's owed — all from the same dashboard your team already uses.",
                 },
                 {
                   title: 'Revenue intelligence',
-                  body: 'See exactly what your business is losing and where. Missed calls, idle technicians, unassigned jobs — all tracked and measured.',
+                  body: 'See your business clearly. Track completed jobs, technician performance, and revenue trends so you always know where you stand.',
                 },
               ].map((f) => (
                 <div
@@ -232,10 +220,10 @@ export function LandingPage() {
         <section className="bg-[#111111] px-6 py-14 text-white sm:px-8 sm:py-20">
           <div className="mx-auto max-w-2xl px-6 text-center sm:px-10">
             <h2 className="text-2xl font-semibold sm:text-3xl">
-              Every day without Margen is revenue you won&apos;t get back
+              Your team deserves better tools
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-[#d1d5db] sm:text-base">
-              Find out exactly what your operation is losing — free, no commitment.
+              See how Margen helps your business run smoother, faster, and more profitably — free audit, no commitment.
             </p>
             <a
               href={CALENDLY_AUDIT}

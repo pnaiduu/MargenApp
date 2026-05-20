@@ -1,8 +1,9 @@
 import * as Notifications from 'expo-notifications'
-import { Platform } from 'react-native'
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { router } from 'expo-router'
+import { Platform, Alert } from 'react-native'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from './AuthContext'
-import { registerExpoPushTokenDirect } from '../lib/directSupabaseActions'
+import { registerExpoPushToken } from '../lib/pushRegister'
 import { supabase } from '../lib/supabase'
 
 type NotificationsCtx = {
@@ -13,13 +14,16 @@ type NotificationsCtx = {
 const Ctx = createContext<NotificationsCtx | null>(null)
 
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (n) => {
+    const urgent = (n.request.content.data as { urgency?: string })?.urgency === 'emergency'
+    return {
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: urgent,
+      shouldSetBadge: false,
+    }
+  },
 })
 
 async function registerForPushNotificationsAsync() {
@@ -39,17 +43,51 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null)
   const [lastError, setLastError] = useState<string | null>(null)
+  const foregroundSub = useRef<Notifications.Subscription | null>(null)
+  const responseSub = useRef<Notifications.Subscription | null>(null)
+
+  useEffect(() => {
+    foregroundSub.current = Notifications.addNotificationReceivedListener((n) => {
+      const data = n.request.content.data as { type?: string; job_id?: string; urgency?: string }
+      if (data?.type === 'job_cancelled') {
+        Alert.alert('Job cancelled', n.request.content.body ?? 'This job was cancelled.')
+      }
+      if (data?.urgency === 'emergency' && data?.job_id) {
+        Alert.alert('Emergency job', n.request.content.body ?? 'A new emergency job needs you.', [
+          { text: 'Open', onPress: () => router.push(`/(main)/job/${data.job_id}`) },
+          { text: 'OK', style: 'cancel' },
+        ])
+      }
+    })
+    responseSub.current = Notifications.addNotificationResponseReceivedListener((res) => {
+      const data = res.notification.request.content.data as {
+        type?: string
+        job_id?: string
+        urgency?: string
+      }
+      if (data?.job_id) {
+        router.push(`/(main)/job/${data.job_id}`)
+      }
+    })
+    return () => {
+      foregroundSub.current?.remove()
+      responseSub.current?.remove()
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
     async function run() {
       if (!user) return
       if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'Default',
+          importance: Notifications.AndroidImportance.DEFAULT,
+        })
         await Notifications.setNotificationChannelAsync('emergency', {
           name: 'Emergency jobs',
           importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF0000',
+          vibrationPattern: [0, 400, 200, 400],
           sound: 'default',
         })
       }
@@ -59,7 +97,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       setExpoPushToken(tok)
       if (!tok) return
 
-      const { error } = await registerExpoPushTokenDirect(supabase, user.id, tok, Platform.OS)
+      const { error } = await registerExpoPushToken(supabase, user.id, tok, Platform.OS)
       if (error && !cancelled) setLastError(error.message)
     }
     void run()
@@ -77,4 +115,3 @@ export function useNotifications() {
   if (!v) throw new Error('useNotifications outside NotificationsProvider')
   return v
 }
-

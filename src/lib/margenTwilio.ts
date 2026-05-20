@@ -20,6 +20,11 @@ export function placeholderMargenE164ForOwner(ownerId: string): string {
   return `+1202${last7}`
 }
 
+/** True for synthetic onboarding numbers (`+1202…`), not a purchased Twilio line. */
+export function isPlaceholderMargenE164(e164: string | null | undefined): boolean {
+  return (e164 ?? '').trim().startsWith('+1202')
+}
+
 export type ProvisionTwilioResponse = {
   ok?: boolean
   phone_number?: string

@@ -130,6 +130,7 @@ export function SettingsPage() {
   const [companyDraft, setCompanyDraft] = useState('')
   const [businessPhoneDraft, setBusinessPhoneDraft] = useState('')
   const [ringsBeforeAiDraft, setRingsBeforeAiDraft] = useState('3')
+  const [alwaysUseAi, setAlwaysUseAi] = useState(false)
   const [bizHoursEnabled, setBizHoursEnabled] = useState(false)
   const [bizHoursOpenDraft, setBizHoursOpenDraft] = useState('09:00')
   const [bizHoursCloseDraft, setBizHoursCloseDraft] = useState('17:00')
@@ -194,7 +195,7 @@ export function SettingsPage() {
         supabase
           .from('profiles')
           .select(
-            'company_name, business_phone, rings_before_ai, business_hours, after_hours_message, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, stripe_analytics_key_hint, stripe_analytics_last_sync_at, vip_threshold_cents, margen_phone_number, margen_phone_sid, carrier, call_forwarding_active, twilio_forwarding_code',
+            'company_name, business_phone, rings_before_ai, always_use_ai, business_hours, after_hours_message, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, stripe_analytics_key_hint, stripe_analytics_last_sync_at, vip_threshold_cents, margen_phone_number, margen_phone_sid, carrier, call_forwarding_active, twilio_forwarding_code',
           )
           .eq('id', userId)
           .maybeSingle(),
@@ -220,6 +221,7 @@ export function SettingsPage() {
       const rawRings = typeof data?.rings_before_ai === 'number' ? data.rings_before_ai : 3
       const clampedRings = Math.min(5, Math.max(1, Math.round(rawRings)))
       setRingsBeforeAiDraft(String(clampedRings))
+      setAlwaysUseAi(Boolean((data as { always_use_ai?: boolean }).always_use_ai))
       setMargenPhone((data as { margen_phone_number?: string | null }).margen_phone_number ?? null)
       setMargenPhoneSid((data as { margen_phone_sid?: string | null }).margen_phone_sid ?? null)
       setCallForwardingActive(Boolean((data as { call_forwarding_active?: boolean }).call_forwarding_active))
@@ -498,6 +500,7 @@ export function SettingsPage() {
     }
     const patch: Record<string, unknown> = {
       rings_before_ai: Math.round(rings),
+      always_use_ai: alwaysUseAi,
     }
     if (carrierDraft && CARRIER_OPTIONS.some((c) => c.id === carrierDraft) && margenPhone) {
       patch.carrier = carrierDraft
@@ -809,9 +812,46 @@ export function SettingsPage() {
                   </p>
                 </div>
               ) : null}
+              <div className="mt-6 rounded-xl border border-[#ebebeb] bg-[#fafafa] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-[#111111]">Always use AI receptionist</p>
+                    <p className="mt-1 text-xs leading-relaxed text-[#888888]">
+                      When on, calls to your Margen number go straight to your AI. When off, your business phone rings
+                      first; the AI answers only after the number of rings you set below.
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs font-medium tabular-nums text-[#555555]">{alwaysUseAi ? 'On' : 'Off'}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={alwaysUseAi}
+                      onClick={() => setAlwaysUseAi((v) => !v)}
+                      className={[
+                        'relative h-8 w-14 rounded-full border transition',
+                        alwaysUseAi
+                          ? 'border-[var(--margen-accent)] bg-[var(--margen-accent)]'
+                          : 'border-[#ebebeb] bg-[#e8e8e8]',
+                      ].join(' ')}
+                    >
+                      <span
+                        className={[
+                          'absolute top-1 h-6 w-6 rounded-full bg-white shadow transition',
+                          alwaysUseAi ? 'left-7' : 'left-1',
+                        ].join(' ')}
+                      />
+                      <span className="sr-only">{alwaysUseAi ? 'On' : 'Off'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
               <div className="mt-6">
                 <div className="flex items-center justify-between gap-3">
-                  <label className="text-sm font-medium text-[#111111]" htmlFor="rings-range">
+                  <label
+                    className={`text-sm font-medium ${alwaysUseAi ? 'text-[#888888]' : 'text-[#111111]'}`}
+                    htmlFor="rings-range"
+                  >
                     Rings before AI answers
                   </label>
                   <span className="font-mono text-sm text-[var(--margen-accent)]">{ringsBeforeAiDraft}</span>
@@ -823,10 +863,15 @@ export function SettingsPage() {
                   max={5}
                   step={1}
                   value={ringsBeforeAiDraft}
+                  disabled={alwaysUseAi}
                   onChange={(e) => setRingsBeforeAiDraft(e.target.value)}
-                  className="mt-2 w-full accent-[var(--margen-accent)]"
+                  className="mt-2 w-full accent-[var(--margen-accent)] disabled:cursor-not-allowed disabled:opacity-50"
                 />
-                <p className="mt-1 text-xs text-[#888888]">About 6 seconds per ring before the call goes to Margen.</p>
+                <p className="mt-1 text-xs text-[#888888]">
+                  {alwaysUseAi
+                    ? 'Turn off “Always use AI receptionist” to ring your business phone before the AI answers.'
+                    : 'About 6 seconds per ring before the call goes to Margen if you do not pick up.'}
+                </p>
               </div>
               {!callForwardingActive ? (
                 <button

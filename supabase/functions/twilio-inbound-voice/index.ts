@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
 
   const { data: prof } = await admin
     .from('profiles')
-    .select('company_name, business_phone, rings_before_ai, business_hours, after_hours_message')
+    .select('company_name, business_phone, rings_before_ai, business_hours, after_hours_message, always_use_ai')
     .eq('id', resolvedOwnerId)
     .maybeSingle()
 
@@ -78,6 +78,7 @@ Deno.serve(async (req) => {
   const businessPhone = (prof as { business_phone: string | null } | null)?.business_phone?.trim() || null
   const rawRings = (prof as { rings_before_ai: number } | null)?.rings_before_ai ?? 3
   const ringsBeforeAi = Math.min(5, Math.max(1, Math.round(Number.isFinite(rawRings) ? rawRings : 3)))
+  const alwaysUseAi = Boolean((prof as { always_use_ai?: boolean } | null)?.always_use_ai)
   const afterHoursMessage = (prof as { after_hours_message: string | null } | null)?.after_hours_message?.trim() || null
   const businessHours = (prof as { business_hours: unknown } | null)?.business_hours ?? {}
 
@@ -113,8 +114,8 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Dial owner business phone first (N rings), then redirect to Bland if unanswered.
-  if (!businessPhone) {
+  // Dial owner business phone first (N rings), then redirect to Bland if unanswered — unless always_use_ai.
+  if (!businessPhone || alwaysUseAi) {
     return xml(
       `<?xml version="1.0" encoding="UTF-8"?>` +
         `<Response>` +

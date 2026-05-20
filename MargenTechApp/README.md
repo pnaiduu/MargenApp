@@ -1,49 +1,47 @@
 # Margen Technician
 
-React Native (Expo) field app for technicians: **dark-first UI**, large tap targets, **Moti** animations (Reanimated, Framer Motion–style API), offline queue + sync, and **GPS pings every 60s** while clocked in.
+Production-oriented **Expo SDK 54** field app for Margen technicians: **Expo Router**, **light UI** (white / `#FAFAF8` / `#111111`), **owner accent** from `profiles.accent_hex` / `accent_color`, **56px tap targets**, **Moti** transitions, **Supabase Realtime** on today’s jobs, **offline queue**, **GPS every 60s** while clocked in (plus optional `technicians_live` sync), **Expo Notifications** with **`register-expo-push-token`** Edge Function (fallback to direct upsert), **job photos** → Storage bucket **`job-photos`**, and **in-app customer rating** after job completion (see `schema/job_ratings.sql`).
 
-## Location in this repo
+## Location
 
-This project lives at `MargenApp/MargenTechApp/` so it stays inside the git workspace. You can move the folder next to `MargenApp` on disk if you prefer; update paths accordingly.
+`MargenApp/MargenTechApp/` — all app code stays in this folder.
 
-## Setup
+## Supabase
 
-1. Copy `.env.example` → `.env` and set:
+Defaults are in `app.json` → `extra` (same project as web). Override anytime with:
 
-   - `EXPO_PUBLIC_SUPABASE_URL`
-   - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-   - `EXPO_PUBLIC_CUSTOMER_RATE_BASE_URL` — same public origin as the Margen web app (e.g. `https://trymargen.com`) so QR codes open `/rate?token=…`.
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 
-2. Apply Supabase migrations from the main app, especially **`006_technician_mobile.sql`**.
+Apply main-repo migrations (notably **`005_technician_invites.sql`**, **`006_technician_mobile.sql`**, **`022_catch_all.sql`**). Then, for this app:
 
-3. Install and run:
+1. Run **`schema/job_ratings.sql`** in the SQL editor so ratings save from the device.
+2. Optionally run **`schema/technicians_live_technician.sql`** so technicians can upsert their map row (otherwise GPS still updates **`technicians`**).
 
-   ```bash
-   cd MargenTechApp
-   npm install
-   npx expo start
-   ```
+Create a public **`job-photos`** storage bucket (or private + signed URLs — the app uses `getPublicUrl` today).
 
-4. **Maps:** For standalone iOS/Android builds, configure Google Maps API keys per [Expo Maps docs](https://docs.expo.dev/versions/latest/sdk/map-view/).
+## Run
 
-## Auth & roles
+```bash
+cd MargenTechApp
+npm install
+npx expo start
+```
 
-Technicians use the same Supabase Auth users as the web app, with a row in `technicians` where `user_id` matches their auth user (invite flow on web).
+Entry: **`expo-router/entry`** (`app/_layout.tsx`).
 
-## Customer ratings
+## Maps
 
-After **Job complete** (online), the app creates a row in `job_customer_ratings` and shows a **one-time QR** pointing at:
+Configure Google Maps / Apple Maps per [Expo MapView](https://docs.expo.dev/versions/latest/sdk/map-view/) for release builds.
 
-`{EXPO_PUBLIC_CUSTOMER_RATE_BASE_URL}/rate?token=…`
+## Auth
 
-The public **CustomerRatePage** in the web app (`/rate`) calls `submit_customer_rating`. Technicians cannot submit ratings from the app.
+Technicians sign in with Supabase Auth; `technicians.user_id` must match their user (web invite flow).
 
-## Offline behavior
+## Customer ratings (in-app)
 
-- Job and technician patches are **queued** in AsyncStorage and flushed when the network returns.
-- **Clock in** while offline queues a session insert; **clock out** uses `clock_out_open` to close the latest open session after sync.
-- Completing a job **offline** does not create a rating QR until you are online and complete again (or add a follow-up flow).
+Completing a job opens **`/(main)/rating`** with `jobId`. The customer enters a **matching phone number** and stars; data goes to **`job_ratings`** (after you run the schema SQL). If the table is missing, the UI explains what to run.
 
-## Animations
+## Offline
 
-The product brief asked for Framer Motion–style motion. On React Native this project uses **Moti** (Reanimated), which follows the same mental model as Framer Motion for enter/exit and transitions.
+Job/technician patches queue to AsyncStorage and flush when online (`ClockContext` + `offlineQueue.ts`).

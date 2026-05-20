@@ -24,6 +24,7 @@ export type Database = {
           logo_url: string | null
           business_phone: string | null
           rings_before_ai: number
+          always_use_ai: boolean
           business_hours: unknown
           after_hours_message: string | null
           business_address: string | null
@@ -62,6 +63,7 @@ export type Database = {
           logo_url?: string | null
           business_phone?: string | null
           rings_before_ai?: number
+          always_use_ai?: boolean
           business_hours?: unknown
           after_hours_message?: string | null
           business_address?: string | null
@@ -99,6 +101,7 @@ export type Database = {
           logo_url?: string | null
           business_phone?: string | null
           rings_before_ai?: number
+          always_use_ai?: boolean
           business_hours?: unknown
           after_hours_message?: string | null
           business_address?: string | null

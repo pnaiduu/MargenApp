@@ -1,5 +1,5 @@
 import { corsHeaders } from '../_shared/cors.ts'
-import { supabaseAuthed } from '../_shared/supabaseAuthed.ts'
+import { getUserFromAuthHeader } from '../_shared/supabaseAuthed.ts'
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { twilioClient } from '../_shared/twilio.ts'
 
@@ -12,6 +12,11 @@ function json(status: number, body: unknown) {
 
 type Body = { owner_id?: string; area_code?: string | number; replace_existing?: boolean }
 
+/** Matches client placeholder convention (`+1202…` synthetic numbers). */
+function isMargenPlaceholderE164(e164: string): boolean {
+  return e164.trim().startsWith('+1202')
+}
+
 function formatNorthAmerican(e164: string) {
   const d = e164.replace(/\D/g, '')
   const tail = d.length === 11 && d.startsWith('1') ? d.slice(1) : d.slice(-10)
@@ -23,9 +28,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json(405, { error: 'Method not allowed' })
 
-  const sb = supabaseAuthed(req)
-  const { data: userRes, error: userErr } = await sb.auth.getUser()
-  const user = userRes?.user
+  const { user, error: userErr } = await getUserFromAuthHeader(req)
   if (userErr || !user) return json(401, { error: 'Unauthorized' })
 
   const ownerId = user.id
@@ -57,7 +60,8 @@ Deno.serve(async (req) => {
   const existingSid = (prof as { margen_phone_sid?: string | null } | null)?.margen_phone_sid?.trim() ?? ''
   const existingNum = (prof as { margen_phone_number?: string | null } | null)?.margen_phone_number?.trim() ?? ''
 
-  if (existingNum && existingSid && !replace) {
+  // Real Twilio number already on file — never buy a second line unless replace_existing.
+  if (!replace && existingNum && !isMargenPlaceholderE164(existingNum)) {
     return json(200, {
       ok: true,
       phone_number: existingNum,

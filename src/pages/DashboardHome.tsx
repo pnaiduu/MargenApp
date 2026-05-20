@@ -14,6 +14,8 @@ import { MissedCallsPanel, type MissedCallRow } from '../components/dashboard/Mi
 import { RecentJobsPanel, type RecentJobRow } from '../components/dashboard/RecentJobsPanel'
 import { TechniciansMap, type TechMapPoint } from '../components/dashboard/TechniciansMap'
 import { formatUsdFromCents } from '../lib/formatUsd'
+import { formatUsDisplay } from '../lib/forwardingDialCode'
+import { isPlaceholderMargenE164 } from '../lib/margenTwilio'
 
 function StatCard({
   label,
@@ -125,6 +127,8 @@ export function DashboardHome() {
     serviceArea: boolean
     stripe: boolean
   } | null>(null)
+  const [margenAiE164, setMargenAiE164] = useState<string | null>(null)
+  const [dashboardAiCopied, setDashboardAiCopied] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -194,7 +198,7 @@ export function DashboardHome() {
       const profileQ = supabase
         .from('profiles')
         .select(
-          'company_name, business_phone, service_area_center_lat, service_area_center_lng, service_area_radius, onboarding_welcome_dismissed, onboarding_completed_at, stripe_charges_enabled',
+          'company_name, business_phone, service_area_center_lat, service_area_center_lng, service_area_radius, onboarding_welcome_dismissed, onboarding_completed_at, stripe_charges_enabled, margen_phone_number',
         )
         .eq('id', ownerId)
         .abortSignal(s)
@@ -363,6 +367,7 @@ export function DashboardHome() {
               onboarding_welcome_dismissed: boolean
               onboarding_completed_at: string | null
               stripe_charges_enabled: boolean
+              margen_phone_number: string | null
             }
           | null
           | undefined
@@ -384,6 +389,11 @@ export function DashboardHome() {
         setChecklistDoneAt(prof?.onboarding_completed_at ?? null)
         setSetup(computed)
         setWelcomeOpen(!prof?.onboarding_welcome_dismissed && !prof?.onboarding_completed_at)
+
+        const rawMargen = (prof?.margen_phone_number ?? '').trim()
+        setMargenAiE164(
+          rawMargen && !isPlaceholderMargenE164(rawMargen) ? rawMargen : null,
+        )
 
         setJobsToday(jobsRes.count ?? 0)
         setTechActive(techRes.count ?? 0)
@@ -445,6 +455,7 @@ export function DashboardHome() {
           setStripeLedgerHasRows(false)
           setRecentJobs([])
           setMissedRows([])
+          setMargenAiE164(null)
         }
       } finally {
         if (!ac.signal.aborted) setStatsReady(true)
@@ -588,6 +599,30 @@ export function DashboardHome() {
               </div>
             </div>
           </div>
+
+          {margenAiE164 ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-4 py-3">
+              <p className="min-w-0 text-sm text-[var(--color-margen-text)]">
+                <span className="font-semibold">Your AI number:</span>{' '}
+                <span className="tabular-nums text-[var(--color-margen-text)]">{formatUsDisplay(margenAiE164)}</span>
+              </p>
+              <button
+                type="button"
+                className="shrink-0 rounded-md border border-[#ebebeb] bg-white px-3 py-1.5 text-xs font-semibold text-[#111111] transition hover:bg-[#fafafa]"
+                onClick={() => {
+                  void navigator.clipboard.writeText(margenAiE164).then(
+                    () => {
+                      setDashboardAiCopied(true)
+                      window.setTimeout(() => setDashboardAiCopied(false), 2000)
+                    },
+                    () => {},
+                  )
+                }}
+              >
+                {dashboardAiCopied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          ) : null}
 
           <div className="mt-4 space-y-2">
             <ChecklistRow done={setup.companyName} label="Add your company name" to="/settings#settings-section-profile" />

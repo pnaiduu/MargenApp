@@ -3,11 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { MargenLogo } from '../components/branding/MargenLogo'
 import { useAuth } from '../contexts/useAuth'
 import { easePremium } from '../lib/motion'
-import { formatUsDisplay } from '../lib/forwardingDialCode'
-import {
-  PLACEHOLDER_MARGEN_PHONE_SID,
-  placeholderMargenE164ForOwner,
-} from '../lib/margenTwilio'
+import { formatUsDisplay, guessAreaCodeForProvisioning } from '../lib/forwardingDialCode'
+import { isPlaceholderMargenE164, provisionMargenTwilioNumber } from '../lib/margenTwilio'
 import { supabase } from '../lib/supabase'
 
 type Step = 1 | 2 | 3
@@ -47,42 +44,56 @@ export function OnboardingCallSetup() {
   const [copyError, setCopyError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const runPlaceholderSetup = useCallback(async () => {
+  const runProvision = useCallback(async () => {
     if (!user) return
     setProvisionBusy(true)
     setProvisionError(null)
     try {
       const { data: existing, error: readErr } = await supabase
         .from('profiles')
-        .select('margen_phone_number, margen_phone_sid')
+        .select('margen_phone_number, business_phone, business_address')
         .eq('id', user.id)
         .maybeSingle()
       if (readErr) throw new Error(readErr.message)
 
-      const row = existing as { margen_phone_number?: string | null } | null
+      const row = existing as {
+        margen_phone_number?: string | null
+        business_phone?: string | null
+        business_address?: string | null
+      } | null
       const num = row?.margen_phone_number?.trim()
-      if (num) {
+      if (num && !isPlaceholderMargenE164(num)) {
         setMargenE164(num)
         setDisplayNumber(formatUsDisplay(num))
         setStep(2)
         return
       }
 
-      const e164 = placeholderMargenE164ForOwner(user.id)
-      const { error: upErr } = await supabase
-        .from('profiles')
-        .update({
-          margen_phone_number: e164,
-          margen_phone_sid: PLACEHOLDER_MARGEN_PHONE_SID,
-        } as never)
-        .eq('id', user.id)
-      if (upErr) throw new Error(upErr.message)
-
+      const areaCode = guessAreaCodeForProvisioning(
+        row?.business_address ?? null,
+        row?.business_phone?.trim() || null,
+      )
+      const { data: prov, error: provErr } = await provisionMargenTwilioNumber(supabase, {
+        area_code: areaCode,
+        replace_existing: false,
+      })
+      if (provErr) {
+        throw new Error(
+          provErr.message ||
+            'We could not reserve your line right now. Check your connection and try again.',
+        )
+      }
+      const e164 = prov?.phone_number?.trim()
+      if (!e164) {
+        throw new Error('Phone setup did not return a number. Please try again.')
+      }
       setMargenE164(e164)
       setDisplayNumber(formatUsDisplay(e164))
       setStep(2)
     } catch (e) {
-      setProvisionError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
+      setProvisionError(
+        e instanceof Error ? e.message : 'Something went wrong reserving your number. Please try again.',
+      )
     } finally {
       setProvisionBusy(false)
     }
@@ -91,8 +102,8 @@ export function OnboardingCallSetup() {
   useEffect(() => {
     if (!user || provisionStarted.current) return
     provisionStarted.current = true
-    void runPlaceholderSetup()
-  }, [user, runPlaceholderSetup])
+    void runProvision()
+  }, [user, runProvision])
 
   const margenPhone = (margenE164 ?? '').trim()
   const displayPhone = displayNumber
@@ -133,7 +144,7 @@ export function OnboardingCallSetup() {
                 Let’s get your calls answered for you
               </motion.h1>
               <p className="mt-4 max-w-xl text-center text-[18px] leading-relaxed text-[var(--color-margen-text-secondary)]">
-                We’re saving a friendly number to your account. This only takes a moment.
+                We&apos;re reserving a dedicated phone line for your account. This usually takes under a minute.
               </p>
               {provisionBusy ? (
                 <div className="mt-12 w-full max-w-md space-y-4">
@@ -155,7 +166,7 @@ export function OnboardingCallSetup() {
                   className="mt-10 w-full max-w-lg rounded-xl border border-[#ebebeb] bg-white px-5 py-5 text-center"
                 >
                   <p className="text-[18px] leading-relaxed text-danger">{provisionError}</p>
-                  <button type="button" onClick={() => void runPlaceholderSetup()} className={`${btnAccent} mt-6`}>
+                  <button type="button" onClick={() => void runProvision()} className={`${btnAccent} mt-6`}>
                     Try again
                   </button>
                 </motion.div>

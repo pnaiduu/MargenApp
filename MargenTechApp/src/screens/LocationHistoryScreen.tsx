@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTechnician } from '../context/TechnicianContext'
+import { useTheme } from '../context/ThemeContext'
 import { supabase } from '../lib/supabase'
-import { colors, layout, typography } from '../theme'
+import { layout, typography } from '../theme'
 
 type LocRow = {
   id: string
@@ -21,6 +22,7 @@ function todayIsoRange() {
 
 export function LocationHistoryScreen() {
   const insets = useSafeAreaInsets()
+  const { colors } = useTheme()
   const { technician } = useTechnician()
   const [rows, setRows] = useState<LocRow[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -60,31 +62,35 @@ export function LocationHistoryScreen() {
 
   if (!technician) {
     return (
-      <View style={[styles.root, { paddingTop: insets.top + 24, paddingHorizontal: layout.pad }]}>
-        <Text style={styles.muted}>No technician profile.</Text>
+      <View style={[styles.root, { paddingTop: insets.top + 24, paddingHorizontal: layout.pad, backgroundColor: colors.page }]}>
+        <Text style={{ color: colors.muted }}>No technician profile.</Text>
       </View>
     )
   }
 
   return (
     <ScrollView
-      style={styles.root}
-      contentContainerStyle={{ padding: layout.pad, paddingBottom: insets.bottom + 32, paddingTop: insets.top + 12 }}
+      style={[styles.root, { backgroundColor: colors.page }]}
+      contentContainerStyle={{ padding: layout.pad, paddingBottom: insets.bottom + 32, paddingTop: 12 }}
     >
-      <Text style={styles.title}>Today’s location history</Text>
-      <Text style={styles.sub}>Visible only to you. Updates are recorded about every 60 seconds while clocked in.</Text>
+      <Text style={[styles.title, { color: colors.text }]}>Today&apos;s location history</Text>
+      <Text style={[styles.sub, { color: colors.muted }]}>
+        Visible only to you. Updates are recorded about every 60 seconds while clocked in.
+      </Text>
 
-      {error ? <Text style={styles.err}>{error}</Text> : null}
+      {error ? (
+        <Text style={[styles.err, { color: colors.danger }]}>{error}</Text>
+      ) : null}
 
       {loading ? (
-        <Text style={styles.muted}>Loading…</Text>
+        <Text style={{ color: colors.muted, marginTop: 16 }}>Loading…</Text>
       ) : rows.length === 0 ? (
-        <Text style={styles.muted}>No location points recorded today.</Text>
+        <Text style={{ color: colors.muted, marginTop: 16 }}>No location points recorded today.</Text>
       ) : (
         rows.map((r) => (
-          <View key={r.id} style={styles.row}>
-            <Text style={styles.rowMain}>{new Date(r.recorded_at).toLocaleTimeString()}</Text>
-            <Text style={styles.rowSub}>
+          <View key={r.id} style={[styles.row, { borderBottomColor: colors.border }]}>
+            <Text style={[styles.rowMain, { color: colors.text }]}>{new Date(r.recorded_at).toLocaleTimeString()}</Text>
+            <Text style={[styles.rowSub, { color: colors.muted }]}>
               {r.lat.toFixed(5)}, {r.lng.toFixed(5)}
             </Text>
           </View>
@@ -94,18 +100,17 @@ export function LocationHistoryScreen() {
   )
 }
 
+export default LocationHistoryScreen
+
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  title: { fontSize: 22, fontWeight: '800', color: colors.text },
-  sub: { marginTop: 8, color: colors.muted, fontSize: typography.small, lineHeight: 20 },
-  muted: { marginTop: 18, color: colors.muted, fontSize: typography.body },
-  err: { marginTop: 12, color: colors.danger, fontSize: typography.body },
+  root: { flex: 1 },
+  title: { fontSize: 22, fontWeight: '800' },
+  sub: { marginTop: 8, fontSize: typography.small, lineHeight: 20 },
+  err: { marginTop: 12, fontSize: typography.body },
   row: {
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  rowMain: { color: colors.text, fontSize: typography.body, fontWeight: '700' },
-  rowSub: { marginTop: 4, color: colors.muted, fontSize: typography.small },
+  rowMain: { fontSize: typography.body, fontWeight: '700' },
+  rowSub: { marginTop: 4, fontSize: typography.small },
 })
-
