@@ -49,7 +49,7 @@ export function LandingPage() {
                   to="/signup"
                   className="margen-btn-primary-solid inline-flex px-3 py-2 text-sm"
                 >
-                  Create account
+                  Start free
                 </Link>
               </>
             )}
@@ -80,7 +80,7 @@ export function LandingPage() {
                   to="/signup"
                   className="margen-btn-primary-solid inline-flex w-full justify-center px-6 py-3 text-center text-sm sm:w-auto"
                 >
-                  Create account
+                  Start free as a business owner
                 </Link>
               )}
               <a
@@ -256,7 +256,7 @@ export function LandingPage() {
               Sign in
             </SpaLink>
             <Link to="/signup" className="transition hover:text-[#111111] hover:underline">
-              Create account
+              Business owner signup
             </Link>
           </div>
           <div className="flex justify-center sm:justify-end">

@@ -7,7 +7,7 @@ import { staggerContainer, staggerItem } from '../lib/motion'
 import type { TechnicianStatus } from '../types/database'
 import { Modal } from '../components/ui/Modal'
 import { TechnicianInviteModal } from '../components/technicians/TechnicianInviteModal'
-import { technicianOwnerSignupAbsoluteUrl } from '../lib/inviteUrl'
+import { getOrCreateOwnerTeamInviteUrl, OPEN_TEAM_INVITE_NAME } from '../lib/teamInvite'
 import { technicianInviteCap } from '../lib/plans'
 import { easePremium, tapButton } from '../lib/motion'
 import { useWorkspaceAccess } from '../contexts/workspace-access-context'
@@ -68,6 +68,7 @@ export function TechniciansPage() {
   const [removeTarget, setRemoveTarget] = useState<TechRow | null>(null)
   const [removing, setRemoving] = useState(false)
   const [teamLinkCopied, setTeamLinkCopied] = useState(false)
+  const [teamLinkBusy, setTeamLinkBusy] = useState(false)
   useEffect(() => {
     if (!user) return
     const ownerId = user.id
@@ -102,7 +103,7 @@ export function TechniciansPage() {
           setError(techRes.error.message)
           setTechnicians([])
         } else {
-          setTechnicians((techRes.data ?? []) as TechRow[])
+          setTechnicians(((techRes.data ?? []) as TechRow[]).filter((t) => t.name !== OPEN_TEAM_INVITE_NAME))
         }
         if (!sessRes.error) setSessions((sessRes.data ?? []) as SessRow[])
         else setSessions([])
@@ -126,16 +127,23 @@ export function TechniciansPage() {
     return m
   }, [sessions])
 
-  const teamSignupUrl = user ? technicianOwnerSignupAbsoluteUrl(user.id) : ''
-
-  async function copyTeamSignupLink() {
-    if (!teamSignupUrl) return
+  async function copyTeamInviteLink() {
+    if (!user || teamLinkBusy) return
+    setTeamLinkBusy(true)
+    setError(null)
+    const result = await getOrCreateOwnerTeamInviteUrl(supabase, user.id)
+    setTeamLinkBusy(false)
+    if ('error' in result) {
+      setError(result.error)
+      return
+    }
     try {
-      await navigator.clipboard.writeText(teamSignupUrl)
+      await navigator.clipboard.writeText(result.url)
       setTeamLinkCopied(true)
       window.setTimeout(() => setTeamLinkCopied(false), 2000)
+      setListTick((t) => t + 1)
     } catch {
-      setError('Could not copy team signup link.')
+      setError('Could not copy team invite link.')
     }
   }
 
@@ -185,15 +193,15 @@ export function TechniciansPage() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={!teamSignupUrl}
-            onClick={() => void copyTeamSignupLink()}
+            disabled={teamLinkBusy || Boolean(inviteBlockedReason)}
+            onClick={() => void copyTeamInviteLink()}
             className="relative inline-flex shrink-0 items-center justify-center rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-semibold text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
           >
             <span className="invisible whitespace-nowrap" aria-hidden>
-              Copy team signup link
+              Copy team invite link
             </span>
             <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap">
-              {teamLinkCopied ? 'Link copied!' : 'Copy team signup link'}
+              {teamLinkBusy ? 'Preparing…' : teamLinkCopied ? 'Link copied!' : 'Copy team invite link'}
             </span>
           </button>
           <button
@@ -302,7 +310,6 @@ export function TechniciansPage() {
           open={inviteOpen}
           onClose={() => setInviteOpen(false)}
           ownerId={user.id}
-          teamSignupUrl={teamSignupUrl}
           onCreated={() => setListTick((x) => x + 1)}
           inviteBlockedReason={inviteBlockedReason}
         />

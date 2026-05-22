@@ -2,7 +2,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../ui/Modal'
 import { supabase } from '../../lib/supabase'
-import { inviteJoinAbsoluteUrl, technicianOwnerSignupAbsoluteUrl } from '../../lib/inviteUrl'
+import { inviteJoinAbsoluteUrl } from '../../lib/inviteUrl'
 import { easePremium, tapButton } from '../../lib/motion'
 import { motion } from 'framer-motion'
 
@@ -28,15 +28,12 @@ export function TechnicianInviteModal({
   open,
   onClose,
   ownerId,
-  teamSignupUrl,
   onCreated,
   inviteBlockedReason,
 }: {
   open: boolean
   onClose: () => void
   ownerId: string
-  /** Owner-scoped signup link for technicians joining without a named invite */
-  teamSignupUrl?: string
   onCreated: () => void
   /** When set, invite submit is blocked and this message is shown */
   inviteBlockedReason?: string | null
@@ -50,10 +47,8 @@ export function TechnicianInviteModal({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
-  const [teamCopied, setTeamCopied] = useState(false)
 
   const inviteUrl = token ? inviteJoinAbsoluteUrl(token) : ''
-  const directTeamUrl = teamSignupUrl || (ownerId ? technicianOwnerSignupAbsoluteUrl(ownerId) : '')
 
   function reset() {
     setStep('form')
@@ -64,7 +59,6 @@ export function TechnicianInviteModal({
     setInvitedPhone('')
     setError(null)
     setCopied(false)
-    setTeamCopied(false)
     setSubmitting(false)
   }
 
@@ -144,17 +138,6 @@ export function TechnicianInviteModal({
     }
   }
 
-  async function copyTeamLink() {
-    if (!directTeamUrl) return
-    try {
-      await navigator.clipboard.writeText(directTeamUrl)
-      setTeamCopied(true)
-      window.setTimeout(() => setTeamCopied(false), 2000)
-    } catch {
-      setError('Could not copy team signup link.')
-    }
-  }
-
   function sendViaText() {
     if (!inviteUrl) return
     const body = encodeURIComponent(`You're invited to Margen — join here: ${inviteUrl}`)
@@ -180,29 +163,8 @@ export function TechnicianInviteModal({
           ) : null}
           <p className="text-sm text-[var(--color-margen-muted)]">
             They&apos;ll appear as <span className="font-medium text-[var(--color-margen-text)]">Pending</span> until they
-            finish signup.
+            join via the Margen technician app using this invite link.
           </p>
-          {directTeamUrl ? (
-            <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                Direct signup link
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-[var(--color-margen-muted)]">
-                Technicians can create an account with their own email and join your company automatically — no named
-                invite required.
-              </p>
-              <p className="mt-2 break-all font-mono text-xs text-[var(--color-margen-text)]">{directTeamUrl}</p>
-              <motion.button
-                type="button"
-                onClick={() => void copyTeamLink()}
-                className="mt-2 rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--margen-accent)] hover:bg-[var(--color-margen-hover)]"
-                whileTap={tapButton}
-                transition={{ duration: 0.14, ease: easePremium }}
-              >
-                {teamCopied ? 'Copied' : 'Copy team signup link'}
-              </motion.button>
-            </div>
-          ) : null}
           <div>
             <label htmlFor="inv-name" className="mb-1 block text-xs font-medium text-[var(--color-margen-text)]">
               Name
@@ -272,26 +234,9 @@ export function TechnicianInviteModal({
       ) : (
         <div className="space-y-5">
           <p className="text-sm text-[var(--color-margen-muted)]">
-            Scan the code or share the personal invite link. The technician will set their name and password on the next
-            screen.
+            Scan the code or share this link. It opens your team join page (trymargen.com/join/…) so they can download the
+            Margen technician app and sign in.
           </p>
-          {directTeamUrl ? (
-            <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-3">
-              <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                Or share team signup link
-              </p>
-              <p className="mt-1 break-all font-mono text-xs text-[var(--color-margen-text)]">{directTeamUrl}</p>
-              <motion.button
-                type="button"
-                onClick={() => void copyTeamLink()}
-                className="mt-2 rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--margen-accent)] hover:bg-[var(--color-margen-hover)]"
-                whileTap={tapButton}
-                transition={{ duration: 0.14, ease: easePremium }}
-              >
-                {teamCopied ? 'Copied' : 'Copy team signup link'}
-              </motion.button>
-            </div>
-          ) : null}
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             <div className="shrink-0 rounded-lg border border-[var(--color-margen-border)] bg-white p-3">
               {inviteUrl ? (
