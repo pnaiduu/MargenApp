@@ -13,6 +13,21 @@ type SignupRole = 'owner' | 'technician'
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+function parseSignupUrlParams(searchParams: URLSearchParams) {
+  const roleParam = searchParams.get('role')?.trim().toLowerCase() ?? ''
+  const ownerParam = searchParams.get('owner')?.trim() ?? ''
+  const ownerId = UUID_RE.test(ownerParam) ? ownerParam : null
+  const role: SignupRole = roleParam === 'technician' || ownerId != null ? 'technician' : 'owner'
+  return { role, ownerId, ownerParam }
+}
+
+function readSignupUrlParamsFromWindow(): ReturnType<typeof parseSignupUrlParams> {
+  if (typeof window === 'undefined') {
+    return { role: 'owner', ownerId: null, ownerParam: '' }
+  }
+  return parseSignupUrlParams(new URLSearchParams(window.location.search))
+}
+
 function formatSubmitError(caught: unknown): string {
   const name =
     typeof caught === 'object' && caught !== null && 'name' in caught
@@ -72,8 +87,8 @@ export function SignupPage() {
   const { user, loading, configured, signUp } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const urlParams = useMemo(() => parseSignupUrlParams(searchParams), [searchParams])
   const checkoutPlan = searchParams.get('plan')
-  const ownerFromUrl = searchParams.get('owner')?.trim() ?? ''
   const planHint =
     checkoutPlan === 'starter' || checkoutPlan === 'growth' || checkoutPlan === 'scale' ? checkoutPlan : null
 
@@ -85,34 +100,53 @@ export function SignupPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [policiesOpen, setPoliciesOpen] = useState(false)
-  const [role, setRole] = useState<SignupRole>('owner')
+  const [role, setRole] = useState<SignupRole>(() => readSignupUrlParamsFromWindow().role)
   const [technicianInvitePending, setTechnicianInvitePending] = useState(false)
   const [inviteCompanyName, setInviteCompanyName] = useState<string | null>(null)
+  const [inviteCompanyLoading, setInviteCompanyLoading] = useState(false)
 
-  const ownerIdForSignup = useMemo(() => (UUID_RE.test(ownerFromUrl) ? ownerFromUrl : null), [ownerFromUrl])
+  const ownerIdForSignup = urlParams.ownerId
 
   useEffect(() => {
-    if (searchParams.get('role') === 'technician') {
-      setRole('technician')
-    }
-  }, [searchParams])
+    setRole(urlParams.role)
+  }, [urlParams.role])
 
   useEffect(() => {
     if (!configured || !ownerIdForSignup) {
       setInviteCompanyName(null)
+      setInviteCompanyLoading(false)
       return
     }
     let cancelled = false
-    void supabase.rpc('lookup_owner_team_invite', { p_owner_id: ownerIdForSignup }).then(({ data }) => {
+    setInviteCompanyLoading(true)
+    void supabase.rpc('lookup_owner_team_invite', { p_owner_id: ownerIdForSignup }).then(({ data, error }) => {
       if (cancelled) return
-      const row = data as { found?: boolean; company_name?: string } | null
-      if (row?.found) {
-        setInviteCompanyName(String(row.company_name ?? '').trim() || null)
-        setRole('technician')
+      if (!error) {
+        const row = data as { found?: boolean; company_name?: string } | null
+        if (row?.found) {
+          const name = String(row.company_name ?? '').trim()
+          setInviteCompanyName(name || null)
+          setInviteCompanyLoading(false)
+          return
+        }
       }
+      void supabase
+        .from('profiles')
+        .select('company_name')
+        .eq('id', ownerIdForSignup)
+        .maybeSingle()
+        .then(({ data: profile }) => {
+          if (cancelled) return
+          const name = String((profile as { company_name?: string | null } | null)?.company_name ?? '').trim()
+          setInviteCompanyName(name || null)
+        })
+        .then(() => {
+          if (!cancelled) setInviteCompanyLoading(false)
+        })
     })
     return () => {
       cancelled = true
+      setInviteCompanyLoading(false)
     }
   }, [configured, ownerIdForSignup])
 
@@ -219,9 +253,17 @@ export function SignupPage() {
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Margen</p>
           <h1 className="mt-1 text-center text-2xl font-semibold text-[var(--color-margen-text)]">Create account</h1>
           <p className="mt-2 text-sm text-[var(--color-margen-muted)]">AI-powered operations for home service teams.</p>
-          {inviteCompanyName ? (
+          {ownerIdForSignup ? (
             <p className="mt-3 rounded-lg border border-[var(--margen-accent-muted)] bg-[var(--margen-accent-muted)] px-3 py-2 text-xs text-[var(--margen-accent)]">
-              Joining <span className="font-semibold">{inviteCompanyName}</span> as a technician.
+              {inviteCompanyLoading ? (
+                'Loading team details…'
+              ) : inviteCompanyName ? (
+                <>
+                  Joining <span className="font-semibold">{inviteCompanyName}</span> as a technician.
+                </>
+              ) : (
+                <>You&apos;re signing up to join this team as a technician.</>
+              )}
             </p>
           ) : null}
           {planHint ? (

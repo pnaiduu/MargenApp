@@ -187,9 +187,14 @@ export function TechniciansPage() {
             type="button"
             disabled={!teamSignupUrl}
             onClick={() => void copyTeamSignupLink()}
-            className="shrink-0 rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-semibold text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
+            className="relative inline-flex shrink-0 items-center justify-center rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-semibold text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
           >
-            {teamLinkCopied ? 'Link copied' : 'Copy team signup link'}
+            <span className="invisible whitespace-nowrap" aria-hidden>
+              Copy team signup link
+            </span>
+            <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap">
+              {teamLinkCopied ? 'Link copied!' : 'Copy team signup link'}
+            </span>
           </button>
           <button
             type="button"
