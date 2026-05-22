@@ -1,5 +1,4 @@
 import NetInfo from '@react-native-community/netinfo'
-import { MotiView } from 'moti'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
@@ -152,7 +151,7 @@ export default function JobsTabScreen() {
           <Text style={{ color: colors.muted, fontSize: typography.body, marginTop: 24 }}>{emptyMsg}</Text>
         ) : (
           rows.map((j) => (
-            <MotiView key={j.id} from={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <View key={j.id}>
               <Pressable
                 onPress={() => router.push(`/(main)/job/${j.id}`)}
                 style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}
@@ -169,7 +168,7 @@ export default function JobsTabScreen() {
                   <Text style={{ color: colors.text, fontWeight: '700', fontSize: typography.caption }}>{j.status}</Text>
                 </View>
               </Pressable>
-            </MotiView>
+            </View>
           ))
         )}
       </ScrollView>

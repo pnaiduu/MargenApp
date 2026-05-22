@@ -1,1 +1,3 @@
-export { default } from '../../src/screens/LocationHistoryScreen'
+import LocationHistoryScreen from '../../src/screens/LocationHistoryScreen'
+
+export default LocationHistoryScreen

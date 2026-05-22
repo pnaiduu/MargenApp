@@ -1,1 +1,3 @@
-export { default } from '../../../src/screens/tabs/MapTabScreen'
+import MapTabScreen from '../../../src/screens/tabs/MapTabScreen'
+
+export default MapTabScreen

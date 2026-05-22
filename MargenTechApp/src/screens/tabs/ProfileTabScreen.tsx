@@ -1,4 +1,3 @@
-import { MotiView } from 'moti'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import NetInfo from '@react-native-community/netinfo'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
@@ -140,7 +139,7 @@ export default function ProfileTabScreen() {
       style={[styles.root, { backgroundColor: colors.page }]}
       contentContainerStyle={{ padding: layout.pad, paddingBottom: insets.bottom + 40, paddingTop: insets.top + 8 }}
     >
-      <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 450 }}>
+      <View>
         <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
           <Text style={[styles.avatarTxt, { color: colors.accentFg }]}>{initials}</Text>
         </View>
@@ -228,7 +227,7 @@ export default function ProfileTabScreen() {
         >
           <Text style={[styles.outTxt, { color: colors.danger }]}>Sign out</Text>
         </Pressable>
-      </MotiView>
+      </View>
     </ScrollView>
   )
 }

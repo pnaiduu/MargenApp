@@ -1,1 +1,3 @@
-export { default } from '../../../src/screens/JobDetailRoute'
+import JobDetailRoute from '../../../src/screens/JobDetailRoute'
+
+export default JobDetailRoute

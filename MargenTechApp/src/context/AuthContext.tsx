@@ -1,5 +1,6 @@
 import type { Session, User } from '@supabase/supabase-js'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { clearAppViewMode } from '../lib/viewMode'
 import { supabase, supabaseConfigured } from '../lib/supabase'
 
 type AuthCtx = {
@@ -46,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!supabaseConfigured) return
+    await clearAppViewMode()
     await supabase.auth.signOut()
   }, [])
 

@@ -1,40 +1,49 @@
-import { MotiView } from 'moti'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { useAuth } from '../src/context/AuthContext'
 import { useTechnician } from '../src/context/TechnicianContext'
+import { getAppViewMode, type AppViewMode } from '../src/lib/viewMode'
 
 export default function SplashRoute() {
   const { user, loading: authLoading } = useAuth()
   const { technician, loading: techLoading } = useTechnician()
   const started = useRef(Date.now())
+  const [viewMode, setViewMode] = useState<AppViewMode | null>(null)
+  const [viewModeReady, setViewModeReady] = useState(false)
 
   useEffect(() => {
-    if (authLoading || (user && techLoading)) return
+    void getAppViewMode().then((mode) => {
+      setViewMode(mode)
+      setViewModeReady(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (authLoading || !viewModeReady) return
+    if (user && techLoading) return
 
     const elapsed = Date.now() - started.current
     const wait = Math.max(0, 2000 - elapsed)
     const t = setTimeout(() => {
-      if (user && technician) {
-        router.replace('/(main)/(tabs)')
-      } else {
-        router.replace('/login')
+      if (user && viewMode === 'owner_demo') {
+        router.replace('/owner-demo')
+        return
       }
+      if (user && technician) {
+        router.replace('/(main)/(tabs)/home')
+        return
+      }
+      router.replace('/login')
     }, wait)
     return () => clearTimeout(t)
-  }, [authLoading, techLoading, user, technician])
+  }, [authLoading, techLoading, user, technician, viewMode, viewModeReady])
 
   return (
     <View style={styles.root}>
-      <MotiView
-        from={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ type: 'timing', duration: 700 }}
-        style={styles.logoBlock}
-      >
+      <View style={styles.logoBlock}>
         <Text style={styles.wordmark}>Margen</Text>
-      </MotiView>
+      </View>
     </View>
   )
 }

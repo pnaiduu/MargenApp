@@ -1,1 +1,3 @@
-export { default } from '../../src/screens/CustomerRatingRoute'
+import CustomerRatingRoute from '../../src/screens/CustomerRatingRoute'
+
+export default CustomerRatingRoute

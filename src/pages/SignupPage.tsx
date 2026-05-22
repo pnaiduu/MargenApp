@@ -3,9 +3,12 @@ import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { SpaLink } from '../components/SpaLink'
 import { Modal } from '../components/ui/Modal'
+import { PasswordField } from '../components/ui/PasswordField'
 import { useAuth } from '../contexts/useAuth'
 import { easePremium, tapButton } from '../lib/motion'
 import { supabase } from '../lib/supabase'
+
+type SignupRole = 'owner' | 'technician'
 
 function formatSubmitError(caught: unknown): string {
   const name =
@@ -38,6 +41,8 @@ export function SignupPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [policiesOpen, setPoliciesOpen] = useState(false)
+  const [role, setRole] = useState<SignupRole>('owner')
+  const [technicianInvitePending, setTechnicianInvitePending] = useState(false)
 
   if (!configured) {
     return (
@@ -55,7 +60,7 @@ export function SignupPage() {
     )
   }
 
-  if (!loading && user) {
+  if (!loading && user && !technicianInvitePending) {
     if (planHint) {
       return <Navigate to={`/subscribe?plan=${planHint}`} replace />
     }
@@ -66,24 +71,42 @@ export function SignupPage() {
     e.preventDefault()
     setError(null)
     setMessage(null)
+    setTechnicianInvitePending(false)
     setSubmitting(true)
     try {
       const { error: err } = await signUp(email, password, {
         fullName,
-        companyName,
+        companyName: role === 'owner' ? companyName : undefined,
       })
       if (err) {
         setError(err.message)
       } else {
         const { data: sessionData } = await supabase.auth.getSession()
         if (sessionData.session) {
-          navigate(planHint ? `/subscribe?plan=${planHint}` : '/pricing', { replace: true })
+          if (role === 'technician') {
+            const { data: tech } = await supabase
+              .from('technicians')
+              .select('id')
+              .eq('user_id', sessionData.session.user.id)
+              .maybeSingle()
+            if (!tech) {
+              setTechnicianInvitePending(true)
+              return
+            }
+          }
+          if (role === 'owner') {
+            navigate(planHint ? `/subscribe?plan=${planHint}` : '/dashboard', { replace: true })
+          } else {
+            navigate('/dashboard', { replace: true })
+          }
           return
         }
         setMessage(
-          planHint
-            ? 'Check your email to confirm your account, then sign in. After sign-in you can open the plans page and finish checkout.'
-            : 'Check your email to confirm your account, then sign in. The plans page opens after sign-in so you can subscribe.',
+          role === 'technician'
+            ? 'Check your email to confirm your account, then sign in. Ask your employer to send you an invite link to join their team.'
+            : planHint
+              ? 'Check your email to confirm your account, then sign in. After sign-in you can open the plans page and finish checkout.'
+              : 'Check your email to confirm your account, then sign in.',
         )
       }
     } catch (caught) {
@@ -130,7 +153,61 @@ export function SignupPage() {
           ) : null}
         </div>
 
+        {technicianInvitePending ? (
+          <div
+            className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-4 text-sm leading-relaxed text-[var(--color-margen-muted)]"
+            role="status"
+          >
+            Ask your employer to send you an invite link to join their team. Once you accept the invite and sign in,
+            your technician profile will be linked automatically.
+            <div className="mt-4">
+              <SpaLink
+                to="/login"
+                state={{ intent: 'sign-in-only' }}
+                className="font-medium text-[var(--margen-accent)] underline-offset-2 hover:underline"
+              >
+                Sign in
+              </SpaLink>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-[var(--color-margen-text)]">I am signing up as</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setRole('owner')}
+                className={[
+                  'rounded-xl border px-4 py-4 text-left transition',
+                  role === 'owner'
+                    ? 'border-[var(--margen-accent)] bg-[var(--margen-accent-muted)] ring-1 ring-[var(--margen-accent)]'
+                    : 'border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] hover:border-[var(--color-margen-muted)]',
+                ].join(' ')}
+              >
+                <p className="text-sm font-semibold text-[var(--color-margen-text)]">I&apos;m a Business Owner</p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--color-margen-muted)]">
+                  Run dispatch, billing, and your team from one dashboard.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('technician')}
+                className={[
+                  'rounded-xl border px-4 py-4 text-left transition',
+                  role === 'technician'
+                    ? 'border-[var(--margen-accent)] bg-[var(--margen-accent-muted)] ring-1 ring-[var(--margen-accent)]'
+                    : 'border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] hover:border-[var(--color-margen-muted)]',
+                ].join(' ')}
+              >
+                <p className="text-sm font-semibold text-[var(--color-margen-text)]">I&apos;m a Technician</p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--color-margen-muted)]">
+                  Clock in, view jobs, and update work from the field app.
+                </p>
+              </button>
+            </div>
+          </div>
+
           <div>
             <label htmlFor="signup-fullName" className="mb-1 block text-xs font-medium text-[var(--color-margen-text)]">
               Full name
@@ -144,19 +221,21 @@ export function SignupPage() {
               className="w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
             />
           </div>
-          <div>
-            <label htmlFor="signup-company" className="mb-1 block text-xs font-medium text-[var(--color-margen-text)]">
-              Company <span className="font-normal text-[var(--color-margen-muted)]">(optional)</span>
-            </label>
-            <input
-              id="signup-company"
-              type="text"
-              autoComplete="organization"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-            />
-          </div>
+          {role === 'owner' ? (
+            <div>
+              <label htmlFor="signup-company" className="mb-1 block text-xs font-medium text-[var(--color-margen-text)]">
+                Company <span className="font-normal text-[var(--color-margen-muted)]">(optional)</span>
+              </label>
+              <input
+                id="signup-company"
+                type="text"
+                autoComplete="organization"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                className="w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
+              />
+            </div>
+          ) : null}
           <div>
             <label htmlFor="signup-email" className="mb-1 block text-xs font-medium text-[var(--color-margen-text)]">
               Email
@@ -171,21 +250,15 @@ export function SignupPage() {
               className="w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
             />
           </div>
-          <div>
-            <label htmlFor="signup-password" className="mb-1 block text-xs font-medium text-[var(--color-margen-text)]">
-              Password
-            </label>
-            <input
-              id="signup-password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-            />
-          </div>
+          <PasswordField
+            id="signup-password"
+            label="Password"
+            autoComplete="new-password"
+            required
+            minLength={6}
+            value={password}
+            onChange={setPassword}
+          />
 
           <div className="relative min-h-[2.75rem]">
             {error ? (
@@ -213,6 +286,7 @@ export function SignupPage() {
             {submitting ? 'Please wait…' : 'Create account'}
           </motion.button>
         </form>
+        )}
 
         <p className="mt-8 text-center text-xs text-[var(--color-margen-muted)]">
           By continuing you agree to your organization&apos;s{' '}

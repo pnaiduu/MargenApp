@@ -1,1 +1,3 @@
-export { default } from '../../src/screens/PrivacyPolicyScreen'
+import PrivacyPolicyScreen from '../../src/screens/PrivacyPolicyScreen'
+
+export default PrivacyPolicyScreen

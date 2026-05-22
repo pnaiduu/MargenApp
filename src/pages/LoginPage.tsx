@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import { Modal } from '../components/ui/Modal'
+import { PasswordField } from '../components/ui/PasswordField'
 import { useAuth } from '../contexts/useAuth'
 import { easePremium, tapButton } from '../lib/motion'
 import { safeReturnPath } from '../lib/safeReturnPath'
@@ -165,21 +166,15 @@ export function LoginPage() {
               className="w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
             />
           </div>
-          <div>
-            <label htmlFor="login-password" className="mb-1 block text-xs font-medium text-[var(--color-margen-text)]">
-              Password
-            </label>
-            <input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-            />
-          </div>
+          <PasswordField
+            id="login-password"
+            label="Password"
+            autoComplete="current-password"
+            required
+            minLength={6}
+            value={password}
+            onChange={setPassword}
+          />
 
           {error ? (
             <p className="text-sm text-danger" role="alert">

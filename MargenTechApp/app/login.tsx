@@ -1,5 +1,4 @@
-import { MotiView } from 'moti'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,9 +11,11 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { isDemoOwnerEmail } from '../src/constants/demoOwner'
 import { useAuth } from '../src/context/AuthContext'
 import { useTechnician } from '../src/context/TechnicianContext'
 import { useTheme } from '../src/context/ThemeContext'
+import { setAppViewMode } from '../src/lib/viewMode'
 import { layout, typography } from '../src/theme'
 
 export default function LoginRoute() {
@@ -27,6 +28,8 @@ export default function LoginRoute() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [noTech, setNoTech] = useState(false)
+
+  const showOwnerDemo = useMemo(() => isDemoOwnerEmail(email), [email])
 
   async function onSubmit() {
     setError(null)
@@ -42,13 +45,34 @@ export default function LoginRoute() {
       setError(signErr.message)
       return
     }
+    await setAppViewMode('technician')
     const tech = await refreshTech()
     setBusy(false)
     if (!tech) {
       setNoTech(true)
       return
     }
-    router.replace('/(main)/(tabs)')
+    router.replace('/(main)/(tabs)/home')
+  }
+
+  async function onOwnerDemo() {
+    setError(null)
+    setNoTech(false)
+    if (!configured) {
+      setError('Supabase is not configured.')
+      return
+    }
+    if (!showOwnerDemo) return
+    setBusy(true)
+    const { error: signErr } = await signIn(email.trim(), password)
+    if (signErr) {
+      setBusy(false)
+      setError(signErr.message)
+      return
+    }
+    await setAppViewMode('owner_demo')
+    setBusy(false)
+    router.replace('/owner-demo')
   }
 
   return (
@@ -66,11 +90,7 @@ export default function LoginRoute() {
           justifyContent: 'center',
         }}
       >
-        <MotiView
-          from={{ opacity: 0, translateY: 10 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          transition={{ type: 'timing', duration: 450 }}
-        >
+        <View>
           <Text style={[styles.wordmark, { color: colors.text }]}>Margen</Text>
           <Text style={[styles.title, { color: colors.text }]}>Technician sign in</Text>
           <Text style={[styles.hint, { color: colors.muted }]}>Use the email and password from your employer.</Text>
@@ -137,7 +157,25 @@ export default function LoginRoute() {
           >
             <Text style={[styles.btnText, { color: colors.accentFg }]}>{busy ? 'Signing in…' : 'Sign in'}</Text>
           </Pressable>
-        </MotiView>
+
+          {showOwnerDemo ? (
+            <Pressable
+              onPress={() => void onOwnerDemo()}
+              disabled={busy}
+              style={({ pressed }) => [
+                styles.demoBtn,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: colors.surface,
+                  opacity: pressed || busy ? 0.88 : 1,
+                  minHeight: layout.tapMin,
+                },
+              ]}
+            >
+              <Text style={[styles.demoBtnText, { color: colors.text }]}>Continue as Owner (Demo)</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   )
@@ -169,6 +207,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   btnText: { fontSize: typography.body, fontWeight: '800' },
+  demoBtn: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: layout.radius,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  demoBtnText: { fontSize: typography.body, fontWeight: '700' },
   err: {
     marginTop: 16,
     fontSize: typography.small,

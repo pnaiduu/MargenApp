@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons'
 import NetInfo from '@react-native-community/netinfo'
-import { MotiView } from 'moti'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Pressable,
@@ -232,7 +231,7 @@ export default function HomeTabScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.accent} />
       }
     >
-      <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 400 }} style={{ paddingHorizontal: layout.pad }}>
+      <View style={{ paddingHorizontal: layout.pad }}>
         {offline ? (
           <View style={[styles.banner, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}>
             <Text style={[styles.bannerTxt, { color: colors.muted }]}>Offline mode</Text>
@@ -323,7 +322,7 @@ export default function HomeTabScreen() {
             <Text style={[styles.sumLbl, { color: colors.muted }]}>Status</Text>
           </View>
         </View>
-      </MotiView>
+      </View>
     </ScrollView>
   )
 }

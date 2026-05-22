@@ -1,5 +1,4 @@
 import * as ImagePicker from 'expo-image-picker'
-import { MotiView } from 'moti'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
@@ -210,7 +209,7 @@ export default function JobDetailRoute() {
       style={[styles.root, { backgroundColor: colors.page }]}
       contentContainerStyle={{ padding: layout.pad, paddingBottom: insets.bottom + 32 }}
     >
-      <MotiView from={{ opacity: 0, translateX: 12 }} animate={{ opacity: 1, translateX: 0 }}>
+      <View>
         <Text style={[styles.title, { color: colors.text }]}>{job.title}</Text>
         <Text style={[styles.meta, { color: colors.muted }]}>{job.customers?.name ?? 'Customer'}</Text>
 
@@ -331,7 +330,7 @@ export default function JobDetailRoute() {
             <Text style={[styles.primaryFlowTxt, { color: colors.accentFg }]}>{primaryLabel}</Text>
           )}
         </Pressable>
-      </MotiView>
+      </View>
     </ScrollView>
   )
 }

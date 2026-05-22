@@ -1,4 +1,3 @@
-import { MotiView } from 'moti'
 import { useCallback, useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -54,7 +53,7 @@ export default function CustomerRatingRoute() {
   useEffect(() => {
     if (!done) return
     const t = setTimeout(() => {
-      router.replace('/(main)/(tabs)')
+      router.replace('/(main)/(tabs)/home')
     }, 3000)
     return () => clearTimeout(t)
   }, [done])
@@ -112,14 +111,9 @@ export default function CustomerRatingRoute() {
     <View style={[styles.root, { backgroundColor: colors.surface, paddingTop: insets.top + 16 }]}>
       {done ? (
         <View style={styles.centerThank}>
-          <MotiView
-            from={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', damping: 14 }}
-            style={[styles.check, { backgroundColor: colors.successMuted }]}
-          >
+          <View style={[styles.check, { backgroundColor: colors.successMuted }]}>
             <Text style={{ fontSize: 48, color: colors.success }}>✓</Text>
-          </MotiView>
+          </View>
           <Text style={[styles.thankTitle, { color: colors.text }]}>Thank you!</Text>
           <Text style={[styles.thankSub, { color: colors.muted }]}>Your feedback was submitted.</Text>
         </View>
