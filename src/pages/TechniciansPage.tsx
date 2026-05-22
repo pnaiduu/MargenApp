@@ -5,8 +5,11 @@ import { technicianUnavailableReassignDirect } from '../lib/directSupabaseAction
 import { supabase } from '../lib/supabase'
 import { staggerContainer, staggerItem } from '../lib/motion'
 import type { TechnicianStatus } from '../types/database'
+import { Modal } from '../components/ui/Modal'
 import { TechnicianInviteModal } from '../components/technicians/TechnicianInviteModal'
+import { technicianOwnerSignupAbsoluteUrl } from '../lib/inviteUrl'
 import { technicianInviteCap } from '../lib/plans'
+import { easePremium, tapButton } from '../lib/motion'
 import { useWorkspaceAccess } from '../contexts/workspace-access-context'
 import { localWeekRangeIso } from '../lib/dates'
 
@@ -62,6 +65,9 @@ export function TechniciansPage() {
   const [inviteOpen, setInviteOpen] = useState(false)
   const [listTick, setListTick] = useState(0)
   const [busyTechId, setBusyTechId] = useState<string | null>(null)
+  const [removeTarget, setRemoveTarget] = useState<TechRow | null>(null)
+  const [removing, setRemoving] = useState(false)
+  const [teamLinkCopied, setTeamLinkCopied] = useState(false)
   useEffect(() => {
     if (!user) return
     const ownerId = user.id
@@ -120,6 +126,37 @@ export function TechniciansPage() {
     return m
   }, [sessions])
 
+  const teamSignupUrl = user ? technicianOwnerSignupAbsoluteUrl(user.id) : ''
+
+  async function copyTeamSignupLink() {
+    if (!teamSignupUrl) return
+    try {
+      await navigator.clipboard.writeText(teamSignupUrl)
+      setTeamLinkCopied(true)
+      window.setTimeout(() => setTeamLinkCopied(false), 2000)
+    } catch {
+      setError('Could not copy team signup link.')
+    }
+  }
+
+  async function onConfirmRemove() {
+    if (!user || !removeTarget) return
+    setRemoving(true)
+    setError(null)
+    const { error: delErr } = await supabase
+      .from('technicians')
+      .delete()
+      .eq('id', removeTarget.id)
+      .eq('owner_id', user.id)
+    setRemoving(false)
+    if (delErr) {
+      setError(delErr.message)
+      return
+    }
+    setRemoveTarget(null)
+    setListTick((t) => t + 1)
+  }
+
   async function onUnavailable(techId: string) {
     if (!user) return
     setBusyTechId(techId)
@@ -145,14 +182,24 @@ export function TechniciansPage() {
             Invite your field team, track status, and handle unavailability.
           </p>
         </div>
-        <button
-          type="button"
-          disabled={Boolean(inviteBlockedReason)}
-          onClick={() => setInviteOpen(true)}
-          className="shrink-0 rounded-md border border-transparent bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] hover:opacity-90 disabled:opacity-50"
-        >
-          Invite technician
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!teamSignupUrl}
+            onClick={() => void copyTeamSignupLink()}
+            className="shrink-0 rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-semibold text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
+          >
+            {teamLinkCopied ? 'Link copied' : 'Copy team signup link'}
+          </button>
+          <button
+            type="button"
+            disabled={Boolean(inviteBlockedReason)}
+            onClick={() => setInviteOpen(true)}
+            className="shrink-0 rounded-md border border-transparent bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] hover:opacity-90 disabled:opacity-50"
+          >
+            Invite technician
+          </button>
+        </div>
       </div>
 
       {inviteBlockedReason ? (
@@ -198,17 +245,59 @@ export function TechniciansPage() {
                     Mark unavailable
                   </button>
                 ) : null}
+                <button
+                  type="button"
+                  onClick={() => setRemoveTarget(t)}
+                  className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-1.5 text-sm font-medium text-danger hover:bg-[var(--color-margen-hover)]"
+                >
+                  Remove
+                </button>
               </div>
             </motion.li>
           ))}
         </motion.ul>
       )}
 
+      <Modal
+        open={removeTarget != null}
+        onClose={() => {
+          if (!removing) setRemoveTarget(null)
+        }}
+        title={removeTarget ? `Remove ${removeTarget.name} from your team?` : undefined}
+      >
+        <p className="text-sm text-[var(--color-margen-muted)]">
+          This deletes their technician profile from your workspace. They will no longer appear on your team or map.
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <motion.button
+            type="button"
+            disabled={removing}
+            onClick={() => setRemoveTarget(null)}
+            className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-60"
+            whileTap={tapButton}
+            transition={{ duration: 0.14, ease: easePremium }}
+          >
+            Cancel
+          </motion.button>
+          <motion.button
+            type="button"
+            disabled={removing}
+            onClick={() => void onConfirmRemove()}
+            className="rounded-md border border-transparent bg-[#DC2626] px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+            whileTap={removing ? undefined : tapButton}
+            transition={{ duration: 0.14, ease: easePremium }}
+          >
+            {removing ? 'Removing…' : 'Remove'}
+          </motion.button>
+        </div>
+      </Modal>
+
       {user ? (
         <TechnicianInviteModal
           open={inviteOpen}
           onClose={() => setInviteOpen(false)}
           ownerId={user.id}
+          teamSignupUrl={teamSignupUrl}
           onCreated={() => setListTick((x) => x + 1)}
           inviteBlockedReason={inviteBlockedReason}
         />

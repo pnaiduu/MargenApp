@@ -16,6 +16,19 @@ export function inviteJoinAbsoluteUrl(token: string) {
   return `${base}${joinPath(token)}`
 }
 
+/** Direct technician signup linked to an owner workspace (no pre-created invite token). */
+export function technicianOwnerSignupPath(ownerId: string) {
+  const params = new URLSearchParams({ role: 'technician', owner: ownerId })
+  return `/signup?${params.toString()}`
+}
+
+export function technicianOwnerSignupAbsoluteUrl(ownerId: string) {
+  const base = publicSiteOrigin()
+  const path = technicianOwnerSignupPath(ownerId)
+  if (!base) return path
+  return `${base}${path}`
+}
+
 /** Synthetic login email derived from invite token (no inbox; used only with Supabase Auth). */
 export function inviteLoginEmail(token: string) {
   const domain = import.meta.env.VITE_INVITE_EMAIL_DOMAIN?.trim() || 'invite.trymargen.com'

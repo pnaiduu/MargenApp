@@ -10,7 +10,14 @@ export type AuthContextValue = {
   signUp: (
     email: string,
     password: string,
-    meta?: { fullName?: string; companyName?: string; technicianInviteToken?: string },
+    meta?: {
+      fullName?: string
+      companyName?: string
+      technicianInviteToken?: string
+      technicianOwnerId?: string
+      signupRole?: 'owner' | 'technician'
+      technicianRole?: string
+    },
   ) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
 }

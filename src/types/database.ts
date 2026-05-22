@@ -1006,6 +1006,10 @@ export type Database = {
         Args: { p_token: string }
         Returns: unknown
       }
+      lookup_owner_team_invite: {
+        Args: { p_owner_id: string }
+        Returns: unknown
+      }
       submit_customer_rating: {
         Args: { p_token: string; p_rating: number; p_comment: string }
         Returns: boolean

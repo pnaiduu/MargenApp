@@ -82,7 +82,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (
       email: string,
       password: string,
-      meta?: { fullName?: string; companyName?: string; technicianInviteToken?: string },
+      meta?: {
+        fullName?: string
+        companyName?: string
+        technicianInviteToken?: string
+        technicianOwnerId?: string
+        signupRole?: 'owner' | 'technician'
+        technicianRole?: string
+      },
     ) => {
       if (!supabaseConfigured) {
         return { error: new Error('Supabase is not configured.') }
@@ -95,6 +102,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       if (meta?.technicianInviteToken) {
         data.technician_invite_token = meta.technicianInviteToken
+      }
+      if (meta?.technicianOwnerId) {
+        data.technician_owner_id = meta.technicianOwnerId
+      }
+      if (meta?.signupRole) {
+        data.signup_role = meta.signupRole
+      }
+      if (meta?.technicianRole) {
+        data.technician_role = meta.technicianRole
       }
       const { error } = await supabase.auth.signUp({
         email,
