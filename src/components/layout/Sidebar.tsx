@@ -15,7 +15,6 @@ const nav: { to: string; label: string; end?: boolean }[] = [
   { to: '/technicians', label: 'Technicians' },
   { to: '/hours', label: 'Hours & Attendance' },
   { to: '/schedule', label: 'Schedule' },
-  { to: '/calls', label: 'Calls & Leads' },
   { to: '/revenue', label: 'Revenue' },
   { to: '/payments', label: 'Payments' },
   { to: '/settings', label: 'Settings' },

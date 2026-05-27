@@ -14,15 +14,6 @@ import {
   type ServiceAreaInitial,
   type ServiceAreaSnapshot,
 } from '../components/settings/ServiceAreaEditor'
-import { retellTestCallDemo } from '../lib/directSupabaseActions'
-import {
-  CARRIER_OPTIONS,
-  type CarrierId,
-  forwardingActivationSnippet,
-  formatUsDisplay,
-  guessAreaCodeForProvisioning,
-} from '../lib/forwardingDialCode'
-import { provisionMargenTwilioNumber, sendMargenForwardingSms } from '../lib/margenTwilio'
 import { cancelSubscriptionAtPeriodEnd, openStripeBillingPortal } from '../lib/stripeSubscription'
 import { syncStripeAnalyticsLedger } from '../lib/stripeAnalytics'
 import { StripeAnalyticsSetupModal } from '../components/settings/StripeAnalyticsSetupModal'
@@ -39,7 +30,6 @@ const CARD_BORDER = '#ebebeb'
 
 const NAV: { id: string; label: string }[] = [
   { id: 'profile', label: 'Profile' },
-  { id: 'call-setup', label: 'Call Setup' },
   { id: 'service-area', label: 'Service Area' },
   { id: 'operations', label: 'Operations' },
   { id: 'subscription', label: 'Subscription' },
@@ -134,8 +124,6 @@ export function SettingsPage() {
 
   const [companyDraft, setCompanyDraft] = useState('')
   const [businessPhoneDraft, setBusinessPhoneDraft] = useState('')
-  const [ringsBeforeAiDraft, setRingsBeforeAiDraft] = useState('3')
-  const [alwaysUseAi, setAlwaysUseAi] = useState(false)
   const [bizHoursEnabled, setBizHoursEnabled] = useState(false)
   const [bizHoursOpenDraft, setBizHoursOpenDraft] = useState('09:00')
   const [bizHoursCloseDraft, setBizHoursCloseDraft] = useState('17:00')
@@ -165,16 +153,6 @@ export function SettingsPage() {
   const [stripeAnalyticsOpBusy, setStripeAnalyticsOpBusy] = useState(false)
   const [stripeAnalyticsOpError, setStripeAnalyticsOpError] = useState<string | null>(null)
 
-  const [margenPhone, setMargenPhone] = useState<string | null>(null)
-  const [margenPhoneSid, setMargenPhoneSid] = useState<string | null>(null)
-  const [callForwardingActive, setCallForwardingActive] = useState(false)
-  const [carrierDraft, setCarrierDraft] = useState<CarrierId | ''>('')
-  const [callSetupBusy, setCallSetupBusy] = useState(false)
-  const [callSetupError, setCallSetupError] = useState<string | null>(null)
-  const [callSetupOk, setCallSetupOk] = useState<string | null>(null)
-  const [callSmsBusy, setCallSmsBusy] = useState(false)
-  const [callTestBusy, setCallTestBusy] = useState(false)
-  const [callChangeBusy, setCallChangeBusy] = useState(false)
   const [appearanceBusy, setAppearanceBusy] = useState(false)
   const [appearanceOk, setAppearanceOk] = useState<string | null>(null)
   const [autoAssignJobs, setAutoAssignJobs] = useState(true)
@@ -210,7 +188,7 @@ export function SettingsPage() {
         supabase
           .from('profiles')
           .select(
-            'company_name, business_phone, rings_before_ai, always_use_ai, auto_assign_jobs, auto_sort_schedule, business_hours, after_hours_message, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, stripe_analytics_key_hint, stripe_analytics_last_sync_at, vip_threshold_cents, margen_phone_number, margen_phone_sid, carrier, call_forwarding_active, twilio_forwarding_code',
+            'company_name, business_phone, auto_assign_jobs, auto_sort_schedule, business_hours, after_hours_message, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, stripe_analytics_key_hint, stripe_analytics_last_sync_at, vip_threshold_cents',
           )
           .eq('id', userId)
           .maybeSingle(),
@@ -239,19 +217,8 @@ export function SettingsPage() {
       setTechnicianCount(techCountRes.count ?? 0)
       setCompanyDraft(data?.company_name ?? '')
       setBusinessPhoneDraft(data?.business_phone ?? '')
-      const rawRings = typeof data?.rings_before_ai === 'number' ? data.rings_before_ai : 3
-      const clampedRings = Math.min(5, Math.max(1, Math.round(rawRings)))
-      setRingsBeforeAiDraft(String(clampedRings))
-      setAlwaysUseAi(Boolean((data as { always_use_ai?: boolean }).always_use_ai))
       setAutoAssignJobs((data as { auto_assign_jobs?: boolean }).auto_assign_jobs !== false)
       setAutoSortSchedule((data as { auto_sort_schedule?: boolean }).auto_sort_schedule !== false)
-      setMargenPhone((data as { margen_phone_number?: string | null }).margen_phone_number ?? null)
-      setMargenPhoneSid((data as { margen_phone_sid?: string | null }).margen_phone_sid ?? null)
-      setCallForwardingActive(Boolean((data as { call_forwarding_active?: boolean }).call_forwarding_active))
-      const car = (data as { carrier?: string | null }).carrier
-      setCarrierDraft(
-        car && CARRIER_OPTIONS.some((c) => c.id === car) ? (car as CarrierId) : '',
-      )
       const bh = (data?.business_hours ?? {}) as {
         enabled?: boolean
         days?: Record<string, { open?: string; close?: string }>
@@ -529,97 +496,6 @@ export function SettingsPage() {
     setAreaBusy(false)
   }
 
-  async function saveCallPreferences() {
-    if (!user) return
-    setCallSetupBusy(true)
-    setCallSetupError(null)
-    setCallSetupOk(null)
-    const rings = ringsBeforeAiDraft.trim() ? Number(ringsBeforeAiDraft) : 3
-    if (!Number.isFinite(rings) || rings < 1 || rings > 5) {
-      setCallSetupError('Rings before the AI answers should be between 1 and 5.')
-      setCallSetupBusy(false)
-      return
-    }
-    const patch: Record<string, unknown> = {
-      rings_before_ai: Math.round(rings),
-      always_use_ai: alwaysUseAi,
-    }
-    if (carrierDraft && CARRIER_OPTIONS.some((c) => c.id === carrierDraft) && margenPhone) {
-      patch.carrier = carrierDraft
-      patch.twilio_forwarding_code = forwardingActivationSnippet(carrierDraft, margenPhone)
-    } else if (carrierDraft && CARRIER_OPTIONS.some((c) => c.id === carrierDraft)) {
-      patch.carrier = carrierDraft
-    }
-    const { error } = await supabase.from('profiles').update(patch as never).eq('id', user.id)
-    if (error) setCallSetupError(error.message)
-    else setCallSetupOk('Call setup saved.')
-    setCallSetupBusy(false)
-  }
-
-  async function persistCarrierChoice(c: CarrierId) {
-    setCarrierDraft(c)
-    if (!user || !margenPhone) return
-    setCallSetupError(null)
-    const code = forwardingActivationSnippet(c, margenPhone)
-    const { error } = await supabase
-      .from('profiles')
-      .update({ carrier: c, twilio_forwarding_code: code } as never)
-      .eq('id', user.id)
-    if (error) setCallSetupError(error.message)
-  }
-
-  async function handleForwardingSms() {
-    setCallSmsBusy(true)
-    setCallSetupError(null)
-    setCallSetupOk(null)
-    const { error } = await sendMargenForwardingSms(supabase)
-    setCallSmsBusy(false)
-    if (error) setCallSetupError(error.message)
-    else setCallSetupOk('We texted your business phone with the forwarding steps.')
-  }
-
-  async function handleTestAiCall() {
-    setCallTestBusy(true)
-    setCallSetupError(null)
-    setCallSetupOk(null)
-    const { error } = await retellTestCallDemo(supabase)
-    setCallTestBusy(false)
-    if (error) setCallSetupError(error.message)
-    else setCallSetupOk('Placing a test call to your business phone — pick up to hear your AI receptionist.')
-  }
-
-  async function handleChangeMargenNumber() {
-    if (!user) return
-    if (
-      !window.confirm(
-        'Change your Margen AI number? The current number will be released and may not be available again.',
-      )
-    ) {
-      return
-    }
-    setCallChangeBusy(true)
-    setCallSetupError(null)
-    setCallSetupOk(null)
-    try {
-      const ac = guessAreaCodeForProvisioning(serviceAreaSnapshot.business_address, businessPhoneDraft.trim() || null)
-      const { error: provErr } = await provisionMargenTwilioNumber(supabase, { area_code: ac, replace_existing: true })
-      if (provErr) throw provErr
-      const { data: p2, error: e2 } = await supabase
-        .from('profiles')
-        .select('margen_phone_number, margen_phone_sid')
-        .eq('id', user.id)
-        .maybeSingle()
-      if (e2) throw new Error(e2.message)
-      setMargenPhone((p2 as { margen_phone_number?: string | null })?.margen_phone_number ?? null)
-      setMargenPhoneSid((p2 as { margen_phone_sid?: string | null })?.margen_phone_sid ?? null)
-      setCallSetupOk('Your new Margen number is ready.')
-    } catch (e) {
-      setCallSetupError(e instanceof Error ? e.message : 'Could not change the number.')
-    } finally {
-      setCallChangeBusy(false)
-    }
-  }
-
   async function saveAppearanceSection() {
     setAppearanceBusy(true)
     setAppearanceOk(null)
@@ -797,193 +673,6 @@ export function SettingsPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </SettingsSectionCard>
-
-            <SettingsSectionCard
-              id="call-setup"
-              title="Call setup"
-              footer={
-                <>
-                  {callSetupError ? <p className="mr-auto text-sm text-danger">{callSetupError}</p> : null}
-                  {callSetupOk ? <p className="mr-auto text-sm text-[#555555]">{callSetupOk}</p> : null}
-                  <button
-                    type="button"
-                    disabled={callSetupBusy}
-                    onClick={() => void saveCallPreferences()}
-                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
-                  >
-                    {callSetupBusy ? 'Saving…' : 'Save'}
-                  </button>
-                </>
-              }
-            >
-              <p className="text-sm leading-relaxed text-[#555555]">
-                Your Margen line receives forwarded missed calls, then routes callers to your AI receptionist.
-              </p>
-              <div className="mt-6 flex flex-wrap items-start justify-between gap-3 border-b border-[#ebebeb] pb-6">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-[#888888]">Margen AI number</p>
-                  <p className="mt-1 font-mono text-lg font-semibold text-[#111111]">
-                    {margenPhone ? formatUsDisplay(margenPhone) : 'Not set up yet'}
-                  </p>
-                </div>
-                <span
-                  className={[
-                    'shrink-0 rounded-full px-2.5 py-1 text-xs font-medium',
-                    callForwardingActive ? 'bg-[#ecfdf3] text-[#166534]' : 'bg-[#f4f4f4] text-[#666666]',
-                  ].join(' ')}
-                >
-                  {callForwardingActive ? 'Forwarding active' : 'Not active'}
-                </span>
-              </div>
-              <p className="mt-6 text-xs font-medium uppercase tracking-wide text-[#888888]">Your business cell carrier</p>
-              <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {CARRIER_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => void persistCarrierChoice(opt.id)}
-                    className={[
-                      'rounded-lg border px-2 py-2 text-xs font-medium transition sm:text-sm',
-                      carrierDraft === opt.id
-                        ? 'border-[var(--margen-accent)] bg-[var(--margen-accent-muted)] text-[var(--margen-accent)]'
-                        : 'border-[#ebebeb] bg-white text-[#111111] hover:border-[#cccccc]',
-                    ].join(' ')}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              {margenPhone && carrierDraft ? (
-                <div className="mt-4 rounded-xl border border-[#ebebeb] bg-[#fafafa] px-4 py-3">
-                  <p className="text-xs text-[#888888]">Forwarding activation</p>
-                  <p className="mt-1 font-mono text-sm font-semibold text-[var(--margen-accent)]">
-                    {forwardingActivationSnippet(carrierDraft, margenPhone)}
-                  </p>
-                </div>
-              ) : null}
-              <div className="mt-6 rounded-xl border border-[#ebebeb] bg-[#fafafa] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-[#111111]">Always use AI receptionist</p>
-                    <p className="mt-1 text-xs leading-relaxed text-[#888888]">
-                      When on, calls to your Margen number go straight to your AI. When off, your business phone rings
-                      first; the AI answers only after the number of rings you set below.
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className="text-xs font-medium tabular-nums text-[#555555]">{alwaysUseAi ? 'On' : 'Off'}</span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={alwaysUseAi}
-                      onClick={() => setAlwaysUseAi((v) => !v)}
-                      className={[
-                        'relative h-8 w-14 rounded-full border transition',
-                        alwaysUseAi
-                          ? 'border-[var(--margen-accent)] bg-[var(--margen-accent)]'
-                          : 'border-[#ebebeb] bg-[#e8e8e8]',
-                      ].join(' ')}
-                    >
-                      <span
-                        className={[
-                          'absolute top-1 h-6 w-6 rounded-full bg-white shadow transition',
-                          alwaysUseAi ? 'left-7' : 'left-1',
-                        ].join(' ')}
-                      />
-                      <span className="sr-only">{alwaysUseAi ? 'On' : 'Off'}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-6">
-                <div className="flex items-center justify-between gap-3">
-                  <label
-                    className={`text-sm font-medium ${alwaysUseAi ? 'text-[#888888]' : 'text-[#111111]'}`}
-                    htmlFor="rings-range"
-                  >
-                    Rings before AI answers
-                  </label>
-                  <span className="font-mono text-sm text-[var(--margen-accent)]">{ringsBeforeAiDraft}</span>
-                </div>
-                <input
-                  id="rings-range"
-                  type="range"
-                  min={1}
-                  max={5}
-                  step={1}
-                  value={ringsBeforeAiDraft}
-                  disabled={alwaysUseAi}
-                  onChange={(e) => setRingsBeforeAiDraft(e.target.value)}
-                  className="mt-2 w-full accent-[var(--margen-accent)] disabled:cursor-not-allowed disabled:opacity-50"
-                />
-                <p className="mt-1 text-xs text-[#888888]">
-                  {alwaysUseAi
-                    ? 'Turn off “Always use AI receptionist” to ring your business phone before the AI answers.'
-                    : 'About 6 seconds per ring before the call goes to Margen if you do not pick up.'}
-                </p>
-              </div>
-              {!callForwardingActive ? (
-                <button
-                  type="button"
-                  className="mt-4 text-left text-xs font-medium text-[var(--margen-accent)] underline-offset-2 hover:underline"
-                  onClick={async () => {
-                    if (!user) return
-                    setCallSetupError(null)
-                    const { error } = await supabase
-                      .from('profiles')
-                      .update({ call_forwarding_active: true } as never)
-                      .eq('id', user.id)
-                    if (error) setCallSetupError(error.message)
-                    else setCallForwardingActive(true)
-                  }}
-                >
-                  I’ve turned on forwarding — mark as active
-                </button>
-              ) : null}
-              <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <button
-                  type="button"
-                  disabled={callSmsBusy || !margenPhone}
-                  onClick={() => void handleForwardingSms()}
-                  className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#fafafa] disabled:opacity-50"
-                >
-                  {callSmsBusy ? 'Sending…' : 'Text forwarding steps'}
-                </button>
-                <button
-                  type="button"
-                  disabled={callTestBusy || !margenPhone}
-                  onClick={() => void handleTestAiCall()}
-                  className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2.5 text-sm font-semibold text-[#111111] hover:bg-[#fafafa] disabled:opacity-50"
-                >
-                  {callTestBusy ? 'Calling…' : 'Test AI receptionist'}
-                </button>
-                <button
-                  type="button"
-                  disabled={callChangeBusy || !margenPhoneSid}
-                  onClick={() => void handleChangeMargenNumber()}
-                  className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2.5 text-sm font-medium text-[#111111] hover:bg-[#fafafa] disabled:opacity-50"
-                >
-                  {callChangeBusy ? 'Working…' : 'Change Margen number'}
-                </button>
-              </div>
-              <div className="mt-8 border-t border-[#ebebeb] pt-8">
-                <p className="text-sm leading-relaxed text-[#555555]">
-                  Get your dedicated Margen number and activate missed call forwarding in 3 easy steps.
-                </p>
-                <Link
-                  to="/onboarding/call-setup"
-                  className="mt-4 flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-[var(--margen-accent)] px-5 text-base font-semibold text-[var(--margen-accent-fg)] shadow-sm transition hover:opacity-95"
-                >
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
-                    <path
-                      d="M6.6 10.8c1.4 2.6 3.6 4.8 6.2 6.2l2-2c.3-.3.8-.4 1.2-.2 1.1.4 2.3.6 3.6.6.7 0 1.2.5 1.2 1.2V20c0 .7-.5 1.2-1.2 1.2C9.4 21.2 2.8 14.6 2.8 6.2 2.8 5.5 3.3 5 4 5h3.5c.7 0 1.2.5 1.2 1.2 0 1.3.2 2.5.6 3.6.2.4 0 .9-.2 1.2l-2 2Z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  <span className="text-center leading-snug">Set up your AI phone number — Start here</span>
-                </Link>
               </div>
             </SettingsSectionCard>
 
