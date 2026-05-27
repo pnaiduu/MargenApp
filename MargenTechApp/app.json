@@ -64,7 +64,10 @@
     },
     "extra": {
       "supabaseUrl": "https://pwguheewwpqpdokcwztk.supabase.co",
-      "supabaseAnonKey": "sb_publishable_2GcnKvg56uYoBCzXLb76TA_UTpQHPOY"
+      "supabaseAnonKey": "sb_publishable_2GcnKvg56uYoBCzXLb76TA_UTpQHPOY",
+      "eas": {
+        "projectId": "65c7cf37-80a7-4253-911b-7c4af151449d"
+      }
     }
   }
 }

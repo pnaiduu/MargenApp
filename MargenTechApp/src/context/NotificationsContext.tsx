@@ -1,9 +1,9 @@
 import * as Notifications from 'expo-notifications'
 import { router } from 'expo-router'
-import { Platform, Alert } from 'react-native'
+import { Alert } from 'react-native'
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from './AuthContext'
-import { registerExpoPushToken } from '../lib/pushRegister'
+import { setupPushNotifications } from '../lib/pushRegister'
 import { supabase } from '../lib/supabase'
 
 type NotificationsCtx = {
@@ -25,19 +25,6 @@ Notifications.setNotificationHandler({
     }
   },
 })
-
-async function registerForPushNotificationsAsync() {
-  const perm = await Notifications.getPermissionsAsync()
-  let status = perm.status
-  if (status !== 'granted') {
-    const req = await Notifications.requestPermissionsAsync()
-    status = req.status
-  }
-  if (status !== 'granted') return null
-
-  const token = await Notifications.getExpoPushTokenAsync()
-  return token.data
-}
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
@@ -79,26 +66,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     async function run() {
       if (!user) return
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'Default',
-          importance: Notifications.AndroidImportance.DEFAULT,
-        })
-        await Notifications.setNotificationChannelAsync('emergency', {
-          name: 'Emergency jobs',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 400, 200, 400],
-          sound: 'default',
-        })
-      }
       setLastError(null)
-      const tok = await registerForPushNotificationsAsync()
+      const { token: tok, error } = await setupPushNotifications(supabase, user.id)
       if (cancelled) return
       setExpoPushToken(tok)
-      if (!tok) return
-
-      const { error } = await registerExpoPushToken(supabase, user.id, tok, Platform.OS)
-      if (error && !cancelled) setLastError(error.message)
+      if (error && !cancelled) setLastError(error)
     }
     void run()
     return () => {
