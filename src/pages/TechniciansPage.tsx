@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
 import { technicianUnavailableReassignDirect } from '../lib/directSupabaseActions'
 import { supabase } from '../lib/supabase'
@@ -8,7 +9,13 @@ import type { TechnicianStatus } from '../types/database'
 import { Modal } from '../components/ui/Modal'
 import { TechnicianInviteModal } from '../components/technicians/TechnicianInviteModal'
 import { getOrCreateOwnerTeamInviteUrl, OPEN_TEAM_INVITE_NAME } from '../lib/teamInvite'
-import { technicianInviteCap } from '../lib/plans'
+import type { PlanId } from '../lib/plans'
+import {
+  canAddTechnician,
+  formatTechnicianLimit,
+  nextPlanDisplayName,
+  nextPlanForTechnicianCap,
+} from '../lib/subscriptionAccess'
 import { easePremium, tapButton } from '../lib/motion'
 import { useWorkspaceAccess } from '../contexts/workspace-access-context'
 import { localWeekRangeIso } from '../lib/dates'
@@ -69,6 +76,7 @@ export function TechniciansPage() {
   const [removing, setRemoving] = useState(false)
   const [teamLinkCopied, setTeamLinkCopied] = useState(false)
   const [teamLinkBusy, setTeamLinkBusy] = useState(false)
+  const [limitModalOpen, setLimitModalOpen] = useState(false)
   useEffect(() => {
     if (!user) return
     const ownerId = user.id
@@ -116,8 +124,27 @@ export function TechniciansPage() {
     return () => ac.abort()
   }, [user, listTick])
 
-  const cap = technicianInviteCap(effectiveSubscription)
-  const atCap = cap !== null && technicians.length >= cap
+  const planId: PlanId = effectiveSubscription?.plan ?? 'starter'
+  const atCap = !canAddTechnician(technicians.length, planId)
+  const nextPlan = nextPlanForTechnicianCap(planId)
+  const limitLabel = formatTechnicianLimit(planId)
+
+  function tryOpenInvite() {
+    if (atCap) {
+      setLimitModalOpen(true)
+      return
+    }
+    setInviteOpen(true)
+  }
+
+  async function tryCopyTeamInviteLink() {
+    if (!user || teamLinkBusy) return
+    if (atCap) {
+      setLimitModalOpen(true)
+      return
+    }
+    await copyTeamInviteLink()
+  }
 
   const clockedInByTech = useMemo(() => {
     const m = new Map<string, boolean>()
@@ -175,11 +202,7 @@ export function TechniciansPage() {
     setListTick((t) => t + 1)
   }
 
-  const inviteBlockedReason = atCap
-    ? cap === 0
-      ? 'Add an active subscription to invite technicians.'
-      : `Your plan allows up to ${cap} technicians.`
-    : null
+  const noSubscription = !effectiveSubscription
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -193,8 +216,8 @@ export function TechniciansPage() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={teamLinkBusy || Boolean(inviteBlockedReason)}
-            onClick={() => void copyTeamInviteLink()}
+            disabled={teamLinkBusy || noSubscription}
+            onClick={() => void tryCopyTeamInviteLink()}
             className="relative inline-flex shrink-0 items-center justify-center rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-semibold text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
           >
             <span className="invisible whitespace-nowrap" aria-hidden>
@@ -206,8 +229,8 @@ export function TechniciansPage() {
           </button>
           <button
             type="button"
-            disabled={Boolean(inviteBlockedReason)}
-            onClick={() => setInviteOpen(true)}
+            disabled={noSubscription}
+            onClick={() => tryOpenInvite()}
             className="shrink-0 rounded-md border border-transparent bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] hover:opacity-90 disabled:opacity-50"
           >
             Invite technician
@@ -215,8 +238,10 @@ export function TechniciansPage() {
         </div>
       </div>
 
-      {inviteBlockedReason ? (
-        <p className="rounded-md border px-3 py-2 text-sm alert-warning">{inviteBlockedReason}</p>
+      {noSubscription ? (
+        <p className="rounded-md border px-3 py-2 text-sm alert-warning">
+          Add an active subscription to invite technicians.
+        </p>
       ) : null}
 
       {error ? <p className="text-sm text-danger">{error}</p> : null}
@@ -271,6 +296,40 @@ export function TechniciansPage() {
         </motion.ul>
       )}
 
+      <Modal open={limitModalOpen} onClose={() => setLimitModalOpen(false)} title="Technician limit reached">
+        <p className="text-sm leading-relaxed text-[var(--color-margen-muted)]">
+          {nextPlan ? (
+            <>
+              You&apos;ve reached your plan limit of {limitLabel} technicians. Upgrade to{' '}
+              <span className="font-medium text-[var(--color-margen-text)]">{nextPlanDisplayName(planId)}</span> to add
+              more.
+            </>
+          ) : (
+            <>You&apos;ve reached your plan limit of {limitLabel} technicians.</>
+          )}
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <motion.button
+            type="button"
+            onClick={() => setLimitModalOpen(false)}
+            className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)]"
+            whileTap={tapButton}
+            transition={{ duration: 0.14, ease: easePremium }}
+          >
+            Close
+          </motion.button>
+          {nextPlan ? (
+            <Link
+              to="/settings#subscription"
+              onClick={() => setLimitModalOpen(false)}
+              className="rounded-md border border-transparent bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] hover:opacity-90"
+            >
+              Upgrade plan
+            </Link>
+          ) : null}
+        </div>
+      </Modal>
+
       <Modal
         open={removeTarget != null}
         onClose={() => {
@@ -311,7 +370,13 @@ export function TechniciansPage() {
           onClose={() => setInviteOpen(false)}
           ownerId={user.id}
           onCreated={() => setListTick((x) => x + 1)}
-          inviteBlockedReason={inviteBlockedReason}
+          inviteBlockedReason={
+            atCap
+              ? `Your plan allows up to ${limitLabel} technicians.`
+              : noSubscription
+                ? 'Add an active subscription to invite technicians.'
+                : null
+          }
         />
       ) : null}
     </div>

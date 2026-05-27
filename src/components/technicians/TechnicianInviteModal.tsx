@@ -100,7 +100,8 @@ export function TechnicianInviteModal({
 
     if (tErr || !tech) {
       setSubmitting(false)
-      setError(tErr?.message ?? 'Could not create technician.')
+      const msg = tErr?.message ?? 'Could not create technician.'
+      setError(/plan limit reached/i.test(msg) ? 'Plan limit reached. Upgrade your subscription to add more technicians.' : msg)
       return
     }
 

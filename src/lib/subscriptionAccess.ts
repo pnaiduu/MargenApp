@@ -1,5 +1,37 @@
 import type { PlanId, SubscriptionRow } from './plans'
-import { planAtLeast } from './plans'
+import { planAtLeast, planById } from './plans'
+
+/** Max technicians for a plan tier (`Infinity` = unlimited). */
+export function getTechnicianLimit(plan: string): number {
+  const id = plan.toLowerCase()
+  if (id === 'scale') return Infinity
+  if (id === 'growth') return 20
+  return 5
+}
+
+export function canAddTechnician(currentCount: number, plan: string): boolean {
+  const limit = getTechnicianLimit(plan)
+  if (!Number.isFinite(limit)) return true
+  return currentCount < limit
+}
+
+/** Human label for limit (e.g. "5" or "unlimited"). */
+export function formatTechnicianLimit(plan: string): string {
+  const limit = getTechnicianLimit(plan)
+  return Number.isFinite(limit) ? String(limit) : 'unlimited'
+}
+
+/** Next upgrade tier for technician cap messaging. */
+export function nextPlanForTechnicianCap(plan: PlanId): PlanId | null {
+  if (plan === 'starter') return 'growth'
+  if (plan === 'growth') return 'scale'
+  return null
+}
+
+export function nextPlanDisplayName(plan: PlanId): string {
+  const next = nextPlanForTechnicianCap(plan)
+  return next ? (planById(next)?.name ?? next) : ''
+}
 
 /** Also add the same address to `dev_bypass_subscription_emails` (migration 030) so the row exists in `subscriptions`. */
 const DEFAULT_DEV_EMAILS = ['davynaidu@gmail.com']

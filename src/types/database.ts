@@ -25,6 +25,8 @@ export type Database = {
           business_phone: string | null
           rings_before_ai: number
           always_use_ai: boolean
+          auto_assign_jobs: boolean
+          auto_sort_schedule: boolean
           business_hours: unknown
           after_hours_message: string | null
           business_address: string | null
@@ -64,6 +66,8 @@ export type Database = {
           business_phone?: string | null
           rings_before_ai?: number
           always_use_ai?: boolean
+          auto_assign_jobs?: boolean
+          auto_sort_schedule?: boolean
           business_hours?: unknown
           after_hours_message?: string | null
           business_address?: string | null
@@ -102,6 +106,8 @@ export type Database = {
           business_phone?: string | null
           rings_before_ai?: number
           always_use_ai?: boolean
+          auto_assign_jobs?: boolean
+          auto_sort_schedule?: boolean
           business_hours?: unknown
           after_hours_message?: string | null
           business_address?: string | null
@@ -999,6 +1005,10 @@ export type Database = {
     }
     Functions: {
       sync_dev_bypass_subscription: {
+        Args: Record<string, never>
+        Returns: undefined
+      }
+      ensure_owner_profile: {
         Args: Record<string, never>
         Returns: undefined
       }

@@ -79,6 +79,11 @@ export function SignupPage() {
       } else {
         const { data: sessionData } = await supabase.auth.getSession()
         if (sessionData.session) {
+          const { error: profileErr } = await supabase.rpc('ensure_owner_profile')
+          if (profileErr) {
+            setError(profileErr.message)
+            return
+          }
           navigate(planHint ? `/subscribe?plan=${planHint}` : '/dashboard', { replace: true })
           return
         }

@@ -122,7 +122,6 @@ export function DashboardHome() {
   const [checklistDoneAt, setChecklistDoneAt] = useState<string | null>(null)
   const [setup, setSetup] = useState<{
     companyName: boolean
-    aiReceptionist: boolean
     firstTechnician: boolean
     serviceArea: boolean
     stripe: boolean
@@ -201,13 +200,6 @@ export function DashboardHome() {
           'company_name, business_phone, service_area_center_lat, service_area_center_lng, service_area_radius, onboarding_welcome_dismissed, onboarding_completed_at, stripe_charges_enabled, margen_phone_number',
         )
         .eq('id', ownerId)
-        .abortSignal(s)
-        .maybeSingle()
-
-      const aiRsQ = supabase
-        .from('ai_receptionist_settings')
-        .select('retell_agent_id')
-        .eq('owner_id', ownerId)
         .abortSignal(s)
         .maybeSingle()
 
@@ -301,7 +293,6 @@ export function DashboardHome() {
 
       const [
         profileRes,
-        aiRsRes,
         techCountRes,
         jobsRes,
         techRes,
@@ -315,7 +306,6 @@ export function DashboardHome() {
         stripeLedger30Res,
       ] = await Promise.all([
         profileQ,
-        aiRsQ,
         techCountQ,
         jobsQ,
         techQ,
@@ -372,11 +362,8 @@ export function DashboardHome() {
           | null
           | undefined
 
-        const aiRow = (!aiRsRes.error ? aiRsRes.data : null) as { retell_agent_id?: string | null } | null
-
         const computed = {
           companyName: Boolean((prof?.company_name ?? '').trim()),
-          aiReceptionist: Boolean((aiRow?.retell_agent_id ?? '').trim()),
           firstTechnician: (techCountRes.count ?? 0) > 0,
           serviceArea:
             prof?.service_area_center_lat != null &&
@@ -469,15 +456,14 @@ export function DashboardHome() {
   }, [user])
 
   const setupProgress = useMemo(() => {
-    if (!setup) return { done: 0, total: 5, pct: 0 }
+    if (!setup) return { done: 0, total: 4, pct: 0 }
     const done = [
       setup.companyName,
-      setup.aiReceptionist,
       setup.firstTechnician,
       setup.serviceArea,
       setup.stripe,
     ].filter(Boolean).length
-    const total = 5
+    const total = 4
     return { done, total, pct: Math.round((done / total) * 100) }
   }, [setup])
 
@@ -487,7 +473,6 @@ export function DashboardHome() {
     const doneAll = setupProgress.done === setupProgress.total
     const payload = {
       companyName: setup.companyName,
-      aiReceptionist: setup.aiReceptionist,
       firstTechnician: setup.firstTechnician,
       serviceArea: setup.serviceArea,
       stripe: setup.stripe,
@@ -626,11 +611,6 @@ export function DashboardHome() {
 
           <div className="mt-4 space-y-2">
             <ChecklistRow done={setup.companyName} label="Add your company name" to="/settings#settings-section-profile" />
-            <ChecklistRow
-              done={setup.aiReceptionist}
-              label="Set up your AI receptionist"
-              to="/settings/ai-receptionist"
-            />
             <ChecklistRow done={setup.firstTechnician} label="Add your first technician" to="/technicians" />
             <ChecklistRow
               done={setup.serviceArea}

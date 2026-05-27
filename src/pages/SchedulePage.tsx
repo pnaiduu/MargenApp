@@ -43,6 +43,7 @@ export function SchedulePage() {
   const [jobs, setJobs] = useState<JobCalRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [autoSortSchedule, setAutoSortSchedule] = useState(true)
 
   useEffect(() => {
     if (!user) return
@@ -53,8 +54,15 @@ export function SchedulePage() {
       setLoading(true)
       setError(null)
       try {
-        const { data, error: qErr } = await scheduledJobsQuery(ownerId, ac.signal)
+        const [jobsRes, profRes] = await Promise.all([
+          scheduledJobsQuery(ownerId, ac.signal),
+          supabase.from('profiles').select('auto_sort_schedule').eq('id', ownerId).maybeSingle(),
+        ])
         if (ac.signal.aborted) return
+        if (!profRes.error && profRes.data) {
+          setAutoSortSchedule(profRes.data.auto_sort_schedule !== false)
+        }
+        const { data, error: qErr } = jobsRes
         if (qErr) {
           setError(qErr.message)
           setJobs([])
@@ -125,7 +133,9 @@ export function SchedulePage() {
       >
         <h1 className="page-title">Schedule</h1>
         <p className="mt-1 text-sm leading-relaxed text-[#555555]">
-          Jobs by day. Drag an event to reschedule; colors follow each technician.
+          {autoSortSchedule
+            ? 'Jobs by day. Order is optimized by location and urgency; turn off auto-sort in Settings → Operations to drag events manually.'
+            : 'Jobs by day. Drag an event to reschedule; colors follow each technician.'}
         </p>
       </motion.div>
 
@@ -164,10 +174,10 @@ export function SchedulePage() {
               right: 'dayGridMonth,timeGridWeek',
             }}
             height="auto"
-            editable
+            editable={!autoSortSchedule}
             eventDurationEditable={false}
             events={events}
-            eventDrop={handleEventDrop}
+            eventDrop={autoSortSchedule ? undefined : handleEventDrop}
             dayMaxEvents
             nowIndicator
           />

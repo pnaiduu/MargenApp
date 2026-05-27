@@ -26,8 +26,8 @@ const PLANS: PlanCard[] = [
   {
     id: 'starter',
     name: 'Starter',
-    monthly: 299,
-    annual: 2990,
+    monthly: 500,
+    annual: 5000,
     techLine: 'Up to 5 technicians',
     included: [
       { text: 'Up to 5 technicians', included: true },
@@ -50,8 +50,8 @@ const PLANS: PlanCard[] = [
   {
     id: 'growth',
     name: 'Growth',
-    monthly: 599,
-    annual: 5990,
+    monthly: 800,
+    annual: 8000,
     techLine: 'Up to 20 technicians',
     popular: true,
     included: [
@@ -79,8 +79,8 @@ const PLANS: PlanCard[] = [
   {
     id: 'scale',
     name: 'Scale',
-    monthly: 1499,
-    annual: 14990,
+    monthly: 2000,
+    annual: 20000,
     techLine: 'Unlimited technicians',
     contactSales: true,
     included: [

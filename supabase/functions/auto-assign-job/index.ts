@@ -88,6 +88,16 @@ Deno.serve(async (req) => {
   if (jobErr || !job) return json(404, { error: jobErr?.message ?? 'Job not found' })
   if (job.owner_id !== user.id) return json(403, { error: 'Forbidden' })
 
+  const { data: assignProf } = await admin
+    .from('profiles')
+    .select('auto_assign_jobs')
+    .eq('id', job.owner_id)
+    .maybeSingle()
+
+  if (assignProf?.auto_assign_jobs === false) {
+    return json(200, { ok: true, skipped: true, reason: 'Auto-assign is disabled in settings' })
+  }
+
   const dest = job.customers as unknown as { lat: number | null; lng: number | null; address: string | null } | null
   const dLat = dest?.lat ?? null
   const dLng = dest?.lng ?? null

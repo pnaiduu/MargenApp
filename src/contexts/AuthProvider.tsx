@@ -49,6 +49,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session?.user?.id, session?.user?.email])
 
   useEffect(() => {
+    if (!supabaseConfigured || !session?.user?.id) return
+    void supabase.rpc('ensure_owner_profile').then(({ error }) => {
+      if (error) console.warn('[auth] ensure_owner_profile:', error.message)
+    })
+  }, [session?.user?.id])
+
+  useEffect(() => {
     if (!supabaseConfigured) return
     const id = window.setTimeout(() => {
       setLoading((stillLoading) => {

@@ -27,7 +27,12 @@ import { cancelSubscriptionAtPeriodEnd, openStripeBillingPortal } from '../lib/s
 import { syncStripeAnalyticsLedger } from '../lib/stripeAnalytics'
 import { StripeAnalyticsSetupModal } from '../components/settings/StripeAnalyticsSetupModal'
 import { planById, type SubscriptionRow } from '../lib/plans'
-import { isDevBypassEmail } from '../lib/subscriptionAccess'
+import {
+  effectiveSubscriptionRow,
+  getTechnicianLimit,
+  isDevBypassEmail,
+} from '../lib/subscriptionAccess'
+import { OPEN_TEAM_INVITE_NAME } from '../lib/teamInvite'
 
 const PAGE_BG = '#fafaf8'
 const CARD_BORDER = '#ebebeb'
@@ -35,8 +40,8 @@ const CARD_BORDER = '#ebebeb'
 const NAV: { id: string; label: string }[] = [
   { id: 'profile', label: 'Profile' },
   { id: 'call-setup', label: 'Call Setup' },
-  { id: 'ai-receptionist', label: 'AI Receptionist' },
   { id: 'service-area', label: 'Service Area' },
+  { id: 'operations', label: 'Operations' },
   { id: 'subscription', label: 'Subscription' },
   { id: 'payments', label: 'Payments' },
   { id: 'appearance', label: 'Appearance' },
@@ -151,6 +156,7 @@ export function SettingsPage() {
   const [areaError, setAreaError] = useState<string | null>(null)
   const [areaOk, setAreaOk] = useState<string | null>(null)
   const [saasSubscription, setSaasSubscription] = useState<SubscriptionRow | null>(null)
+  const [technicianCount, setTechnicianCount] = useState(0)
   const [billingBusy, setBillingBusy] = useState(false)
   const [billingError, setBillingError] = useState<string | null>(null)
   const [stripeAnalyticsHint, setStripeAnalyticsHint] = useState<string | null>(null)
@@ -171,6 +177,10 @@ export function SettingsPage() {
   const [callChangeBusy, setCallChangeBusy] = useState(false)
   const [appearanceBusy, setAppearanceBusy] = useState(false)
   const [appearanceOk, setAppearanceOk] = useState<string | null>(null)
+  const [autoAssignJobs, setAutoAssignJobs] = useState(true)
+  const [autoSortSchedule, setAutoSortSchedule] = useState(true)
+  const [operationsBusy, setOperationsBusy] = useState(false)
+  const [operationsError, setOperationsError] = useState<string | null>(null)
 
   useEffect(() => {
     setAccentDraft(accentHex)
@@ -178,8 +188,13 @@ export function SettingsPage() {
   }, [accentHex])
 
   useEffect(() => {
-    const id = location.hash?.replace(/^#/, '')
-    if (!id || !id.startsWith('settings-section-')) return
+    const raw = location.hash?.replace(/^#/, '') ?? ''
+    const id = raw.startsWith('settings-section-')
+      ? raw
+      : raw
+        ? `settings-section-${raw}`
+        : ''
+    if (!id) return
     const t = window.setTimeout(() => {
       document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 120)
@@ -191,11 +206,11 @@ export function SettingsPage() {
     const userId = user.id
     let cancelled = false
     async function loadStripeState() {
-      const [profRes, subRes] = await Promise.all([
+      const [profRes, subRes, techCountRes] = await Promise.all([
         supabase
           .from('profiles')
           .select(
-            'company_name, business_phone, rings_before_ai, always_use_ai, business_hours, after_hours_message, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, stripe_analytics_key_hint, stripe_analytics_last_sync_at, vip_threshold_cents, margen_phone_number, margen_phone_sid, carrier, call_forwarding_active, twilio_forwarding_code',
+            'company_name, business_phone, rings_before_ai, always_use_ai, auto_assign_jobs, auto_sort_schedule, business_hours, after_hours_message, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, stripe_analytics_key_hint, stripe_analytics_last_sync_at, vip_threshold_cents, margen_phone_number, margen_phone_sid, carrier, call_forwarding_active, twilio_forwarding_code',
           )
           .eq('id', userId)
           .maybeSingle(),
@@ -204,6 +219,11 @@ export function SettingsPage() {
           .select('plan, status, current_period_end, stripe_customer_id, stripe_subscription_id')
           .eq('owner_id', userId)
           .maybeSingle(),
+        supabase
+          .from('technicians')
+          .select('id', { count: 'exact', head: true })
+          .eq('owner_id', userId)
+          .neq('name', OPEN_TEAM_INVITE_NAME),
       ])
       if (cancelled) return
       const { data, error } = profRes
@@ -216,12 +236,15 @@ export function SettingsPage() {
       } else {
         setSaasSubscription(null)
       }
+      setTechnicianCount(techCountRes.count ?? 0)
       setCompanyDraft(data?.company_name ?? '')
       setBusinessPhoneDraft(data?.business_phone ?? '')
       const rawRings = typeof data?.rings_before_ai === 'number' ? data.rings_before_ai : 3
       const clampedRings = Math.min(5, Math.max(1, Math.round(rawRings)))
       setRingsBeforeAiDraft(String(clampedRings))
       setAlwaysUseAi(Boolean((data as { always_use_ai?: boolean }).always_use_ai))
+      setAutoAssignJobs((data as { auto_assign_jobs?: boolean }).auto_assign_jobs !== false)
+      setAutoSortSchedule((data as { auto_sort_schedule?: boolean }).auto_sort_schedule !== false)
       setMargenPhone((data as { margen_phone_number?: string | null }).margen_phone_number ?? null)
       setMargenPhoneSid((data as { margen_phone_sid?: string | null }).margen_phone_sid ?? null)
       setCallForwardingActive(Boolean((data as { call_forwarding_active?: boolean }).call_forwarding_active))
@@ -441,6 +464,25 @@ export function SettingsPage() {
     setProfileBusy(false)
   }
 
+  async function persistOperationsSetting(
+    field: 'auto_assign_jobs' | 'auto_sort_schedule',
+    value: boolean,
+  ) {
+    if (!user) return
+    setOperationsBusy(true)
+    setOperationsError(null)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ [field]: value } as never)
+      .eq('id', user.id)
+    if (error) {
+      setOperationsError(error.message)
+      if (field === 'auto_assign_jobs') setAutoAssignJobs(!value)
+      else setAutoSortSchedule(!value)
+    }
+    setOperationsBusy(false)
+  }
+
   async function saveServiceAreaSection() {
     if (!user) return
     setAreaBusy(true)
@@ -598,6 +640,15 @@ export function SettingsPage() {
   const labelClass = 'mb-1.5 block text-xs font-medium text-[#555555]'
 
   const previewFg = foregroundOnAccent(accentDraft)
+
+  const effectiveSub = effectiveSubscriptionRow(saasSubscription, user?.email)
+  const subscriptionPlanId = effectiveSub?.plan ?? 'starter'
+  const technicianLimit = getTechnicianLimit(subscriptionPlanId)
+  const technicianUsageLabel = Number.isFinite(technicianLimit)
+    ? `${technicianCount} / ${technicianLimit} technicians`
+    : `${technicianCount} / unlimited technicians`
+  const showPlanUpgrade = subscriptionPlanId !== 'scale'
+  const hasSubscriptionCard = Boolean(saasSubscription) || isDevBypassEmail(user?.email)
 
   return (
     <div className="min-h-dvh" style={{ backgroundColor: PAGE_BG }}>
@@ -936,20 +987,6 @@ export function SettingsPage() {
               </div>
             </SettingsSectionCard>
 
-            <SettingsSectionCard id="ai-receptionist" title="AI Receptionist">
-              <p className="text-sm leading-relaxed text-[#555555]">
-                Call flow, voice, hours, and deploy to your phone agent.
-              </p>
-              <div className="mt-5">
-                <Link
-                  to="/settings/ai-receptionist"
-                  className="inline-flex rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)]"
-                >
-                  Open AI Receptionist
-                </Link>
-              </div>
-            </SettingsSectionCard>
-
             <SettingsSectionCard
               id="service-area"
               title="Service area"
@@ -975,70 +1012,182 @@ export function SettingsPage() {
               />
             </SettingsSectionCard>
 
+            <SettingsSectionCard id="operations" title="Operations">
+              <p className="text-sm leading-relaxed text-[#555555]">
+                Control how new jobs are assigned and how your schedule is ordered.
+              </p>
+              {operationsError ? (
+                <p className="mt-4 text-sm text-danger" role="alert">
+                  {operationsError}
+                </p>
+              ) : null}
+              <div className="mt-5 space-y-4">
+                <div className="rounded-xl border border-[#ebebeb] bg-[#fafafa] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-[#111111]">Auto-assign jobs</p>
+                      <p className="mt-1 text-xs leading-relaxed text-[#888888]">
+                        When on, new jobs are assigned to the best available technician by location and availability.
+                        When off, jobs stay unassigned until you assign them manually.
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs font-medium tabular-nums text-[#555555]">
+                        {autoAssignJobs ? 'On' : 'Off'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={autoAssignJobs}
+                        disabled={operationsBusy}
+                        onClick={() => {
+                          const next = !autoAssignJobs
+                          setAutoAssignJobs(next)
+                          void persistOperationsSetting('auto_assign_jobs', next)
+                        }}
+                        className={[
+                          'relative h-8 w-14 rounded-full border transition disabled:opacity-60',
+                          autoAssignJobs
+                            ? 'border-[var(--margen-accent)] bg-[var(--margen-accent)]'
+                            : 'border-[#ebebeb] bg-[#e8e8e8]',
+                        ].join(' ')}
+                      >
+                        <span
+                          className={[
+                            'absolute top-1 h-6 w-6 rounded-full bg-white shadow transition',
+                            autoAssignJobs ? 'left-7' : 'left-1',
+                          ].join(' ')}
+                        />
+                        <span className="sr-only">{autoAssignJobs ? 'On' : 'Off'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-[#ebebeb] bg-[#fafafa] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-[#111111]">Auto-sort schedule</p>
+                      <p className="mt-1 text-xs leading-relaxed text-[#888888]">
+                        When on, the schedule is optimized by location and urgency. When off, you control job order
+                        manually on the schedule page.
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs font-medium tabular-nums text-[#555555]">
+                        {autoSortSchedule ? 'On' : 'Off'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={autoSortSchedule}
+                        disabled={operationsBusy}
+                        onClick={() => {
+                          const next = !autoSortSchedule
+                          setAutoSortSchedule(next)
+                          void persistOperationsSetting('auto_sort_schedule', next)
+                        }}
+                        className={[
+                          'relative h-8 w-14 rounded-full border transition disabled:opacity-60',
+                          autoSortSchedule
+                            ? 'border-[var(--margen-accent)] bg-[var(--margen-accent)]'
+                            : 'border-[#ebebeb] bg-[#e8e8e8]',
+                        ].join(' ')}
+                      >
+                        <span
+                          className={[
+                            'absolute top-1 h-6 w-6 rounded-full bg-white shadow transition',
+                            autoSortSchedule ? 'left-7' : 'left-1',
+                          ].join(' ')}
+                        />
+                        <span className="sr-only">{autoSortSchedule ? 'On' : 'Off'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </SettingsSectionCard>
+
             <SettingsSectionCard id="subscription" title="Subscription">
               <div className="flex flex-wrap items-center gap-2">
                 {isDevBypassEmail(user?.email) ? (
                   <span className="inline-flex rounded-full border border-[#ebebeb] bg-[#f0f0f0] px-2.5 py-0.5 text-[11px] font-medium text-[#666666]">
-                    Dev account · full access
+                    Dev account · full access (Scale)
                   </span>
                 ) : null}
               </div>
+              <p className="mt-3 text-sm text-[#555555]">
+                <span className="text-[#888888]">Technicians on your plan</span>{' '}
+                <span className="font-medium text-[#111111]">{technicianUsageLabel}</span>
+              </p>
 
-              <div
-                className="mt-5 rounded-xl border border-[#ebebeb] bg-[#fafafa] p-5"
-              >
-                {saasSubscription ? (
+              <div className="mt-5 rounded-xl border border-[#ebebeb] bg-[#fafafa] p-5">
+                {hasSubscriptionCard && effectiveSub ? (
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-lg font-semibold capitalize text-[#111111]">
-                          {planById(saasSubscription.plan)?.name ?? saasSubscription.plan}
+                          {planById(effectiveSub.plan)?.name ?? effectiveSub.plan}
                         </p>
                         <p className="mt-1 text-sm text-[#555555]">
                           {(() => {
-                            const p = planById(saasSubscription.plan)
+                            const p = planById(effectiveSub.plan)
                             if (!p || !Number.isFinite(p.priceUsd) || p.priceUsd <= 0) return '—'
                             return `$${p.priceUsd.toLocaleString()} / month`
                           })()}
                         </p>
                       </div>
                       <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium capitalize text-[#111111] ring-1 ring-[#ebebeb]">
-                        {saasSubscription.status}
+                        {effectiveSub.status}
                       </span>
                     </div>
                     <p className="text-sm text-[#555555]">
                       <span className="text-[#888888]">Next billing</span>{' '}
                       <span className="font-medium text-[#111111]">
-                        {saasSubscription.current_period_end
-                          ? new Date(saasSubscription.current_period_end).toLocaleDateString(undefined, {
+                        {effectiveSub.current_period_end
+                          ? new Date(effectiveSub.current_period_end).toLocaleDateString(undefined, {
                               dateStyle: 'long',
                             })
                           : '—'}
                       </span>
                     </p>
                     <div className="flex flex-wrap gap-2 pt-1">
+                      {showPlanUpgrade ? (
+                        <Link
+                          to="/pricing"
+                          className="inline-flex items-center justify-center rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
+                        >
+                          Upgrade plan
+                        </Link>
+                      ) : null}
                       <Link
                         to="/pricing"
-                        className="inline-flex items-center justify-center rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
+                        className="inline-flex items-center justify-center rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#f5f5f5]"
                       >
-                        Change plan
+                        {showPlanUpgrade ? 'View plans' : 'Change plan'}
                       </Link>
-                      <button
-                        type="button"
-                        disabled={billingBusy || ['canceled', 'unpaid', 'incomplete_expired'].includes(saasSubscription.status)}
-                        onClick={() => void handleCancelSubscription()}
-                        className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#f5f5f5] disabled:opacity-50"
-                      >
-                        Cancel at period end
-                      </button>
-                      <button
-                        type="button"
-                        disabled={billingBusy}
-                        onClick={() => void handleBillingPortal()}
-                        className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#f5f5f5] disabled:opacity-50"
-                      >
-                        Manage billing
-                      </button>
+                      {saasSubscription && !isDevBypassEmail(user?.email) ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={
+                              billingBusy ||
+                              ['canceled', 'unpaid', 'incomplete_expired'].includes(saasSubscription.status)
+                            }
+                            onClick={() => void handleCancelSubscription()}
+                            className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#f5f5f5] disabled:opacity-50"
+                          >
+                            Cancel at period end
+                          </button>
+                          <button
+                            type="button"
+                            disabled={billingBusy}
+                            onClick={() => void handleBillingPortal()}
+                            className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#f5f5f5] disabled:opacity-50"
+                          >
+                            Manage billing
+                          </button>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                 ) : (

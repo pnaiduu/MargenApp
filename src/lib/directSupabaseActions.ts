@@ -31,6 +31,47 @@ type TechPick = {
   last_lng: number | null
 }
 
+function buildCustomerDisplayName(firstName: string, lastName: string) {
+  return `${firstName.trim()} ${lastName.trim()}`.replace(/\s+/g, ' ').trim()
+}
+
+/** Find existing customer by full name (case-insensitive) or create a new row. */
+export async function resolveOrCreateCustomerByName(
+  supabase: Supabase,
+  ownerId: string,
+  firstName: string,
+  lastName: string,
+): Promise<{ customerId: string | null; error: Error | null }> {
+  const first = firstName.trim()
+  const last = lastName.trim()
+  if (!first || !last) {
+    return { customerId: null, error: new Error('Enter customer first and last name.') }
+  }
+  const fullName = buildCustomerDisplayName(first, last)
+
+  const { data: matches, error: findErr } = await supabase
+    .from('customers')
+    .select('id, name')
+    .eq('owner_id', ownerId)
+    .ilike('name', fullName)
+    .limit(1)
+
+  if (findErr) return { customerId: null, error: new Error(findErr.message) }
+  const existing = matches?.[0]
+  if (existing?.id) return { customerId: existing.id, error: null }
+
+  const { data: created, error: insErr } = await supabase
+    .from('customers')
+    .insert({ owner_id: ownerId, name: fullName })
+    .select('id')
+    .single()
+
+  if (insErr || !created) {
+    return { customerId: null, error: new Error(insErr?.message ?? 'Could not create customer') }
+  }
+  return { customerId: created.id, error: null }
+}
+
 export async function demoAutoAssignJob(supabase: Supabase, jobId: string): Promise<{ note: string | null; error: Error | null }> {
   const { data: job, error: jobErr } = await supabase
     .from('jobs')
@@ -39,6 +80,16 @@ export async function demoAutoAssignJob(supabase: Supabase, jobId: string): Prom
     .maybeSingle()
 
   if (jobErr || !job) return { note: null, error: new Error(jobErr?.message ?? 'Job not found') }
+
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('auto_assign_jobs')
+    .eq('id', job.owner_id)
+    .maybeSingle()
+
+  if (prof?.auto_assign_jobs === false) {
+    return { note: null, error: null }
+  }
 
   const dest = job.customers as { lat: number | null; lng: number | null } | null
   const dLat = dest?.lat ?? null
@@ -74,15 +125,15 @@ export async function demoAutoAssignJob(supabase: Supabase, jobId: string): Prom
     return { note: null, error: new Error('Job has no customer coordinates') }
   }
 
-  const { data: prof } = await supabase
+  const { data: areaProf } = await supabase
     .from('profiles')
     .select('service_area_center_lat, service_area_center_lng, service_area_radius')
     .eq('id', job.owner_id)
     .maybeSingle()
 
-  const centerLat = prof?.service_area_center_lat ?? null
-  const centerLng = prof?.service_area_center_lng ?? null
-  const radiusMi = prof?.service_area_radius ?? null
+  const centerLat = areaProf?.service_area_center_lat ?? null
+  const centerLng = areaProf?.service_area_center_lng ?? null
+  const radiusMi = areaProf?.service_area_radius ?? null
 
   if (centerLat == null || centerLng == null || radiusMi == null || radiusMi <= 0) {
     await fail('Service area is not set, so auto-assignment is disabled.', 'No available technicians for this job', '/settings')

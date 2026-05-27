@@ -6,6 +6,7 @@ import {
   createInvoiceDirect,
   createJobDirect,
   reassignJobDirect,
+  resolveOrCreateCustomerByName,
 } from '../lib/directSupabaseActions'
 import { supabase } from '../lib/supabase'
 import { easePremium, staggerContainer, staggerItem } from '../lib/motion'
@@ -42,8 +43,8 @@ export function JobsPage() {
   const [createTitle, setCreateTitle] = useState('')
   const [createDesc, setCreateDesc] = useState('')
   const [createUrgency, setCreateUrgency] = useState<'routine' | 'urgent' | 'emergency'>('routine')
-  const [createCustomerId, setCreateCustomerId] = useState<string>('')
-  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([])
+  const [createCustomerFirstName, setCreateCustomerFirstName] = useState('')
+  const [createCustomerLastName, setCreateCustomerLastName] = useState('')
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelJob, setCancelJob] = useState<JobRow | null>(null)
   const [cancelReason, setCancelReason] = useState<'customer_cancelled' | 'technician_unavailable' | 'rescheduled'>(
@@ -88,26 +89,6 @@ export function JobsPage() {
       ac.abort()
     }
   }, [user, jobsRefresh])
-
-  useEffect(() => {
-    if (!user) return
-    const ownerId = user.id
-    const ac = new AbortController()
-    async function loadCustomers() {
-      const { data, error: qErr } = await supabase
-        .from('customers')
-        .select('id, name')
-        .eq('owner_id', ownerId)
-        .order('name')
-        .abortSignal(ac.signal)
-      if (ac.signal.aborted) return
-      if (!qErr && data) setCustomers(data as { id: string; name: string }[])
-    }
-    void loadCustomers()
-    return () => {
-      ac.abort()
-    }
-  }, [user])
 
   useEffect(() => {
     if (!user) return
@@ -187,18 +168,25 @@ export function JobsPage() {
   async function submitCreate() {
     if (!user) return
     const ownerId = user.id
-    if (!createCustomerId) {
-      setError('Select a customer for the job.')
-      return
-    }
     if (!createTitle.trim()) {
       setError('Enter a job title.')
       return
     }
     setBusyJobId('create')
     setError(null)
+    const { customerId, error: custErr } = await resolveOrCreateCustomerByName(
+      supabase,
+      ownerId,
+      createCustomerFirstName,
+      createCustomerLastName,
+    )
+    if (custErr || !customerId) {
+      setError(custErr?.message ?? 'Could not resolve customer.')
+      setBusyJobId(null)
+      return
+    }
     const { error: fnErr } = await createJobDirect(supabase, ownerId, {
-      customer_id: createCustomerId,
+      customer_id: customerId,
       title: createTitle.trim(),
       description: createDesc.trim() || undefined,
       urgency: createUrgency,
@@ -210,7 +198,8 @@ export function JobsPage() {
     setCreateTitle('')
     setCreateDesc('')
     setCreateUrgency('routine')
-    setCreateCustomerId('')
+    setCreateCustomerFirstName('')
+    setCreateCustomerLastName('')
   }
 
   async function submitReassign() {
@@ -493,21 +482,32 @@ export function JobsPage() {
             >
               <p className="text-sm font-semibold text-[var(--color-margen-text)]">New job</p>
 
-              <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                Customer
-              </label>
-              <select
-                value={createCustomerId}
-                onChange={(e) => setCreateCustomerId(e.target.value)}
-                className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
-              >
-                <option value="">Select…</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
+                    First name
+                  </label>
+                  <input
+                    value={createCustomerFirstName}
+                    onChange={(e) => setCreateCustomerFirstName(e.target.value)}
+                    autoComplete="given-name"
+                    className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
+                    placeholder="Jane"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
+                    Last name
+                  </label>
+                  <input
+                    value={createCustomerLastName}
+                    onChange={(e) => setCreateCustomerLastName(e.target.value)}
+                    autoComplete="family-name"
+                    className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
+                    placeholder="Smith"
+                  />
+                </div>
+              </div>
 
               <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
                 Title
