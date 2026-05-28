@@ -16,6 +16,11 @@ export function inviteJoinAbsoluteUrl(token: string) {
   return `${base}${joinPath(token)}`
 }
 
+/** Opens the Margen technician app join flow (Expo scheme `margen`). */
+export function inviteAppDeepLink(token: string) {
+  return `margen://join/${encodeURIComponent(token.trim())}`
+}
+
 /** Synthetic login email derived from invite token (no inbox; used only with Supabase Auth). */
 export function inviteLoginEmail(token: string) {
   const domain = import.meta.env.VITE_INVITE_EMAIL_DOMAIN?.trim() || 'invite.trymargen.com'

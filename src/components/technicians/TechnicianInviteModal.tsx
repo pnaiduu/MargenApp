@@ -2,7 +2,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../ui/Modal'
 import { supabase } from '../../lib/supabase'
-import { inviteJoinAbsoluteUrl } from '../../lib/inviteUrl'
+import { inviteAppDeepLink, inviteJoinAbsoluteUrl } from '../../lib/inviteUrl'
 import { easePremium, tapButton } from '../../lib/motion'
 import { motion } from 'framer-motion'
 
@@ -49,6 +49,7 @@ export function TechnicianInviteModal({
   const [copied, setCopied] = useState(false)
 
   const inviteUrl = token ? inviteJoinAbsoluteUrl(token) : ''
+  const appDeepLink = token ? inviteAppDeepLink(token) : ''
 
   function reset() {
     setStep('form')
@@ -141,7 +142,9 @@ export function TechnicianInviteModal({
 
   function sendViaText() {
     if (!inviteUrl) return
-    const body = encodeURIComponent(`You're invited to Margen — join here: ${inviteUrl}`)
+    const body = encodeURIComponent(
+      `You're invited to join your team on Margen. Open in the app: ${appDeepLink}\nOr use this link: ${inviteUrl}`,
+    )
     const smsPhone = normalizeSmsPhone(invitedPhone)
     const href = smsPhone ? `sms:${smsPhone}?&body=${body}` : `sms:&body=${body}`
     const a = document.createElement('a')
@@ -154,7 +157,7 @@ export function TechnicianInviteModal({
     <Modal
       open={open}
       onClose={handleClose}
-      title={step === 'form' ? 'Invite technician' : 'Share invite'}
+      title={step === 'form' ? 'Invite technician' : 'Send invite to technician\'s phone'}
       panelClassName={step === 'share' ? 'max-w-lg' : 'max-w-md'}
     >
       {step === 'form' ? (
@@ -235,8 +238,8 @@ export function TechnicianInviteModal({
       ) : (
         <div className="space-y-5">
           <p className="text-sm text-[var(--color-margen-muted)]">
-            Scan the code or share this link. It opens your team join page (trymargen.com/join/…) so they can download the
-            Margen technician app and sign in.
+            Text or share this link to their phone. It opens the Margen technician app when installed, or a page to
+            download the app and join your team.
           </p>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             <div className="shrink-0 rounded-lg border border-[var(--color-margen-border)] bg-white p-3">
@@ -268,7 +271,7 @@ export function TechnicianInviteModal({
                   whileTap={tapButton}
                   transition={{ duration: 0.14, ease: easePremium }}
                 >
-                  Send via text
+                  Send invite to technician&apos;s phone
                 </motion.button>
               </div>
             </div>

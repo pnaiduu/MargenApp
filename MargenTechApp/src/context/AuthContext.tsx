@@ -9,6 +9,11 @@ type AuthCtx = {
   loading: boolean
   configured: boolean
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>
+  signUp: (
+    email: string,
+    password: string,
+    meta?: { fullName?: string; technicianInviteToken?: string },
+  ) => Promise<{ error: Error | null; session: Session | null }>
   signOut: () => Promise<void>
 }
 
@@ -45,6 +50,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? new Error(error.message) : null }
   }, [])
 
+  const signUp = useCallback(
+    async (
+      email: string,
+      password: string,
+      meta?: { fullName?: string; technicianInviteToken?: string },
+    ) => {
+      if (!supabaseConfigured) return { error: new Error('Supabase not configured'), session: null }
+      const data: Record<string, string> = {
+        full_name: meta?.fullName?.trim() ?? '',
+        signup_role: 'technician',
+      }
+      const tok = meta?.technicianInviteToken?.trim()
+      if (tok) data.technician_invite_token = tok
+      const { data: result, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { data },
+      })
+      return {
+        error: error ? new Error(error.message) : null,
+        session: result.session ?? null,
+      }
+    },
+    [],
+  )
+
   const signOut = useCallback(async () => {
     if (!supabaseConfigured) return
     await clearAppViewMode()
@@ -58,9 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       configured: supabaseConfigured,
       signIn,
+      signUp,
       signOut,
     }),
-    [session, loading, signIn, signOut],
+    [session, loading, signIn, signUp, signOut],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

@@ -158,6 +158,22 @@ export default function LoginRoute() {
             <Text style={[styles.btnText, { color: colors.accentFg }]}>{busy ? 'Signing in…' : 'Sign in'}</Text>
           </Pressable>
 
+          <Pressable
+            onPress={() => router.push('/signup')}
+            disabled={busy}
+            style={({ pressed }) => [
+              styles.secondaryBtn,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                opacity: pressed || busy ? 0.88 : 1,
+                minHeight: layout.tapMin,
+              },
+            ]}
+          >
+            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Create technician account</Text>
+          </Pressable>
+
           {showOwnerDemo ? (
             <Pressable
               onPress={() => void onOwnerDemo()}
@@ -207,6 +223,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   btnText: { fontSize: typography.body, fontWeight: '800' },
+  secondaryBtn: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: layout.radius,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryBtnText: { fontSize: typography.body, fontWeight: '700' },
   demoBtn: {
     marginTop: 12,
     borderWidth: 1,

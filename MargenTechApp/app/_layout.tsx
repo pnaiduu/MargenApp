@@ -10,7 +10,11 @@ export default function RootLayout() {
           animation: 'fade',
           contentStyle: { backgroundColor: '#FAFAF8' },
         }}
-      />
+      >
+        <Stack.Screen name="login" options={{ animation: 'fade' }} />
+        <Stack.Screen name="signup" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="join/[token]" options={{ animation: 'fade' }} />
+      </Stack>
     </AppProviders>
   )
 }

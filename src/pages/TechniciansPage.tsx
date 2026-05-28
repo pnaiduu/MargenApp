@@ -233,7 +233,7 @@ export function TechniciansPage() {
             onClick={() => tryOpenInvite()}
             className="shrink-0 rounded-md border border-transparent bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] hover:opacity-90 disabled:opacity-50"
           >
-            Invite technician
+            Send invite to technician&apos;s phone
           </button>
         </div>
       </div>
