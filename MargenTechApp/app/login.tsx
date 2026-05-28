@@ -1,248 +1,78 @@
-import { useMemo, useState } from 'react'
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { isDemoOwnerEmail } from '../src/constants/demoOwner'
-import { useAuth } from '../src/context/AuthContext'
-import { useTechnician } from '../src/context/TechnicianContext'
-import { useTheme } from '../src/context/ThemeContext'
-import { setAppViewMode } from '../src/lib/viewMode'
 import { layout, typography } from '../src/theme'
 
 export default function LoginRoute() {
   const insets = useSafeAreaInsets()
-  const { colors } = useTheme()
-  const { signIn, configured } = useAuth()
-  const { refresh: refreshTech } = useTechnician()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [noTech, setNoTech] = useState(false)
-
-  const showOwnerDemo = useMemo(() => isDemoOwnerEmail(email), [email])
-
-  async function onSubmit() {
-    setError(null)
-    setNoTech(false)
-    if (!configured) {
-      setError('Supabase is not configured.')
-      return
-    }
-    setBusy(true)
-    const { error: signErr } = await signIn(email.trim(), password)
-    if (signErr) {
-      setBusy(false)
-      setError(signErr.message)
-      return
-    }
-    await setAppViewMode('technician')
-    const tech = await refreshTech()
-    setBusy(false)
-    if (!tech) {
-      setNoTech(true)
-      return
-    }
-    router.replace('/(main)/(tabs)/home')
-  }
-
-  async function onOwnerDemo() {
-    setError(null)
-    setNoTech(false)
-    if (!configured) {
-      setError('Supabase is not configured.')
-      return
-    }
-    if (!showOwnerDemo) return
-    setBusy(true)
-    const { error: signErr } = await signIn(email.trim(), password)
-    if (signErr) {
-      setBusy(false)
-      setError(signErr.message)
-      return
-    }
-    await setAppViewMode('owner_demo')
-    setBusy(false)
-    router.replace('/owner-demo')
-  }
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: colors.page }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          flexGrow: 1,
+    <View
+      style={[
+        styles.root,
+        {
           paddingTop: insets.top + 24,
           paddingBottom: insets.bottom + 32,
           paddingHorizontal: layout.pad,
-          justifyContent: 'center',
-        }}
-      >
-        <View>
-          <Text style={[styles.wordmark, { color: colors.text }]}>Margen</Text>
-          <Text style={[styles.title, { color: colors.text }]}>Technician sign in</Text>
-          <Text style={[styles.hint, { color: colors.muted }]}>Use the email and password from your employer.</Text>
+        },
+      ]}
+    >
+      <View style={styles.top}>
+        <Text style={styles.wordmark}>Margen</Text>
+        <Text style={styles.tagline}>Field operations, simplified</Text>
+      </View>
 
-          {error ? (
-            <Text style={styles.err} accessibilityRole="alert">
-              {error}
-            </Text>
-          ) : null}
-          {noTech ? (
-            <Text style={styles.err}>
-              Ask your employer to send you an invite link so this account can be linked to a technician profile.
-            </Text>
-          ) : null}
+      <View style={styles.actions}>
+        <Pressable
+          onPress={() => router.push('/technician-login')}
+          style={({ pressed }) => [styles.primaryBtn, pressed ? styles.btnPressed : null]}
+        >
+          <Text style={styles.primaryBtnText}>Sign in as Technician</Text>
+        </Pressable>
 
-          <Text style={[styles.fieldLabel, { color: colors.text }]}>Email</Text>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoComplete="email"
-            placeholder="you@company.com"
-            placeholderTextColor={colors.muted2}
-            style={[
-              styles.input,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-                color: colors.text,
-              },
-            ]}
-          />
+        <Pressable
+          onPress={() => router.push('/signup')}
+          style={({ pressed }) => [styles.secondaryBtn, pressed ? styles.btnPressed : null]}
+        >
+          <Text style={styles.secondaryBtnText}>Sign up as Technician</Text>
+        </Pressable>
 
-          <Text style={[styles.fieldLabel, { color: colors.text }]}>Password</Text>
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoComplete="password"
-            placeholder="••••••••"
-            placeholderTextColor={colors.muted2}
-            style={[
-              styles.input,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-                color: colors.text,
-              },
-            ]}
-          />
-
-          <Pressable
-            onPress={() => void onSubmit()}
-            disabled={busy}
-            style={({ pressed }) => [
-              styles.btn,
-              {
-                backgroundColor: colors.accent,
-                opacity: pressed || busy ? 0.88 : 1,
-                minHeight: layout.tapMin,
-              },
-            ]}
-          >
-            <Text style={[styles.btnText, { color: colors.accentFg }]}>{busy ? 'Signing in…' : 'Sign in'}</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push('/signup')}
-            disabled={busy}
-            style={({ pressed }) => [
-              styles.secondaryBtn,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-                opacity: pressed || busy ? 0.88 : 1,
-                minHeight: layout.tapMin,
-              },
-            ]}
-          >
-            <Text style={[styles.secondaryBtnText, { color: colors.text }]}>Create technician account</Text>
-          </Pressable>
-
-          {showOwnerDemo ? (
-            <Pressable
-              onPress={() => void onOwnerDemo()}
-              disabled={busy}
-              style={({ pressed }) => [
-                styles.demoBtn,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: colors.surface,
-                  opacity: pressed || busy ? 0.88 : 1,
-                  minHeight: layout.tapMin,
-                },
-              ]}
-            >
-              <Text style={[styles.demoBtnText, { color: colors.text }]}>Continue as Owner (Demo)</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <Pressable
+          onPress={() => router.push('/owner-login')}
+          style={({ pressed }) => [styles.secondaryBtn, pressed ? styles.btnPressed : null]}
+        >
+          <Text style={styles.secondaryBtnText}>Owner Login</Text>
+        </Pressable>
+      </View>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  wordmark: { fontSize: 32, fontWeight: '800', letterSpacing: -0.5 },
-  title: { marginTop: 12, fontSize: typography.hero, fontWeight: '700' },
-  hint: { marginTop: 8, fontSize: typography.body, lineHeight: 24 },
-  fieldLabel: {
-    marginTop: 20,
-    marginBottom: 8,
-    fontSize: typography.small,
-    fontWeight: '600',
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: layout.radius,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: typography.body,
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  top: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  wordmark: { fontSize: 40, fontWeight: '900', letterSpacing: -0.7, color: '#111111' },
+  tagline: { marginTop: 10, fontSize: typography.body, color: '#111111', opacity: 0.85 },
+  actions: { gap: 12 },
+  btnPressed: { opacity: 0.9 },
+  primaryBtn: {
     minHeight: layout.tapMin,
-  },
-  btn: {
-    marginTop: 28,
     borderRadius: layout.radius,
+    backgroundColor: '#111111',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
   },
-  btnText: { fontSize: typography.body, fontWeight: '800' },
+  primaryBtnText: { fontSize: typography.body, fontWeight: '800', color: '#FFFFFF' },
   secondaryBtn: {
-    marginTop: 12,
-    borderWidth: 1,
+    minHeight: layout.tapMin,
     borderRadius: layout.radius,
+    borderWidth: 1,
+    borderColor: '#E8E8E4',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
   },
-  secondaryBtnText: { fontSize: typography.body, fontWeight: '700' },
-  demoBtn: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderRadius: layout.radius,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  demoBtnText: { fontSize: typography.body, fontWeight: '700' },
-  err: {
-    marginTop: 16,
-    fontSize: typography.small,
-    color: '#DC2626',
-    lineHeight: 22,
-  },
+  secondaryBtnText: { fontSize: typography.body, fontWeight: '800', color: '#111111' },
 })
