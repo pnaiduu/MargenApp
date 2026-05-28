@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
 import { easePremium, tapButton } from '../lib/motion'
-import type { PlanId } from '../lib/plans'
+import { FOUNDING_MEMBER_BANNER, type PlanId } from '../lib/plans'
 import { redirectToSubscriptionCheckout } from '../lib/stripeClientCheckout'
 
 type Billing = 'monthly' | 'annual'
@@ -14,7 +14,9 @@ type PlanCard = {
   id: PlanId
   name: string
   monthly: number
+  foundingMonthly: number
   annual: number
+  foundingAnnual: number
   techLine: string
   included: FeatureRow[]
   locked: FeatureRow[]
@@ -27,7 +29,9 @@ const PLANS: PlanCard[] = [
     id: 'starter',
     name: 'Starter',
     monthly: 500,
+    foundingMonthly: 400,
     annual: 5000,
+    foundingAnnual: 4000,
     techLine: 'Up to 5 technicians',
     included: [
       { text: 'Up to 5 technicians', included: true },
@@ -51,7 +55,9 @@ const PLANS: PlanCard[] = [
     id: 'growth',
     name: 'Growth',
     monthly: 800,
+    foundingMonthly: 640,
     annual: 8000,
+    foundingAnnual: 6400,
     techLine: 'Up to 20 technicians',
     popular: true,
     included: [
@@ -80,7 +86,9 @@ const PLANS: PlanCard[] = [
     id: 'scale',
     name: 'Scale',
     monthly: 2000,
+    foundingMonthly: 1600,
     annual: 20000,
+    foundingAnnual: 16000,
     techLine: 'Unlimited technicians',
     contactSales: true,
     included: [
@@ -211,8 +219,7 @@ export function PricingPage() {
           className="mb-10 rounded-2xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-3 text-center sm:px-6"
         >
           <p className="text-sm font-medium text-[var(--color-margen-text)] sm:text-base">
-            Founding member pricing available — lock in{' '}
-            <span className="font-semibold text-[var(--margen-accent)]">50% off forever</span>. Limited spots.
+            {FOUNDING_MEMBER_BANNER}
           </p>
         </motion.div>
 
@@ -300,16 +307,23 @@ export function PricingPage() {
                 ) : null}
                 <h2 className="text-xl font-bold text-[var(--color-margen-text)]">{plan.name}</h2>
                 <p className="mt-1 text-sm text-[var(--color-margen-muted)]">{plan.techLine}</p>
-                <p className="mt-5 flex flex-wrap items-baseline gap-1">
+                <p className="mt-5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-lg tabular-nums text-[var(--color-margen-muted)] line-through">
+                    ${(billing === 'monthly' ? plan.monthly : plan.annual).toLocaleString()}
+                  </span>
                   <span className="text-4xl font-bold tabular-nums tracking-tight text-[var(--color-margen-text)]">
-                    {billing === 'monthly' ? `$${plan.monthly.toLocaleString()}` : `$${plan.annual.toLocaleString()}`}
+                    ${(billing === 'monthly' ? plan.foundingMonthly : plan.foundingAnnual).toLocaleString()}
                   </span>
                   <span className="text-sm text-[var(--color-margen-muted)]">
                     {billing === 'monthly' ? '/month' : '/year'}
                   </span>
                 </p>
+                <p className="mt-1 text-sm font-medium text-[var(--color-margen-text)]">Lock in this price forever</p>
                 <p className="mt-1 text-xs text-[var(--color-margen-muted)]">
                   {billing === 'annual' ? 'Billed annually · 10× monthly (2 months free)' : 'Per workspace · billed monthly'}
+                </p>
+                <p className="mt-3 text-xs leading-relaxed text-[var(--color-margen-muted)]">
+                  Price locked for life for founding members. New customers after launch pay full price.
                 </p>
 
                 <ul className="mt-6 flex-1 space-y-2.5 text-sm">

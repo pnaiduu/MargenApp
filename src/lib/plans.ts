@@ -10,12 +10,17 @@ export type SubscriptionRow = {
 
 const ACTIVE = new Set(['active', 'trialing', 'past_due'])
 
-/** Summary rows for Settings / Subscribe copy (detailed marketing lives on Pricing page). */
+/** Founding member pricing (20% off list price, locked for life). */
+export const FOUNDING_MEMBER_BANNER =
+  'Founding member pricing — lock in 20% off forever. This offer ends soon.'
+
 export const PRICING_PLANS: {
   id: PlanId
   name: string
   priceUsd: number
+  foundingPriceUsd: number
   priceAnnualUsd: number
+  foundingPriceAnnualUsd: number
   interval: string
   techLimit: number | null
   popular?: boolean
@@ -24,7 +29,9 @@ export const PRICING_PLANS: {
     id: 'starter',
     name: 'Starter',
     priceUsd: 500,
+    foundingPriceUsd: 400,
     priceAnnualUsd: 5000,
+    foundingPriceAnnualUsd: 4000,
     interval: 'month',
     techLimit: 5,
   },
@@ -32,7 +39,9 @@ export const PRICING_PLANS: {
     id: 'growth',
     name: 'Growth',
     priceUsd: 800,
+    foundingPriceUsd: 640,
     priceAnnualUsd: 8000,
+    foundingPriceAnnualUsd: 6400,
     interval: 'month',
     techLimit: 20,
     popular: true,
@@ -41,7 +50,9 @@ export const PRICING_PLANS: {
     id: 'scale',
     name: 'Scale',
     priceUsd: 2000,
+    foundingPriceUsd: 1600,
     priceAnnualUsd: 20000,
+    foundingPriceAnnualUsd: 16000,
     interval: 'month',
     techLimit: null,
   },

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { MargenLogo } from '../components/branding/MargenLogo'
 import { SpaLink } from '../components/SpaLink'
 import { useAuth } from '../contexts/useAuth'
-import { PRICING_PLANS } from '../lib/plans'
+import { PRICING_PLANS, FOUNDING_MEMBER_BANNER } from '../lib/plans'
 
 const CALENDLY_AUDIT = 'https://calendly.com/davynaidu/30min'
 
@@ -139,6 +139,9 @@ export function LandingPage() {
 
         <section className="border-b border-[#ebebeb] bg-[#fafaf8] px-6 py-14 sm:px-8 sm:py-20">
           <div className="mx-auto max-w-6xl">
+            <div className="mb-10 rounded-xl border border-[#ebebeb] bg-white px-4 py-3 text-center sm:px-6">
+              <p className="text-sm font-medium text-[#111111] sm:text-base">{FOUNDING_MEMBER_BANNER}</p>
+            </div>
             <div className="text-center">
               <h2 className="section-title">Choose a plan</h2>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-[#555555]">
@@ -160,12 +163,21 @@ export function LandingPage() {
                     ) : null}
                   </div>
                   <h3 className="mt-2 card-title text-lg">{plan.name}</h3>
-                  <p className="mt-3 text-2xl font-semibold tabular-nums text-[#111111]">
-                    ${plan.priceUsd.toLocaleString()}
-                    <span className="text-sm font-normal text-[#888888]">/mo</span>
+                  <p className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span className="text-base tabular-nums text-[#888888] line-through">
+                      ${plan.priceUsd.toLocaleString()}
+                    </span>
+                    <span className="text-2xl font-semibold tabular-nums text-[#111111]">
+                      ${plan.foundingPriceUsd.toLocaleString()}
+                      <span className="text-sm font-normal text-[#888888]">/mo</span>
+                    </span>
                   </p>
+                  <p className="mt-1 text-sm font-medium text-[#111111]">Lock in this price forever</p>
                   <p className="mt-1 text-xs text-[#888888]">
                     {plan.techLimit == null ? 'Unlimited technicians' : `Up to ${plan.techLimit} technicians`}
+                  </p>
+                  <p className="mt-3 text-xs leading-relaxed text-[#888888]">
+                    Price locked for life for founding members. New customers after launch pay full price.
                   </p>
                   <div className="mt-6">
                     {user ? (
