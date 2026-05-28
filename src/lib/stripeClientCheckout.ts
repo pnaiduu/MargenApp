@@ -1,14 +1,11 @@
-import { loadStripe } from '@stripe/stripe-js'
 import type { PlanId } from './plans'
+import { supabase } from './supabase'
 
-let stripePromise: ReturnType<typeof loadStripe> | null = null
-
-function getPublishableKey(): string {
-  const k = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-  if (!k || typeof k !== 'string') {
-    throw new Error('Missing VITE_STRIPE_PUBLISHABLE_KEY in environment.')
+function fnMessage(data: unknown, err: { message?: string } | null): string {
+  if (data && typeof data === 'object' && 'error' in data && (data as { error: string }).error) {
+    return String((data as { error: string }).error)
   }
-  return k.trim()
+  return err?.message ?? 'Request failed'
 }
 
 function priceIdForPlan(plan: PlanId, billing: 'monthly' | 'annual'): string {
@@ -39,10 +36,7 @@ export function checkoutSiteOrigin(): string {
   return window.location.origin
 }
 
-/**
- * Client-only Stripe Checkout (legacy Stripe.js flow).
- * Pass `ownerId` + `plan` via client_reference_id; webhook maps Price ID → plan when metadata is absent.
- */
+/** Create a Stripe Checkout Session via Edge Function, then redirect to hosted checkout. */
 export async function redirectToSubscriptionCheckout(params: {
   plan: PlanId
   billing: 'monthly' | 'annual'
@@ -50,44 +44,21 @@ export async function redirectToSubscriptionCheckout(params: {
   customerEmail: string
   signal?: AbortSignal
 }): Promise<void> {
-  const { plan, billing, ownerId, customerEmail, signal } = params
+  const { plan, billing, signal } = params
   if (signal?.aborted) return
-  const origin = checkoutSiteOrigin()
-  const successUrl = `${origin}/dashboard?session_id={CHECKOUT_SESSION_ID}`
-  const cancelUrl = `${origin}/pricing`
 
-  if (!stripePromise) {
-    stripePromise = loadStripe(getPublishableKey())
-  }
-  const stripe = await stripePromise
+  const priceId = priceIdForPlan(plan, billing)
+
+  const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
+    'stripe-create-checkout-session',
+    { body: { priceId, plan, billing } },
+  )
+
   if (signal?.aborted) return
-  if (!stripe) {
-    throw new Error('Could not initialize Stripe.js')
-  }
+  if (error) throw new Error(fnMessage(data, error))
 
-  const price = priceIdForPlan(plan, billing)
+  const url = data?.url
+  if (!url) throw new Error(fnMessage(data, null))
 
-  const opts = {
-    mode: 'subscription' as const,
-    lineItems: [{ price, quantity: 1 }],
-    successUrl,
-    cancelUrl,
-    clientReferenceId: ownerId,
-    customerEmail: customerEmail.trim(),
-    // Stripe-hosted Checkout: attach metadata to the Subscription for webhooks
-    subscriptionData: {
-      metadata: {
-        owner_id: ownerId,
-        plan,
-        billing_period: billing,
-      },
-    },
-  }
-
-  // subscriptionData is supported by Stripe client Checkout but omitted from strict TS types
-  const { error } = await stripe.redirectToCheckout(opts as never)
-  if (signal?.aborted) return
-  if (error) {
-    throw new Error(error.message)
-  }
+  window.location.href = url
 }

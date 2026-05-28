@@ -38,9 +38,9 @@ Deno.serve(async (req) => {
   const user = userRes?.user
   if (userErr || !user?.email) return json(401, { error: 'Unauthorized' })
 
-  let body: { plan?: string }
+  let body: { plan?: string; priceId?: string; billing?: string }
   try {
-    body = (await req.json()) as { plan?: string }
+    body = (await req.json()) as { plan?: string; priceId?: string; billing?: string }
   } catch {
     return json(400, { error: 'Invalid JSON' })
   }
@@ -50,10 +50,13 @@ Deno.serve(async (req) => {
     return json(400, { error: 'Invalid plan' })
   }
 
+  const billing = (body.billing ?? 'monthly').trim().toLowerCase()
+  const priceIdFromClient = (body.priceId ?? '').trim()
+
   try {
     const stripe = stripeClient()
     const base = siteUrl()
-    const price = priceIdForPlan(plan)
+    const price = priceIdFromClient || priceIdForPlan(plan)
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -64,11 +67,13 @@ Deno.serve(async (req) => {
       metadata: {
         owner_id: user.id,
         plan,
+        billing_period: billing === 'annual' ? 'annual' : 'monthly',
       },
       subscription_data: {
         metadata: {
           owner_id: user.id,
           plan,
+          billing_period: billing === 'annual' ? 'annual' : 'monthly',
         },
       },
       client_reference_id: user.id,
