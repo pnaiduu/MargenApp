@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -11,6 +12,8 @@ import {
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera'
+import { Ionicons } from '@expo/vector-icons'
 import { useAuth } from '../src/context/AuthContext'
 import { useTechnician } from '../src/context/TechnicianContext'
 import { useTheme } from '../src/context/ThemeContext'
@@ -26,6 +29,7 @@ export default function SignupRoute() {
   const { signUp, configured } = useAuth()
   const { refresh: refreshTech } = useTechnician()
   const params = useLocalSearchParams<{ invite?: string }>()
+  const [permission, requestPermission] = useCameraPermissions()
 
   const initialInvite = useMemo(() => {
     const raw = params.invite
@@ -38,9 +42,12 @@ export default function SignupRoute() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [inviteCode, setInviteCode] = useState(initialInvite)
+  const [inviteErr, setInviteErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState<Step>('form')
+  const [scannerOpen, setScannerOpen] = useState(false)
+  const [scanLocked, setScanLocked] = useState(false)
 
   useEffect(() => {
     if (initialInvite) setInviteCode(initialInvite)
@@ -48,6 +55,7 @@ export default function SignupRoute() {
 
   async function onSubmit() {
     setError(null)
+    setInviteErr(null)
     if (!configured) {
       setError('Supabase is not configured.')
       return
@@ -60,10 +68,14 @@ export default function SignupRoute() {
       return
     }
     const token = parseInviteToken(inviteCode)
+    if (!token) {
+      setInviteErr('Invite code is required')
+      return
+    }
     setBusy(true)
     const { error: signErr, session: newSession } = await signUp(em, password, {
       fullName: `${fn} ${ln}`.trim(),
-      technicianInviteToken: token || undefined,
+      technicianInviteToken: token,
     })
     if (signErr) {
       setBusy(false)
@@ -161,11 +173,57 @@ export default function SignupRoute() {
     )
   }
 
+  async function openScanner() {
+    setError(null)
+    setInviteErr(null)
+    if (!permission?.granted) {
+      const res = await requestPermission()
+      if (!res.granted) {
+        setError('Camera permission is required to scan a QR code.')
+        return
+      }
+    }
+    setScanLocked(false)
+    setScannerOpen(true)
+  }
+
+  function onScanned(res: BarcodeScanningResult) {
+    if (scanLocked) return
+    setScanLocked(true)
+    const value = parseInviteToken(String(res.data ?? ''))
+    if (!value) {
+      setScanLocked(false)
+      setError('That QR code did not contain a valid invite code.')
+      return
+    }
+    setInviteCode(value)
+    setScannerOpen(false)
+  }
+
   return (
     <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: colors.page }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
+        <View style={[styles.scannerRoot, { backgroundColor: '#000000', paddingTop: insets.top }]}>
+          <View style={styles.scannerTopBar}>
+            <Pressable onPress={() => setScannerOpen(false)} hitSlop={10} style={styles.scannerClose}>
+              <Text style={styles.scannerCloseText}>Close</Text>
+            </Pressable>
+            <Text style={styles.scannerTitle}>Scan QR code</Text>
+            <View style={{ width: 56 }} />
+          </View>
+
+          <View style={styles.scannerCameraWrap}>
+            <CameraView style={StyleSheet.absoluteFill} facing="back" onBarcodeScanned={onScanned} />
+            <View style={styles.scanFrame} pointerEvents="none" />
+          </View>
+
+          <Text style={styles.scannerHint}>Center the QR code in the frame.</Text>
+        </View>
+      </Modal>
+
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
@@ -227,21 +285,59 @@ export default function SignupRoute() {
           style={inputStyle(colors)}
         />
 
-        <Text style={[styles.fieldLabel, { color: colors.text }]}>
-          Have an invite code? <Text style={{ fontWeight: '400', color: colors.muted }}>(optional)</Text>
-        </Text>
-        <TextInput
-          value={inviteCode}
-          onChangeText={setInviteCode}
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholder="Paste invite link or code"
-          placeholderTextColor={colors.muted2}
-          style={inputStyle(colors)}
-        />
+        <Text style={[styles.fieldLabel, { color: colors.text }]}>Invite code</Text>
+        <View style={styles.inviteRow}>
+          <TextInput
+            value={inviteCode}
+            onChangeText={(v) => {
+              setInviteCode(v)
+              if (inviteErr) setInviteErr(null)
+            }}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            placeholder="e.g. A7X2K9"
+            placeholderTextColor={colors.muted2}
+            style={[inputStyle(colors), styles.inviteInput]}
+          />
+          <Pressable
+            onPress={() => void openScanner()}
+            style={({ pressed }) => [
+              styles.scanIconBtn,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                opacity: pressed ? 0.88 : 1,
+                minHeight: layout.tapMin,
+              },
+            ]}
+            accessibilityLabel="Scan invite QR code"
+          >
+            <Ionicons name="camera" size={20} color={colors.text} />
+          </Pressable>
+        </View>
+        {inviteErr ? (
+          <Text style={[styles.err, { marginTop: 10 }]} accessibilityRole="alert">
+            {inviteErr}
+          </Text>
+        ) : null}
         <Text style={[styles.inviteHint, { color: colors.muted }]}>
-          Your employer's invite links you to their team automatically.
+          Your employer&apos;s invite code links you to their team automatically.
         </Text>
+        <Pressable
+          onPress={() => void openScanner()}
+          disabled={busy}
+          style={({ pressed }) => [
+            styles.scanBtn,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              opacity: pressed || busy ? 0.88 : 1,
+              minHeight: layout.tapMin,
+            },
+          ]}
+        >
+          <Text style={[styles.scanBtnText, { color: colors.text }]}>Scan QR code</Text>
+        </Pressable>
 
         <Pressable
           onPress={() => void onSubmit()}
@@ -306,6 +402,23 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     lineHeight: 20,
   },
+  inviteRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  inviteInput: { flex: 1 },
+  scanIconBtn: {
+    minWidth: layout.tapMin,
+    borderWidth: 1,
+    borderRadius: layout.radius,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanBtn: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: layout.radius,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanBtnText: { fontSize: typography.body, fontWeight: '800' },
   btn: {
     marginTop: 28,
     borderRadius: layout.radius,
@@ -321,4 +434,27 @@ const styles = StyleSheet.create({
     color: '#DC2626',
     lineHeight: 22,
   },
+  scannerRoot: { flex: 1 },
+  scannerTopBar: {
+    height: 56,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  scannerClose: { paddingVertical: 8, paddingHorizontal: 6 },
+  scannerCloseText: { color: '#FFFFFF', fontSize: typography.body, fontWeight: '800' },
+  scannerTitle: { color: '#FFFFFF', fontSize: typography.body, fontWeight: '800' },
+  scannerCameraWrap: { flex: 1, marginHorizontal: 16, marginTop: 12, borderRadius: 18, overflow: 'hidden' },
+  scanFrame: {
+    position: 'absolute',
+    left: '10%',
+    right: '10%',
+    top: '25%',
+    bottom: '25%',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.85)',
+    borderRadius: 16,
+  },
+  scannerHint: { color: 'rgba(255,255,255,0.85)', textAlign: 'center', paddingVertical: 16, fontSize: typography.small },
 })

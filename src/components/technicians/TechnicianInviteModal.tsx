@@ -1,4 +1,4 @@
-import { QRCodeSVG } from 'qrcode.react'
+import QRCode from 'react-qr-code'
 import { useState, type FormEvent } from 'react'
 import { Modal } from '../ui/Modal'
 import { supabase } from '../../lib/supabase'
@@ -18,10 +18,11 @@ function normalizeSmsPhone(raw: string) {
 }
 
 function randomInviteToken() {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID().replace(/-/g, '')
-  }
-  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 14)}`
+  // 6-char uppercase invite code (also used as the invite token)
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let out = ''
+  for (let i = 0; i < 6; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)]!
+  return out
 }
 
 export function TechnicianInviteModal({
@@ -50,6 +51,7 @@ export function TechnicianInviteModal({
 
   const inviteUrl = token ? inviteJoinAbsoluteUrl(token) : ''
   const appDeepLink = token ? inviteAppDeepLink(token) : ''
+  const inviteCode = token ?? ''
 
   function reset() {
     setStep('form')
@@ -129,10 +131,10 @@ export function TechnicianInviteModal({
     onCreated()
   }
 
-  async function copyLink() {
-    if (!inviteUrl) return
+  async function copyCode() {
+    if (!inviteCode) return
     try {
-      await navigator.clipboard.writeText(inviteUrl)
+      await navigator.clipboard.writeText(inviteCode)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -141,9 +143,9 @@ export function TechnicianInviteModal({
   }
 
   function sendViaText() {
-    if (!inviteUrl) return
+    if (!inviteCode) return
     const body = encodeURIComponent(
-      `You're invited to join your team on Margen. Open in the app: ${appDeepLink}\nOr use this link: ${inviteUrl}`,
+      `Your Margen invite code is: ${inviteCode}\n\nOpen in the app: ${appDeepLink}\nBackup link: ${inviteUrl}`,
     )
     const smsPhone = normalizeSmsPhone(invitedPhone)
     const href = smsPhone ? `sms:${smsPhone}?&body=${body}` : `sms:&body=${body}`
@@ -167,7 +169,7 @@ export function TechnicianInviteModal({
           ) : null}
           <p className="text-sm text-[var(--color-margen-muted)]">
             They&apos;ll appear as <span className="font-medium text-[var(--color-margen-text)]">Pending</span> until they
-            join via the Margen technician app using this invite link.
+            join via the Margen technician app using their invite code.
           </p>
           <div>
             <label htmlFor="inv-name" className="mb-1 block text-xs font-medium text-[var(--color-margen-text)]">
@@ -238,31 +240,24 @@ export function TechnicianInviteModal({
       ) : (
         <div className="space-y-5">
           <p className="text-sm text-[var(--color-margen-muted)]">
-            Text or share this link to their phone. It opens the Margen technician app when installed, or a page to
-            download the app and join your team.
+            Read this invite code to your technician (or text it to them). They&apos;ll enter it when creating their Margen
+            account.
           </p>
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-            <div className="shrink-0 rounded-lg border border-[var(--color-margen-border)] bg-white p-3">
-              {inviteUrl ? (
-                <QRCodeSVG value={inviteUrl} size={168} level="M" marginSize={0} />
-              ) : null}
-            </div>
-            <div className="min-w-0 flex-1 space-y-3">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-                  Invite link
-                </p>
-                <p className="mt-1 break-all font-mono text-xs text-[var(--color-margen-text)]">{inviteUrl}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
+          <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Invite code</p>
+            <div className="mt-2 flex flex-col items-center gap-3">
+              <p className="select-all font-mono text-4xl font-extrabold tracking-[0.28em] text-[var(--color-margen-text)]">
+                {inviteCode}
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
                 <motion.button
                   type="button"
-                  onClick={() => void copyLink()}
+                  onClick={() => void copyCode()}
                   className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-1.5 text-xs font-medium text-[var(--margen-accent)] hover:bg-[var(--color-margen-hover)]"
                   whileTap={tapButton}
                   transition={{ duration: 0.14, ease: easePremium }}
                 >
-                  {copied ? 'Copied' : 'Copy invite link'}
+                  {copied ? 'Copied' : 'Copy code'}
                 </motion.button>
                 <motion.button
                   type="button"
@@ -275,6 +270,16 @@ export function TechnicianInviteModal({
                 </motion.button>
               </div>
             </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">QR code</p>
+            <div className="rounded-lg border border-[var(--color-margen-border)] bg-white p-3">
+              {appDeepLink ? <QRCode value={appDeepLink} size={176} /> : null}
+            </div>
+            <p className="text-xs text-[var(--color-margen-muted)]">
+              They can scan this in the Margen app to fill the invite code automatically.
+            </p>
           </div>
           {error ? (
             <p className="text-sm text-danger" role="alert">
