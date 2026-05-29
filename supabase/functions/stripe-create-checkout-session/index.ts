@@ -30,30 +30,31 @@ function priceIdForPlan(plan: Plan): string {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-  if (req.method !== 'POST') return json(405, { error: 'Method not allowed' })
-
-  const sb = supabaseAuthed(req)
-  const { data: userRes, error: userErr } = await sb.auth.getUser()
-  const user = userRes?.user
-  if (userErr || !user?.email) return json(401, { error: 'Unauthorized' })
-
-  let body: { plan?: string; priceId?: string; billing?: string }
+  console.log('Request received:', req.method)
   try {
-    body = (await req.json()) as { plan?: string; priceId?: string; billing?: string }
-  } catch {
-    return json(400, { error: 'Invalid JSON' })
-  }
+    if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+    if (req.method !== 'POST') return json(405, { error: 'Method not allowed' })
 
-  const plan = (body.plan ?? '').trim().toLowerCase() as Plan
-  if (plan !== 'starter' && plan !== 'growth' && plan !== 'scale') {
-    return json(400, { error: 'Invalid plan' })
-  }
+    const sb = supabaseAuthed(req)
+    const { data: userRes, error: userErr } = await sb.auth.getUser()
+    const user = userRes?.user
+    if (userErr || !user?.email) return json(401, { error: 'Unauthorized' })
 
-  const billing = (body.billing ?? 'monthly').trim().toLowerCase()
-  const priceIdFromClient = (body.priceId ?? '').trim()
+    let body: { plan?: string; priceId?: string; billing?: string }
+    try {
+      body = (await req.json()) as { plan?: string; priceId?: string; billing?: string }
+    } catch {
+      return json(400, { error: 'Invalid JSON' })
+    }
 
-  try {
+    const plan = (body.plan ?? '').trim().toLowerCase() as Plan
+    if (plan !== 'starter' && plan !== 'growth' && plan !== 'scale') {
+      return json(400, { error: 'Invalid plan' })
+    }
+
+    const billing = (body.billing ?? 'monthly').trim().toLowerCase()
+    const priceIdFromClient = (body.priceId ?? '').trim()
+
     const stripe = stripeClient()
     const base = siteUrl()
     const price = priceIdFromClient || priceIdForPlan(plan)
@@ -82,6 +83,7 @@ Deno.serve(async (req) => {
     if (!session.url) return json(500, { error: 'Stripe did not return a checkout URL' })
     return json(200, { url: session.url })
   } catch (e) {
+    console.error('Function error:', e)
     const msg = e instanceof Error ? e.message : String(e)
     return json(500, { error: msg })
   }
