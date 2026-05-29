@@ -116,7 +116,7 @@ export function HoursAttendancePage() {
         transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
       >
         <h1 className="page-title">Hours &amp; Attendance</h1>
-        <p className="mt-1 text-sm leading-relaxed text-[#555555]">Weekly hours and basic attendance flags.</p>
+        <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">Weekly hours and basic attendance flags.</p>
       </motion.div>
 
       <AnimatePresence mode="wait">

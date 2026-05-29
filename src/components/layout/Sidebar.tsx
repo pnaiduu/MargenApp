@@ -43,10 +43,10 @@ export function Sidebar({
   }, [user])
 
   return (
-    <aside className="flex h-dvh w-full flex-col border-r border-[#ebebeb] bg-white">
-      <div className="border-b border-[#ebebeb] px-5 pb-4 pt-5">
+    <aside className="flex h-dvh w-full flex-col border-r border-[var(--color-margen-border)] bg-[var(--color-margen-sidebar)]">
+      <div className="border-b border-[var(--color-margen-border)] px-5 pb-4 pt-5">
         <MargenLogo className="h-11 w-auto" title="Margen" />
-        <p className="mt-2 truncate text-[13px] leading-snug text-[#888888]">
+        <p className="mt-2 truncate text-[13px] leading-snug text-[var(--color-margen-muted)]">
           {(companyName ?? '').trim() || 'Your workspace'}
         </p>
       </div>
@@ -81,10 +81,10 @@ export function Sidebar({
                   [
                     'block rounded-md border-l-[3px] border-transparent py-2.5 pl-3 pr-3 text-sm font-medium transition-colors duration-200',
                     blocked
-                      ? 'cursor-not-allowed text-[#888888] opacity-50'
+                      ? 'cursor-not-allowed text-[var(--color-margen-muted)] opacity-50'
                       : isActive
                         ? 'sidebar-nav-active'
-                        : 'text-[#555555] hover:bg-[#f5f5f5]',
+                        : 'text-[var(--color-margen-text-secondary)] hover:bg-[var(--color-margen-hover)]',
                   ].join(' ')
                 }
               >
@@ -95,12 +95,12 @@ export function Sidebar({
         })}
       </motion.nav>
 
-      <div className="mt-auto border-t border-[#ebebeb] px-4 py-4">
-        <p className="truncate text-xs leading-snug text-[#888888]">{user?.email ?? ''}</p>
+      <div className="mt-auto border-t border-[var(--color-margen-border)] px-4 py-4">
+        <p className="truncate text-xs leading-snug text-[var(--color-margen-muted)]">{user?.email ?? ''}</p>
         <motion.button
           type="button"
           onClick={() => void signOut()}
-          className="mt-3 w-full rounded-md border border-[#ebebeb] bg-white py-2 text-sm font-medium text-[#111111] transition-colors duration-200 hover:bg-[#f5f5f5]"
+          className="mt-3 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] py-2 text-sm font-medium text-[var(--color-margen-text)] transition-colors duration-200 hover:bg-[var(--color-margen-hover)]"
           whileTap={{ scale: 0.99 }}
           transition={{ duration: 0.14, ease: easePremium }}
         >

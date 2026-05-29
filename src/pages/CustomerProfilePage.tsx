@@ -182,7 +182,7 @@ export function CustomerProfilePage() {
       >
         <div className="min-w-0">
           <h1 className="page-title truncate">{customer?.name ?? 'Customer'}</h1>
-          <p className="mt-1 text-sm leading-relaxed text-[#555555]">Customer profile and full history.</p>
+          <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">Customer profile and full history.</p>
         </div>
         <button
           type="button"

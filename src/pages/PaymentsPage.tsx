@@ -124,7 +124,7 @@ export function PaymentsPage() {
         transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
       >
         <h1 className="page-title">Payments</h1>
-        <p className="mt-1 text-sm leading-relaxed text-[#555555]">Invoices, collection status, and cash flow.</p>
+        <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">Invoices, collection status, and cash flow.</p>
       </motion.div>
 
       <div className="grid gap-4 sm:grid-cols-2">

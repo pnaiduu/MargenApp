@@ -274,7 +274,7 @@ export function TechnicianInviteModal({
 
           <div className="flex flex-col items-center gap-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">QR code</p>
-            <div className="mx-auto flex max-h-[160px] max-w-[160px] items-center justify-center overflow-hidden rounded-lg border border-[var(--color-margen-border)] bg-white p-1">
+            <div className="mx-auto flex max-h-[160px] max-w-[160px] items-center justify-center overflow-hidden rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-1">
               {appDeepLink ? (
                 <QRCode
                   value={appDeepLink}

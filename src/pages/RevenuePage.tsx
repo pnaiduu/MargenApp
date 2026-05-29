@@ -263,7 +263,7 @@ export function RevenuePage() {
         transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
       >
         <h1 className="page-title">Revenue</h1>
-        <p className="mt-1 text-sm leading-relaxed text-[#555555]">
+        <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">
           Month-to-date performance, mix, and opportunity left on the table.
         </p>
       </motion.div>

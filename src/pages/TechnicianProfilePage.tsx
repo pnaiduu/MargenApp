@@ -93,14 +93,14 @@ export function TechnicianProfilePage() {
         ← Technicians
       </Link>
 
-      <header className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-[#ebebeb] bg-white p-6">
+      <header className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-6">
         <div className="flex items-center gap-4">
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#111111] text-lg font-bold text-white">
             {initials(t.name)}
           </span>
           <div>
             <h1 className="page-title">{t.name}</h1>
-            <p className="mt-1 text-sm text-[#888888]">
+            <p className="mt-1 text-sm text-[var(--color-margen-muted)]">
               {[t.phone, t.email].filter(Boolean).join(' · ') || 'No contact on file'}
               {t.role ? ` · ${t.role}` : ''}
             </p>
@@ -111,7 +111,7 @@ export function TechnicianProfilePage() {
                   Clocked in now
                 </span>
               ) : (
-                <span className="inline-flex rounded-full bg-[#f4f4f4] px-2.5 py-1 text-xs font-semibold text-[#555555]">
+                <span className="inline-flex rounded-full bg-[#f4f4f4] px-2.5 py-1 text-xs font-semibold text-[var(--color-margen-text-secondary)]">
                   Off the clock
                 </span>
               )}
@@ -119,14 +119,14 @@ export function TechnicianProfilePage() {
           </div>
         </div>
         <div className="text-right">
-          <p className="text-xs font-medium uppercase tracking-wide text-[#888888]">Productivity score</p>
-          <p className="text-4xl font-bold tabular-nums text-[#111111]">{stats.productivityScore}</p>
-          <p className="mt-1 text-xs text-[#888888]">0–100 · jobs, on-time, ratings</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Productivity score</p>
+          <p className="text-4xl font-bold tabular-nums text-[var(--color-margen-text)]">{stats.productivityScore}</p>
+          <p className="mt-1 text-xs text-[var(--color-margen-muted)]">0–100 · jobs, on-time, ratings</p>
         </div>
       </header>
 
-      <p className="text-sm text-[#888888]">
-        <span className="font-semibold text-[#111111]">{stats.totalJobsAllTime}</span> jobs completed all time
+      <p className="text-sm text-[var(--color-margen-muted)]">
+        <span className="font-semibold text-[var(--color-margen-text)]">{stats.totalJobsAllTime}</span> jobs completed all time
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -143,16 +143,16 @@ export function TechnicianProfilePage() {
         ].map((s) => (
           <div key={s.label} className="margen-card">
             <p className="label-caps">{s.label}</p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums text-[#111111]">{s.value}</p>
+            <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--color-margen-text)]">{s.value}</p>
           </div>
         ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-[#ebebeb] bg-white p-5">
-          <h2 className="text-sm font-semibold text-[#111111]">Jobs this week (by day)</h2>
+        <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-5">
+          <h2 className="text-sm font-semibold text-[var(--color-margen-text)]">Jobs this week (by day)</h2>
           {stats.jobsPerDayWeek.every((d) => d.count === 0) ? (
-            <p className="mt-8 text-center text-sm text-[#888888]">No jobs completed yet this week.</p>
+            <p className="mt-8 text-center text-sm text-[var(--color-margen-muted)]">No jobs completed yet this week.</p>
           ) : (
             <div className="mt-4 h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -168,10 +168,10 @@ export function TechnicianProfilePage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-[#ebebeb] bg-white p-5">
-          <h2 className="text-sm font-semibold text-[#111111]">Monthly trend (8 weeks)</h2>
+        <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-5">
+          <h2 className="text-sm font-semibold text-[var(--color-margen-text)]">Monthly trend (8 weeks)</h2>
           {stats.jobsPerWeek8.every((w) => w.count === 0) ? (
-            <p className="mt-8 text-center text-sm text-[#888888]">No completed jobs in the last 8 weeks.</p>
+            <p className="mt-8 text-center text-sm text-[var(--color-margen-muted)]">No completed jobs in the last 8 weeks.</p>
           ) : (
             <div className="mt-4 h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -188,12 +188,12 @@ export function TechnicianProfilePage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-[#ebebeb] bg-white p-5">
-        <h2 className="text-sm font-semibold text-[#111111]">Location history (today)</h2>
+      <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-5">
+        <h2 className="text-sm font-semibold text-[var(--color-margen-text)]">Location history (today)</h2>
         {stats.locationEventsToday.length === 0 ? (
-          <p className="mt-4 text-sm text-[#888888]">No GPS points recorded today.</p>
+          <p className="mt-4 text-sm text-[var(--color-margen-muted)]">No GPS points recorded today.</p>
         ) : isLoaded ? (
-          <div className="mt-4 overflow-hidden rounded-xl border border-[#ebebeb]">
+          <div className="mt-4 overflow-hidden rounded-xl border border-[var(--color-margen-border)]">
             <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={12}>
               {routePath.length > 1 ? (
                 <Polyline path={routePath} options={{ strokeColor: '#111111', strokeWeight: 4 }} />
@@ -204,23 +204,23 @@ export function TechnicianProfilePage() {
             </GoogleMap>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-[#888888]">Map loading…</p>
+          <p className="mt-4 text-sm text-[var(--color-margen-muted)]">Map loading…</p>
         )}
       </div>
 
-      <div className="rounded-xl border border-[#ebebeb] bg-white">
-        <h2 className="border-b border-[#ebebeb] px-5 py-4 text-sm font-semibold text-[#111111]">Recent jobs</h2>
+      <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)]">
+        <h2 className="border-b border-[var(--color-margen-border)] px-5 py-4 text-sm font-semibold text-[var(--color-margen-text)]">Recent jobs</h2>
         {stats.recentJobs.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-[#888888]">No jobs yet.</p>
+          <p className="px-5 py-8 text-center text-sm text-[var(--color-margen-muted)]">No jobs yet.</p>
         ) : (
           <ul className="divide-y divide-[#f0f0f0]">
             {stats.recentJobs.map((j) => (
               <li key={j.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-sm">
                 <div>
-                  <p className="font-medium text-[#111111]">{j.title}</p>
-                  <p className="text-[#888888]">{j.customerName}</p>
+                  <p className="font-medium text-[var(--color-margen-text)]">{j.title}</p>
+                  <p className="text-[var(--color-margen-muted)]">{j.customerName}</p>
                 </div>
-                <div className="text-right text-[#888888]">
+                <div className="text-right text-[var(--color-margen-muted)]">
                   <p className="capitalize">{j.status.replace('_', ' ')}</p>
                   {j.durationMinutes != null ? <p>{j.durationMinutes} min</p> : null}
                   {j.rating != null ? <p>{j.rating} ★</p> : null}

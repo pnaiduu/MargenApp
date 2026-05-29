@@ -36,7 +36,7 @@ const containerStyle = { width: '100%', height: '320px' }
 
 function NoKeyPlaceholder() {
   return (
-    <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-[#ebebeb] bg-white px-4 text-center text-sm text-[#888888]">
+    <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 text-center text-sm text-[var(--color-margen-muted)]">
       Add <code className="mx-1 rounded border border-[var(--color-margen-border)] px-1 py-0.5 font-mono text-xs">VITE_GOOGLE_MAPS_API_KEY</code> to your{' '}
       <code className="mx-1 rounded border border-[var(--color-margen-border)] px-1 py-0.5 font-mono text-xs">.env</code> to show the live map.
     </div>
@@ -68,7 +68,7 @@ function TechniciansMapWithLoader({ technicians, apiKey }: { technicians: TechMa
 
   if (loadError) {
     return (
-      <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-[#ebebeb] bg-white px-4 text-center text-sm text-danger">
+      <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 text-center text-sm text-danger">
         Could not load Google Maps.
       </div>
     )
@@ -76,14 +76,14 @@ function TechniciansMapWithLoader({ technicians, apiKey }: { technicians: TechMa
 
   if (!isLoaded) {
     return (
-      <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-[#ebebeb] bg-white text-sm text-[#888888]">
+      <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] text-sm text-[var(--color-margen-muted)]">
         Loading map…
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[#ebebeb]">
+    <div className="overflow-hidden rounded-xl border border-[var(--color-margen-border)]">
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={center}

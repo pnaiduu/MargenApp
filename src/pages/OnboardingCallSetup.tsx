@@ -112,7 +112,7 @@ export function OnboardingCallSetup() {
     'margen-btn-accent inline-flex w-full items-center justify-center disabled:opacity-60'
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#fafaf8]">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-[var(--color-margen-surface)]">
       <AnimatePresence mode="wait">
         {step === 1 ? (
           <motion.div
@@ -127,7 +127,7 @@ export function OnboardingCallSetup() {
             <div className="flex flex-1 flex-col items-center justify-center px-5 pb-20 pt-4 sm:px-10">
               <div className="relative flex items-center justify-center">
                 <motion.div
-                  className="absolute h-40 w-40 rounded-full border-2 border-[#ebebeb]"
+                  className="absolute h-40 w-40 rounded-full border-2 border-[var(--color-margen-border)]"
                   animate={{ scale: [1, 1.06, 1], opacity: [0.4, 0.75, 0.4] }}
                   transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
                 />
@@ -136,7 +136,7 @@ export function OnboardingCallSetup() {
                 </div>
               </div>
               <motion.h1
-                className="mt-10 max-w-xl text-center text-[32px] font-semibold leading-tight tracking-tight text-[#111111]"
+                className="mt-10 max-w-xl text-center text-[32px] font-semibold leading-tight tracking-tight text-[var(--color-margen-text)]"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08, duration: 0.35, ease: easePremium }}
@@ -163,7 +163,7 @@ export function OnboardingCallSetup() {
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-10 w-full max-w-lg rounded-xl border border-[#ebebeb] bg-white px-5 py-5 text-center"
+                  className="mt-10 w-full max-w-lg rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-5 py-5 text-center"
                 >
                   <p className="text-[18px] leading-relaxed text-danger">{provisionError}</p>
                   <button type="button" onClick={() => void runProvision()} className={`${btnAccent} mt-6`}>
@@ -189,7 +189,7 @@ export function OnboardingCallSetup() {
             <div className="flex flex-1 flex-col items-center px-5 pb-16 pt-6 sm:px-8">
               <motion.div
                 layout
-                className="w-full max-w-lg rounded-xl border border-[#ebebeb] bg-white p-8 sm:p-10"
+                className="w-full max-w-lg rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-8 sm:p-10"
               >
                 <motion.div
                   initial={{ scale: 0.7, opacity: 0 }}
@@ -201,13 +201,13 @@ export function OnboardingCallSetup() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </motion.div>
-                <h2 className="mt-8 text-center text-[32px] font-semibold leading-tight text-[#111111]">
+                <h2 className="mt-8 text-center text-[32px] font-semibold leading-tight text-[var(--color-margen-text)]">
                   Here’s your new number
                 </h2>
                 <p className="mt-4 text-center text-[18px] leading-relaxed text-[var(--color-margen-text-secondary)]">
                   When you can’t pick up, this number can greet your caller for you and help book the visit.
                 </p>
-                <p className="mt-10 text-center font-mono text-3xl font-bold tracking-tight text-[#111111] sm:text-4xl">
+                <p className="mt-10 text-center font-mono text-3xl font-bold tracking-tight text-[var(--color-margen-text)] sm:text-4xl">
                   {displayNumber}
                 </p>
                 <button type="button" onClick={() => setStep(3)} className={`${btnAccent} mt-12`}>
@@ -230,7 +230,7 @@ export function OnboardingCallSetup() {
           >
             <WizardProgress step={3} />
             <div className="mx-auto w-full max-w-lg flex-1 px-5 pb-12 pt-6 sm:px-8">
-              <div className="rounded-xl border border-[#ebebeb] bg-white p-6 sm:p-8">
+              <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-6 sm:p-8">
                 <div className="flex flex-col items-center gap-6 text-center">
                   <h2 style={{ fontSize: 32, fontWeight: 600, color: '#111111' }}>You&apos;re all set</h2>
                   <p style={{ fontSize: 18, color: '#555555' }}>Your AI receptionist is ready to answer calls</p>

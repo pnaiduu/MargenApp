@@ -33,7 +33,7 @@ function StatCard({
     >
       <p className="label-caps">{label}</p>
       <motion.p
-        className="mt-2 text-[32px] font-semibold leading-none tabular-nums text-[#111111]"
+        className="mt-2 text-[32px] font-semibold leading-none tabular-nums text-[var(--color-margen-text)]"
         key={value}
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
@@ -41,7 +41,7 @@ function StatCard({
       >
         {value}
       </motion.p>
-      {hint ? <p className="mt-2 text-sm leading-relaxed text-[#888888]">{hint}</p> : null}
+      {hint ? <p className="mt-2 text-sm leading-relaxed text-[var(--color-margen-muted)]">{hint}</p> : null}
     </motion.div>
   )
 }
@@ -388,7 +388,7 @@ export function DashboardHome() {
         transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
       >
         <h1 className="page-title">Dashboard</h1>
-        <p className="mt-1 text-sm leading-relaxed text-[#555555]">Today&apos;s snapshot and live operations.</p>
+        <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">Today&apos;s snapshot and live operations.</p>
       </motion.div>
 
       {needsMargenPlan ? (
@@ -447,7 +447,7 @@ export function DashboardHome() {
 
       {!statsReady ? (
         <motion.div
-          className="grid min-h-[200px] grid-cols-1 gap-4 rounded-xl border border-[#ebebeb] bg-white p-6 sm:grid-cols-3"
+          className="grid min-h-[200px] grid-cols-1 gap-4 rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-6 sm:grid-cols-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2, ease: easePremium }}

@@ -36,20 +36,20 @@ export function MissedCallsPanel({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[#ebebeb] bg-white transition hover:-translate-y-px hover:border-[#cccccc]">
-      <div className="border-b border-[#ebebeb] px-6 py-4">
+    <div className="overflow-hidden rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] transition hover:-translate-y-px hover:border-[var(--color-margen-border-hover)]">
+      <div className="border-b border-[var(--color-margen-border)] px-6 py-4">
         <h2 className="card-title">Missed calls</h2>
-        <p className="mt-1 text-xs text-[#888888]">Needs callback</p>
+        <p className="mt-1 text-xs text-[var(--color-margen-muted)]">Needs callback</p>
       </div>
-      <ul className="divide-y divide-[#ebebeb]">
+      <ul className="divide-y divide-[var(--color-margen-border)]">
         {rows.length === 0 ? (
-          <li className="px-6 py-6 text-center text-sm text-[#888888]">None right now.</li>
+          <li className="px-6 py-6 text-center text-sm text-[var(--color-margen-muted)]">None right now.</li>
         ) : (
           rows.map((row) => (
             <li key={row.id} className="flex items-center justify-between gap-3 px-6 py-4">
               <div className="min-w-0">
-                <p className="font-mono text-sm text-[#111111]">{row.caller_phone ?? 'Unknown'}</p>
-                <p className="mt-1 text-xs text-[#888888]">
+                <p className="font-mono text-sm text-[var(--color-margen-text)]">{row.caller_phone ?? 'Unknown'}</p>
+                <p className="mt-1 text-xs text-[var(--color-margen-muted)]">
                   {new Date(row.occurred_at).toLocaleString(undefined, {
                     month: 'short',
                     day: 'numeric',

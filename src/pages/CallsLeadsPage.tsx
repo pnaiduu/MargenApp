@@ -159,7 +159,7 @@ export function CallsLeadsPage() {
         transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
       >
         <h1 className="page-title">Calls &amp; Leads</h1>
-        <p className="mt-1 text-sm leading-relaxed text-[#555555]">
+        <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">
           Incoming calls, outcomes, and estimated job value.
         </p>
       </motion.div>

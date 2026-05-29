@@ -22,9 +22,6 @@ import {
 } from '../lib/subscriptionAccess'
 import { OPEN_TEAM_INVITE_NAME } from '../lib/teamInvite'
 
-const PAGE_BG = '#fafaf8'
-const CARD_BORDER = '#ebebeb'
-
 const NAV: { id: string; label: string }[] = [
   { id: 'service-area', label: 'Service Area' },
   { id: 'operations', label: 'Operations' },
@@ -49,17 +46,11 @@ function SettingsSectionCard({
 }) {
   return (
     <section id={`settings-section-${id}`} className="scroll-mt-8">
-      <div
-        className="rounded-xl border bg-white p-6 shadow-sm"
-        style={{ borderColor: CARD_BORDER }}
-      >
-        <h2 className="text-[18px] font-medium leading-snug text-[#111111]">{title}</h2>
+      <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-6 shadow-sm">
+        <h2 className="text-[18px] font-medium leading-snug text-[var(--color-margen-text)]">{title}</h2>
         <div className="mt-5">{children}</div>
         {footer ? (
-          <div
-            className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t pt-5"
-            style={{ borderColor: CARD_BORDER }}
-          >
+          <div className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-[var(--color-margen-border)] pt-5">
             {footer}
           </div>
         ) : null}
@@ -314,7 +305,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="min-h-dvh" style={{ backgroundColor: PAGE_BG }}>
+    <div className="min-h-dvh bg-[var(--color-margen-surface)]">
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8">
         <motion.div
           className="mb-8"
@@ -323,20 +314,20 @@ export function SettingsPage() {
           transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
         >
           <h1 className="page-title">Settings</h1>
-          <p className="mt-1 text-sm leading-relaxed text-[#555555]">
+          <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">
             Manage your workspace and team settings.
           </p>
         </motion.div>
 
         <div className="flex flex-col gap-10 lg:flex-row lg:gap-12">
           <aside className="shrink-0 lg:w-52">
-            <nav className="sticky top-8 space-y-0.5 rounded-xl border border-[#ebebeb] bg-white p-2 shadow-sm">
+            <nav className="sticky top-8 space-y-0.5 rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-2 shadow-sm">
               {NAV.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => scrollToSection(item.id)}
-                  className="w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-[#555555] transition hover:bg-[#f5f5f5] hover:text-[#111111]"
+                  className="w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-[var(--color-margen-text-secondary)] transition hover:bg-[var(--color-margen-hover)] hover:text-[var(--color-margen-text)]"
                 >
                   {item.label}
                 </button>
@@ -357,7 +348,7 @@ export function SettingsPage() {
               footer={
                 <>
                   {areaError ? <p className="mr-auto text-sm text-danger">{areaError}</p> : null}
-                  {areaOk ? <p className="mr-auto text-sm text-[#555555]">{areaOk}</p> : null}
+                  {areaOk ? <p className="mr-auto text-sm text-[var(--color-margen-text-secondary)]">{areaOk}</p> : null}
                   <button
                     type="button"
                     disabled={areaBusy}
@@ -377,7 +368,7 @@ export function SettingsPage() {
             </SettingsSectionCard>
 
             <SettingsSectionCard id="operations" title="Operations">
-              <p className="text-sm leading-relaxed text-[#555555]">
+              <p className="text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">
                 Control how new jobs are assigned and how your schedule is ordered.
               </p>
               {operationsError ? (
@@ -386,17 +377,17 @@ export function SettingsPage() {
                 </p>
               ) : null}
               <div className="mt-5 space-y-4">
-                <div className="rounded-xl border border-[#ebebeb] bg-[#fafafa] p-4">
+                <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-hover)] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-[#111111]">Auto-assign jobs</p>
-                      <p className="mt-1 text-xs leading-relaxed text-[#888888]">
+                      <p className="text-sm font-medium text-[var(--color-margen-text)]">Auto-assign jobs</p>
+                      <p className="mt-1 text-xs leading-relaxed text-[var(--color-margen-muted)]">
                         When on, new jobs are assigned to the best available technician by location and availability.
                         When off, jobs stay unassigned until you assign them manually.
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <span className="text-xs font-medium tabular-nums text-[#555555]">
+                      <span className="text-xs font-medium tabular-nums text-[var(--color-margen-text-secondary)]">
                         {autoAssignJobs ? 'On' : 'Off'}
                       </span>
                       <button
@@ -413,12 +404,12 @@ export function SettingsPage() {
                           'relative h-8 w-14 rounded-full border transition disabled:opacity-60',
                           autoAssignJobs
                             ? 'border-[var(--margen-accent)] bg-[var(--margen-accent)]'
-                            : 'border-[#ebebeb] bg-[#e8e8e8]',
+                            : 'border-[var(--color-margen-border)] bg-[var(--color-margen-hover)]',
                         ].join(' ')}
                       >
                         <span
                           className={[
-                            'absolute top-1 h-6 w-6 rounded-full bg-white shadow transition',
+                            'absolute top-1 h-6 w-6 rounded-full bg-[var(--color-margen-surface-elevated)] shadow transition',
                             autoAssignJobs ? 'left-7' : 'left-1',
                           ].join(' ')}
                         />
@@ -427,17 +418,17 @@ export function SettingsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="rounded-xl border border-[#ebebeb] bg-[#fafafa] p-4">
+                <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-hover)] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-[#111111]">Auto-sort schedule</p>
-                      <p className="mt-1 text-xs leading-relaxed text-[#888888]">
+                      <p className="text-sm font-medium text-[var(--color-margen-text)]">Auto-sort schedule</p>
+                      <p className="mt-1 text-xs leading-relaxed text-[var(--color-margen-muted)]">
                         When on, the schedule is optimized by location and urgency. When off, you control job order
                         manually on the schedule page.
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <span className="text-xs font-medium tabular-nums text-[#555555]">
+                      <span className="text-xs font-medium tabular-nums text-[var(--color-margen-text-secondary)]">
                         {autoSortSchedule ? 'On' : 'Off'}
                       </span>
                       <button
@@ -454,12 +445,12 @@ export function SettingsPage() {
                           'relative h-8 w-14 rounded-full border transition disabled:opacity-60',
                           autoSortSchedule
                             ? 'border-[var(--margen-accent)] bg-[var(--margen-accent)]'
-                            : 'border-[#ebebeb] bg-[#e8e8e8]',
+                            : 'border-[var(--color-margen-border)] bg-[var(--color-margen-hover)]',
                         ].join(' ')}
                       >
                         <span
                           className={[
-                            'absolute top-1 h-6 w-6 rounded-full bg-white shadow transition',
+                            'absolute top-1 h-6 w-6 rounded-full bg-[var(--color-margen-surface-elevated)] shadow transition',
                             autoSortSchedule ? 'left-7' : 'left-1',
                           ].join(' ')}
                         />
@@ -474,25 +465,25 @@ export function SettingsPage() {
             <SettingsSectionCard id="subscription" title="Subscription">
               <div className="flex flex-wrap items-center gap-2">
                 {isDevBypassEmail(user?.email) ? (
-                  <span className="inline-flex rounded-full border border-[#ebebeb] bg-[#f0f0f0] px-2.5 py-0.5 text-[11px] font-medium text-[#666666]">
+                  <span className="inline-flex rounded-full border border-[var(--color-margen-border)] bg-[var(--color-margen-hover)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--color-margen-muted)]">
                     Dev account · full access (Scale)
                   </span>
                 ) : null}
               </div>
-              <p className="mt-3 text-sm text-[#555555]">
-                <span className="text-[#888888]">Technicians on your plan</span>{' '}
-                <span className="font-medium text-[#111111]">{technicianUsageLabel}</span>
+              <p className="mt-3 text-sm text-[var(--color-margen-text-secondary)]">
+                <span className="text-[var(--color-margen-muted)]">Technicians on your plan</span>{' '}
+                <span className="font-medium text-[var(--color-margen-text)]">{technicianUsageLabel}</span>
               </p>
 
-              <div className="mt-5 rounded-xl border border-[#ebebeb] bg-[#fafafa] p-5">
+              <div className="mt-5 rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-hover)] p-5">
                 {hasSubscriptionCard && effectiveSub ? (
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="text-lg font-semibold capitalize text-[#111111]">
+                        <p className="text-lg font-semibold capitalize text-[var(--color-margen-text)]">
                           {planById(effectiveSub.plan)?.name ?? effectiveSub.plan}
                         </p>
-                        <p className="mt-1 text-sm text-[#555555]">
+                        <p className="mt-1 text-sm text-[var(--color-margen-text-secondary)]">
                           {(() => {
                             const p = planById(effectiveSub.plan)
                             if (!p || !Number.isFinite(p.priceUsd) || p.priceUsd <= 0) return '—'
@@ -500,13 +491,13 @@ export function SettingsPage() {
                           })()}
                         </p>
                       </div>
-                      <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium capitalize text-[#111111] ring-1 ring-[#ebebeb]">
+                      <span className="rounded-full bg-[var(--color-margen-surface-elevated)] px-2.5 py-1 text-xs font-medium capitalize text-[var(--color-margen-text)] ring-1 ring-[var(--color-margen-border)]">
                         {effectiveSub.status}
                       </span>
                     </div>
-                    <p className="text-sm text-[#555555]">
-                      <span className="text-[#888888]">Next billing</span>{' '}
-                      <span className="font-medium text-[#111111]">
+                    <p className="text-sm text-[var(--color-margen-text-secondary)]">
+                      <span className="text-[var(--color-margen-muted)]">Next billing</span>{' '}
+                      <span className="font-medium text-[var(--color-margen-text)]">
                         {effectiveSub.current_period_end
                           ? new Date(effectiveSub.current_period_end).toLocaleDateString(undefined, {
                               dateStyle: 'long',
@@ -525,7 +516,7 @@ export function SettingsPage() {
                       ) : null}
                       <Link
                         to="/pricing"
-                        className="inline-flex items-center justify-center rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#f5f5f5]"
+                        className="inline-flex items-center justify-center rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)]"
                       >
                         {showPlanUpgrade ? 'View plans' : 'Change plan'}
                       </Link>
@@ -538,7 +529,7 @@ export function SettingsPage() {
                               ['canceled', 'unpaid', 'incomplete_expired'].includes(saasSubscription.status)
                             }
                             onClick={() => void handleCancelSubscription()}
-                            className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#f5f5f5] disabled:opacity-50"
+                            className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
                           >
                             Cancel at period end
                           </button>
@@ -546,7 +537,7 @@ export function SettingsPage() {
                             type="button"
                             disabled={billingBusy}
                             onClick={() => void handleBillingPortal()}
-                            className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#f5f5f5] disabled:opacity-50"
+                            className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
                           >
                             Manage billing
                           </button>
@@ -556,7 +547,7 @@ export function SettingsPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-[#555555]">No active Margen subscription on file yet.</p>
+                    <p className="text-sm text-[var(--color-margen-text-secondary)]">No active Margen subscription on file yet.</p>
                     <Link
                       to="/pricing"
                       className="inline-flex shrink-0 items-center justify-center rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
@@ -575,7 +566,7 @@ export function SettingsPage() {
               footer={
                 <>
                   {persistError ? <p className="mr-auto text-sm text-danger">{persistError}</p> : null}
-                  {appearanceOk ? <p className="mr-auto text-sm text-[#555555]">{appearanceOk}</p> : null}
+                  {appearanceOk ? <p className="mr-auto text-sm text-[var(--color-margen-text-secondary)]">{appearanceOk}</p> : null}
                   <button
                     type="button"
                     disabled={appearanceSaving}

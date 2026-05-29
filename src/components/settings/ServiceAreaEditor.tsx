@@ -387,15 +387,15 @@ function ServiceAreaMapInner({ apiKey, resetToken, initial, onChange }: InnerPro
       </div>
 
       {center ? (
-        <div className="rounded-xl border border-[#ebebeb] bg-[#fafafa] px-4 py-3.5">
-          <p className="text-xs font-medium uppercase tracking-wide text-[#888888]">Places covered</p>
-          <p className="mt-2 text-sm leading-relaxed text-[#111111]">
+        <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-hover)] px-4 py-3.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Places covered</p>
+          <p className="mt-2 text-sm leading-relaxed text-[var(--color-margen-text)]">
             {citiesLoading ? (
-              <span className="text-[#888888]">Updating places…</span>
+              <span className="text-[var(--color-margen-muted)]">Updating places…</span>
             ) : cities.length ? (
               cities.join(', ')
             ) : (
-              <span className="text-[#888888]">Places will appear here as we scan your radius.</span>
+              <span className="text-[var(--color-margen-muted)]">Places will appear here as we scan your radius.</span>
             )}
           </p>
         </div>
@@ -429,28 +429,28 @@ function ServiceAreaMapInner({ apiKey, resetToken, initial, onChange }: InnerPro
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: easePremium }}
-          className="rounded-xl border border-[#ebebeb] bg-white p-5 shadow-sm"
+          className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-5 shadow-sm"
         >
-          <p className="text-xs font-medium uppercase tracking-wide text-[#888888]">Coverage summary</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Coverage summary</p>
           <dl className="mt-4 grid gap-5 sm:grid-cols-3 sm:gap-6">
             <div className="min-w-0">
-              <dt className="text-[13px] leading-snug text-[#555555]">Area (approx.)</dt>
-              <dd className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight text-[#111111]">
+              <dt className="text-[13px] leading-snug text-[var(--color-margen-text-secondary)]">Area (approx.)</dt>
+              <dd className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight text-[var(--color-margen-text)]">
                 {sqMi.toLocaleString(undefined, { maximumFractionDigits: 0 })} mi²
               </dd>
             </div>
             <div className="min-w-0">
-              <dt className="text-[13px] leading-snug text-[#555555]">Population served (est.)</dt>
-              <dd className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight text-[#111111]">
+              <dt className="text-[13px] leading-snug text-[var(--color-margen-text-secondary)]">Population served (est.)</dt>
+              <dd className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight text-[var(--color-margen-text)]">
                 ~{approxPop.toLocaleString()}
               </dd>
             </div>
             <div className="min-w-0">
-              <dt className="text-[13px] leading-snug text-[#555555]">Places named</dt>
-              <dd className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight text-[#111111]">{cities.length}</dd>
+              <dt className="text-[13px] leading-snug text-[var(--color-margen-text-secondary)]">Places named</dt>
+              <dd className="mt-1.5 text-xl font-semibold tabular-nums tracking-tight text-[var(--color-margen-text)]">{cities.length}</dd>
             </div>
           </dl>
-          <p className="mt-4 text-xs leading-relaxed text-[#888888]">
+          <p className="mt-4 text-xs leading-relaxed text-[var(--color-margen-muted)]">
             Population is a rough density estimate for planning—not a census count. Places are sampled across your circle using Google Geocoding.
           </p>
         </motion.div>

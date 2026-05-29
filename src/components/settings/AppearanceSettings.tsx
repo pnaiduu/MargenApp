@@ -4,10 +4,8 @@ import { usePreferences } from '../../contexts/usePreferences'
 import { normalizeHex } from '../../lib/logoFilter'
 import { hexToHsva, hsvaToHex } from '../../lib/appearanceTheme'
 
-const CARD_BORDER = '#ebebeb'
-
 const fieldClass =
-  'min-w-0 flex-1 rounded-lg border border-[#ebebeb] bg-white px-3 py-2.5 text-sm text-[#111111] outline-none transition focus:border-[var(--margen-accent)] focus:ring-2 focus:ring-[var(--margen-accent-muted)]'
+  'min-w-0 flex-1 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2.5 text-sm text-[var(--color-margen-text)] outline-none transition focus:border-[var(--margen-accent)] focus:ring-2 focus:ring-[var(--margen-accent-muted)]'
 
 function SunIcon({ className }: { className?: string }) {
   return (
@@ -62,10 +60,13 @@ function ThemeCard({
     <button
       type="button"
       onClick={onClick}
-      style={style}
+      style={{
+        ...style,
+        borderColor: selected ? 'var(--margen-accent)' : 'var(--color-margen-border)',
+        boxShadow: selected ? '0 0 0 1px var(--margen-accent)' : undefined,
+      }}
       className={[
         'flex min-h-[108px] flex-1 flex-col items-center justify-center gap-3 rounded-xl border-2 p-4 transition',
-        selected ? 'border-[var(--margen-accent)]' : 'border-transparent',
         className ?? '',
       ].join(' ')}
     >
@@ -81,15 +82,15 @@ export function AppearanceSettings() {
   return (
     <>
       <div>
-        <p className="text-sm font-medium text-[#111111]">Theme</p>
-        <p className="mt-1 text-xs leading-relaxed text-[#888888]">
+        <p className="text-sm font-medium text-[var(--color-margen-text)]">Theme</p>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--color-margen-muted)]">
           Applies immediately across the dashboard.
         </p>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row">
           <ThemeCard
             selected={themeMode === 'light'}
             onClick={() => setThemeMode('light')}
-            className="bg-white shadow-sm ring-1 ring-[#ebebeb]"
+            className="bg-white shadow-sm"
           >
             <SunIcon className="text-[#111111]" />
             <span className="text-sm font-medium text-[#111111]">Light</span>
@@ -107,9 +108,9 @@ export function AppearanceSettings() {
           <ThemeCard
             selected={themeMode === 'system'}
             onClick={() => setThemeMode('system')}
-            className="relative overflow-hidden shadow-sm ring-1 ring-[#ebebeb]"
+            className="relative overflow-hidden shadow-sm"
             style={{
-              background: 'linear-gradient(90deg, #ffffff 50%, #111111 50%)',
+              background: 'linear-gradient(90deg, #ffffff 50%, #1a1a1a 50%)',
             }}
           >
             <span className="relative z-[1] flex flex-col items-center gap-3">
@@ -124,9 +125,9 @@ export function AppearanceSettings() {
         </div>
       </div>
 
-      <div className="mt-8 border-t pt-8" style={{ borderColor: CARD_BORDER }}>
-        <p className="text-sm font-medium text-[#111111]">Accent color</p>
-        <p className="mt-1 text-xs leading-relaxed text-[#888888]">
+      <div className="mt-8 border-t border-[var(--color-margen-border)] pt-8">
+        <p className="text-sm font-medium text-[var(--color-margen-text)]">Accent color</p>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--color-margen-muted)]">
           Pick a color on the wheel — no system dialogs. Save to keep it on your account.
         </p>
         <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -141,13 +142,13 @@ export function AppearanceSettings() {
             />
           </div>
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 sm:max-w-xs">
-            <label className="text-xs font-medium text-[#555555]" htmlFor="settings-accent-hex">
+            <label className="text-xs font-medium text-[var(--color-margen-text-secondary)]" htmlFor="settings-accent-hex">
               Hex
             </label>
             <div className="flex items-center gap-3">
               <div
                 className="h-11 w-11 shrink-0 rounded-lg border shadow-inner"
-                style={{ backgroundColor: previewHex, borderColor: CARD_BORDER }}
+                style={{ backgroundColor: previewHex, borderColor: 'var(--color-margen-border)' }}
                 title={previewHex}
                 aria-label={`Preview ${previewHex}`}
               />

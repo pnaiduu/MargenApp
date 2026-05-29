@@ -41,10 +41,10 @@ export function DashboardLayout() {
       </motion.div>
 
       <div className="flex min-w-0 flex-1 flex-col md:ml-56">
-        <header className="flex items-center justify-between gap-2 border-b border-[#ebebeb] bg-white px-4 py-3 md:justify-end md:px-6">
+        <header className="flex items-center justify-between gap-2 border-b border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-3 md:justify-end md:px-6">
           <motion.button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[#ebebeb] text-[#111111] transition-colors hover:bg-[#f5f5f5] md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-[var(--color-margen-border)] text-[var(--color-margen-text)] transition-colors hover:bg-[var(--color-margen-hover)] md:hidden"
             aria-expanded={mobileOpen}
             aria-controls="app-sidebar"
             whileTap={tapButton}

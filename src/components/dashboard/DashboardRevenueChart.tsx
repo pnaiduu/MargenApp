@@ -25,14 +25,14 @@ export function DashboardRevenueChart({
 }) {
   if (data.length === 0) {
     return (
-      <div className="flex h-[280px] items-center justify-center rounded-xl border border-[#ebebeb] bg-white text-sm text-[#888888]">
+      <div className="flex h-[280px] items-center justify-center rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] text-sm text-[var(--color-margen-muted)]">
         {emptyMessage}
       </div>
     )
   }
 
   return (
-    <div className="rounded-xl border border-[#ebebeb] bg-white px-6 py-5 transition hover:-translate-y-px hover:border-[#cccccc]">
+    <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-6 py-5 transition hover:-translate-y-px hover:border-[var(--color-margen-border-hover)]">
       <p className="label-caps mb-3">{title}</p>
       <div className="h-[260px] w-full min-h-[260px] min-w-0">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>

@@ -226,7 +226,7 @@ export function TechniciansPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="page-title">Technicians</h1>
-          <p className="mt-1 text-sm leading-relaxed text-[#555555]">
+          <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">
             Invite your field team, track status, and handle unavailability.
           </p>
         </div>

@@ -30,10 +30,12 @@ export function applyAccentToRoot(hex: string): void {
   const root = document.documentElement
   const accent = normalizeHex(hex)
   const fg = foregroundOnAccent(accent)
-  const mutedBase = root.classList.contains('dark') ? '#1a1a1a' : '#fafaf8'
   root.style.setProperty('--margen-accent', accent)
   root.style.setProperty('--margen-accent-fg', fg)
-  root.style.setProperty('--margen-accent-muted', `color-mix(in srgb, ${accent} 10%, ${mutedBase})`)
+  root.style.setProperty(
+    '--margen-accent-muted',
+    `color-mix(in srgb, ${accent} 12%, var(--color-margen-surface))`,
+  )
 }
 
 /** react-colorful HSVA: h 0–360, s/v 0–100, a 0–1 */

@@ -231,7 +231,7 @@ export function JobsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="page-title">Jobs</h1>
-            <p className="mt-1 text-sm leading-relaxed text-[#555555]">
+            <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">
               All jobs by status for your account.
             </p>
           </div>

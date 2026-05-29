@@ -87,7 +87,7 @@ export function CustomersPage() {
         transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
       >
         <h1 className="page-title">Customers</h1>
-        <p className="mt-1 text-sm leading-relaxed text-[#555555]">Profiles, history, and value.</p>
+        <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">Profiles, history, and value.</p>
       </motion.div>
 
       <div className="grid gap-3 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-4 md:grid-cols-3">

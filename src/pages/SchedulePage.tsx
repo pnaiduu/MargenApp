@@ -132,7 +132,7 @@ export function SchedulePage() {
         transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
       >
         <h1 className="page-title">Schedule</h1>
-        <p className="mt-1 text-sm leading-relaxed text-[#555555]">
+        <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">
           {autoSortSchedule
             ? 'Jobs by day. Order is optimized by location and urgency; turn off auto-sort in Settings → Operations to drag events manually.'
             : 'Jobs by day. Drag an event to reschedule; colors follow each technician.'}
