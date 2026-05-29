@@ -261,6 +261,9 @@ export async function createJobDirect(
     scheduled_at?: string | null
     urgency?: 'routine' | 'urgent' | 'emergency'
     revenue_cents?: number
+    job_address?: string | null
+    job_lat?: number | null
+    job_lng?: number | null
   },
 ): Promise<{ job: unknown; assignment_note: string | null; error: Error | null }> {
   const { data: cust, error: custErr } = await supabase
@@ -288,6 +291,9 @@ export async function createJobDirect(
       scheduled_at: body.scheduled_at ?? null,
       urgency,
       revenue_cents: body.revenue_cents ?? 0,
+      job_address: body.job_address?.trim() || null,
+      job_lat: body.job_lat ?? null,
+      job_lng: body.job_lng ?? null,
       status: 'pending',
       emergency_created_at: urgency === 'emergency' ? nowIso : null,
     })
@@ -403,6 +409,26 @@ export async function reassignJobDirect(
     read: false,
   })
 
+  return { error: null }
+}
+
+/** Hard-delete a job row — does not change status before delete. */
+export async function deleteJobDirect(
+  supabase: Supabase,
+  ownerId: string,
+  jobId: string,
+): Promise<{ error: Error | null }> {
+  const { data: job, error: jobErr } = await supabase
+    .from('jobs')
+    .select('id, owner_id')
+    .eq('id', jobId)
+    .maybeSingle()
+
+  if (jobErr || !job) return { error: new Error(jobErr?.message ?? 'Job not found') }
+  if (job.owner_id !== ownerId) return { error: new Error('Only the owner can delete jobs') }
+
+  const { error } = await supabase.from('jobs').delete().eq('id', jobId)
+  if (error) return { error: new Error(error.message) }
   return { error: null }
 }
 

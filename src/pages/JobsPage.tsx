@@ -3,14 +3,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import {
   cancelJobDirect,
-  createInvoiceDirect,
   createJobDirect,
+  deleteJobDirect,
   reassignJobDirect,
   resolveOrCreateCustomerByName,
 } from '../lib/directSupabaseActions'
+import { createStripeInvoice } from '../lib/createStripeInvoice'
 import { supabase } from '../lib/supabase'
 import { easePremium, staggerContainer, staggerItem } from '../lib/motion'
 import { JobStatusBadge } from '../components/jobs/JobStatusBadge'
+import { JobAddressFields, type JobAddressValue } from '../components/jobs/JobAddressFields'
+import { JobsHistoryPanel, type HistoryJobRow } from '../components/jobs/JobsHistoryPanel'
 import type { JobStatus } from '../types/database'
 
 type JobRow = {
@@ -35,7 +38,9 @@ const statusLabel: Record<JobStatus, string> = {
 
 export function JobsPage() {
   const { user } = useAuth()
+  const [pageTab, setPageTab] = useState<'active' | 'history'>('active')
   const [jobs, setJobs] = useState<JobRow[]>([])
+  const [historyJobs, setHistoryJobs] = useState<HistoryJobRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busyJobId, setBusyJobId] = useState<string | null>(null)
@@ -45,6 +50,7 @@ export function JobsPage() {
   const [createUrgency, setCreateUrgency] = useState<'routine' | 'urgent' | 'emergency'>('routine')
   const [createCustomerFirstName, setCreateCustomerFirstName] = useState('')
   const [createCustomerLastName, setCreateCustomerLastName] = useState('')
+  const [createAddress, setCreateAddress] = useState<JobAddressValue>({ address: '', lat: null, lng: null })
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelJob, setCancelJob] = useState<JobRow | null>(null)
   const [cancelReason, setCancelReason] = useState<'customer_cancelled' | 'technician_unavailable' | 'rescheduled'>(
@@ -56,6 +62,14 @@ export function JobsPage() {
   const [techs, setTechs] = useState<{ id: string; name: string }[]>([])
   const [reassignTechId, setReassignTechId] = useState<string>('')
   const [jobsRefresh, setJobsRefresh] = useState(0)
+  const [invoicePrompt, setInvoicePrompt] = useState<{
+    jobId: string
+    title: string
+    email: string
+    amountCents: number
+  } | null>(null)
+  const [invoiceEmail, setInvoiceEmail] = useState('')
+  const [invoiceAmount, setInvoiceAmount] = useState('')
 
   useEffect(() => {
     if (!user) return
@@ -70,6 +84,7 @@ export function JobsPage() {
           .from('jobs')
           .select('id, title, status, scheduled_at, job_type, urgency, revenue_cents, is_paid, technician_id, customers(name, phone)')
           .eq('owner_id', ownerId)
+          .in('status', ['pending', 'in_progress'])
           .order('scheduled_at', { ascending: false, nullsFirst: false })
           .abortSignal(ac.signal)
         if (ac.signal.aborted) return
@@ -94,6 +109,27 @@ export function JobsPage() {
     if (!user) return
     const ownerId = user.id
     const ac = new AbortController()
+    async function loadHistory() {
+      const { data, error: qErr } = await supabase
+        .from('jobs')
+        .select(
+          'id, title, status, scheduled_at, completed_at, cancelled_at, started_at, revenue_cents, is_paid, cancel_reason, cancel_reason_details, technician_id, customers(name, email), technicians(name)',
+        )
+        .eq('owner_id', ownerId)
+        .in('status', ['completed', 'cancelled'])
+        .order('completed_at', { ascending: false, nullsFirst: true })
+        .abortSignal(ac.signal)
+      if (ac.signal.aborted) return
+      if (!qErr && data) setHistoryJobs(data as HistoryJobRow[])
+    }
+    void loadHistory()
+    return () => ac.abort()
+  }, [user, jobsRefresh])
+
+  useEffect(() => {
+    if (!user) return
+    const ownerId = user.id
+    const ac = new AbortController()
     async function loadTechs() {
       const { data, error: qErr } = await supabase
         .from('technicians')
@@ -110,8 +146,49 @@ export function JobsPage() {
     }
   }, [user])
 
+  useEffect(() => {
+    if (!user) return
+    const ownerId = user.id
+    const channel = supabase
+      .channel(`jobs-complete:${ownerId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'jobs', filter: `owner_id=eq.${ownerId}` },
+        (payload) => {
+          const row = payload.new as { id?: string; status?: string; is_paid?: boolean; title?: string; revenue_cents?: number }
+          if (row.status !== 'completed' || row.is_paid) return
+          void (async () => {
+            const { data } = await supabase
+              .from('jobs')
+              .select('id, title, revenue_cents, customers(email)')
+              .eq('id', row.id ?? '')
+              .maybeSingle()
+            if (!data) return
+            const job = data as {
+              id: string
+              title: string
+              revenue_cents: number
+              customers: { email: string | null } | null
+            }
+            setInvoicePrompt({
+              jobId: job.id,
+              title: job.title,
+              email: job.customers?.email ?? '',
+              amountCents: job.revenue_cents ?? 0,
+            })
+            setInvoiceEmail(job.customers?.email ?? '')
+            setInvoiceAmount(((job.revenue_cents ?? 0) / 100).toFixed(2))
+          })()
+        },
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [user])
+
   const grouped = useMemo(() => {
-    const order: JobStatus[] = ['pending', 'in_progress', 'completed', 'cancelled']
+    const order: JobStatus[] = ['pending', 'in_progress']
     const map: Record<JobStatus, JobRow[]> = {
       pending: [],
       in_progress: [],
@@ -124,6 +201,17 @@ export function JobsPage() {
     return order.map((s) => ({ status: s, items: map[s] }))
   }, [jobs])
 
+  async function deleteJob(jobId: string) {
+    if (!user) return
+    if (!window.confirm('Delete this job permanently? This cannot be undone.')) return
+    setBusyJobId(jobId)
+    setError(null)
+    const { error: fnErr } = await deleteJobDirect(supabase, user.id, jobId)
+    if (fnErr) setError(fnErr.message)
+    else setJobsRefresh((n) => n + 1)
+    setBusyJobId(null)
+  }
+
   function formatWhen(iso: string | null) {
     if (!iso) return '—'
     const d = new Date(iso)
@@ -135,15 +223,32 @@ export function JobsPage() {
     })
   }
 
-  async function sendInvoice(jobId: string) {
+  async function sendInvoice(jobId: string, email?: string, amountCents?: number) {
     if (!user) return
-    const ownerId = user.id
     setBusyJobId(jobId)
     setError(null)
-    const { error: fnErr } = await createInvoiceDirect(supabase, ownerId, { job_id: jobId, send_sms: true })
+    const { error: fnErr } = await createStripeInvoice({
+      job_id: jobId,
+      customer_email: email?.trim() || undefined,
+      amount_cents: amountCents,
+      send_sms: true,
+    })
     if (fnErr) setError(fnErr.message)
-    else setJobsRefresh((n) => n + 1)
+    else {
+      setJobsRefresh((n) => n + 1)
+      setInvoicePrompt(null)
+    }
     setBusyJobId(null)
+  }
+
+  async function submitInvoicePrompt() {
+    if (!invoicePrompt) return
+    const cents = Math.round(parseFloat(invoiceAmount) * 100)
+    if (!invoiceEmail.trim() || !Number.isFinite(cents) || cents <= 0) {
+      setError('Enter a valid customer email and amount.')
+      return
+    }
+    await sendInvoice(invoicePrompt.jobId, invoiceEmail.trim(), cents)
   }
 
   async function submitCancel() {
@@ -190,6 +295,9 @@ export function JobsPage() {
       title: createTitle.trim(),
       description: createDesc.trim() || undefined,
       urgency: createUrgency,
+      job_address: createAddress.address.trim() || undefined,
+      job_lat: createAddress.lat,
+      job_lng: createAddress.lng,
     })
     if (fnErr) setError(fnErr.message)
     else setJobsRefresh((n) => n + 1)
@@ -200,6 +308,7 @@ export function JobsPage() {
     setCreateUrgency('routine')
     setCreateCustomerFirstName('')
     setCreateCustomerLastName('')
+    setCreateAddress({ address: '', lat: null, lng: null })
   }
 
   async function submitReassign() {
@@ -245,6 +354,33 @@ export function JobsPage() {
         </div>
       </motion.div>
 
+      <div className="mb-6 flex gap-2 border-b border-[var(--color-margen-border)]">
+        {(['active', 'history'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setPageTab(tab)}
+            className={[
+              'border-b-2 px-4 py-2 text-sm font-medium capitalize transition',
+              pageTab === tab
+                ? 'border-[var(--margen-accent)] text-[var(--margen-accent)]'
+                : 'border-transparent text-[var(--color-margen-text-secondary)] hover:text-[var(--color-margen-text)]',
+            ].join(' ')}
+          >
+            {tab === 'active' ? 'Active jobs' : 'History'}
+          </button>
+        ))}
+      </div>
+
+      {pageTab === 'history' ? (
+        <JobsHistoryPanel
+          jobs={historyJobs}
+          techs={techs}
+          onCreateInvoice={(jobId) => void sendInvoice(jobId)}
+          busyJobId={busyJobId}
+        />
+      ) : (
+        <>
       <AnimatePresence mode="wait">
         {error ? (
           <motion.p
@@ -374,9 +510,17 @@ export function JobsPage() {
                                 onClick={() => void sendInvoice(job.id)}
                                 className="rounded-md bg-[var(--margen-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
                               >
-                                Send invoice
+                                Create invoice
                               </button>
                             ) : null}
+                            <button
+                              type="button"
+                              disabled={busyJobId === job.id}
+                              onClick={() => void deleteJob(job.id)}
+                              className="rounded-md border border-[var(--color-margen-border)] px-3 py-1.5 text-sm font-semibold text-danger hover:bg-[var(--color-margen-hover)] disabled:opacity-60"
+                            >
+                              Delete
+                            </button>
                             <JobStatusBadge status={job.status} />
                           </div>
                         </motion.li>
@@ -388,6 +532,8 @@ export function JobsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+        </>
+      )}
 
       <AnimatePresence>
         {cancelOpen && cancelJob ? (
@@ -542,6 +688,15 @@ export function JobsPage() {
                 className="mt-2 w-full resize-none rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
               />
 
+              <div className="mt-4">
+                <JobAddressFields
+                  value={createAddress}
+                  onChange={setCreateAddress}
+                  techLat={null}
+                  techLng={null}
+                />
+              </div>
+
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   type="button"
@@ -623,6 +778,69 @@ export function JobsPage() {
                   className="rounded-md bg-[var(--margen-accent)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
                 >
                   Save
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {invoicePrompt ? (
+          <motion.div
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/20 px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setInvoicePrompt(null)}
+          >
+            <motion.div
+              className="w-full max-w-md rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-4 shadow-xl"
+              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: easePremium }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-[var(--color-margen-text)]">Job completed — create invoice?</p>
+              <p className="mt-1 text-sm text-[var(--color-margen-muted)]">{invoicePrompt.title}</p>
+
+              <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
+                Customer email
+              </label>
+              <input
+                value={invoiceEmail}
+                onChange={(e) => setInvoiceEmail(e.target.value)}
+                type="email"
+                className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
+                placeholder="customer@example.com"
+              />
+
+              <label className="mt-4 block text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
+                Amount (USD)
+              </label>
+              <input
+                value={invoiceAmount}
+                onChange={(e) => setInvoiceAmount(e.target.value)}
+                inputMode="decimal"
+                className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-sm text-[var(--color-margen-text)] outline-none focus:border-[var(--margen-accent)]"
+              />
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInvoicePrompt(null)}
+                  className="rounded-md border border-[var(--color-margen-border)] px-3 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)]"
+                >
+                  Later
+                </button>
+                <button
+                  type="button"
+                  disabled={busyJobId === invoicePrompt.jobId}
+                  onClick={() => void submitInvoicePrompt()}
+                  className="rounded-md bg-[var(--margen-accent)] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  Create invoice
                 </button>
               </div>
             </motion.div>

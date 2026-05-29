@@ -1,9 +1,11 @@
 import NetInfo from '@react-native-community/netinfo'
+import * as Location from 'expo-location'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { UrgencyBadge } from '../../components/UrgencyBadge'
+import { distanceMiles, formatMiles } from '../../lib/geo'
 import { useTechnician } from '../../context/TechnicianContext'
 import { useTheme } from '../../context/ThemeContext'
 import { cacheJobsJson, readJobsCache } from '../../lib/offlineQueue'
@@ -27,6 +29,7 @@ export default function JobsTabScreen() {
   const { technician } = useTechnician()
   const [filter, setFilter] = useState<FilterKey>('today')
   const [rows, setRows] = useState<JobRow[]>([])
+  const [techLoc, setTechLoc] = useState<{ lat: number; lng: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [offline, setOffline] = useState(false)
@@ -44,7 +47,7 @@ export default function JobsTabScreen() {
     let q = supabase
       .from('jobs')
       .select(
-        'id, title, description, job_type, urgency, status, field_status, scheduled_at, completed_at, tech_notes, customers ( name, phone, address, lat, lng )',
+        'id, title, description, job_type, urgency, status, field_status, scheduled_at, completed_at, tech_notes, job_address, job_lat, job_lng, customers ( name, phone, address, lat, lng )',
       )
       .eq('technician_id', technician.id)
 
@@ -86,6 +89,15 @@ export default function JobsTabScreen() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    void (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') return
+      const pos = await Location.getCurrentPositionAsync({})
+      setTechLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+    })()
+  }, [])
 
   useEffect(() => {
     const unsub = NetInfo.addEventListener((s) => setOffline(Boolean(s.isConnected === false)))
@@ -163,7 +175,22 @@ export default function JobsTabScreen() {
                   <UrgencyBadge urgency={j.urgency} />
                 </View>
                 <Text style={[styles.sub, { color: colors.muted }]}>{j.job_type}</Text>
-                <Text style={[styles.sub, { color: colors.muted }]}>{j.customers?.address ?? '—'}</Text>
+                <Text style={[styles.sub, { color: colors.muted }]}>
+                  {j.job_address ?? j.customers?.address ?? '—'}
+                </Text>
+                {techLoc && (j.job_lat ?? j.customers?.lat) != null && (j.job_lng ?? j.customers?.lng) != null ? (
+                  <Text style={[styles.sub, { color: colors.muted }]}>
+                    {formatMiles(
+                      distanceMiles(
+                        techLoc.lat,
+                        techLoc.lng,
+                        (j.job_lat ?? j.customers?.lat)!,
+                        (j.job_lng ?? j.customers?.lng)!,
+                      ),
+                    )}{' '}
+                    away
+                  </Text>
+                ) : null}
                 <View style={[styles.badge, { alignSelf: 'flex-start', marginTop: 8, backgroundColor: colors.surfaceMuted }]}>
                   <Text style={{ color: colors.text, fontWeight: '700', fontSize: typography.caption }}>{j.status}</Text>
                 </View>

@@ -40,6 +40,7 @@ export type Database = {
           onboarding_welcome_dismissed: boolean
           onboarding_checklist: unknown
           onboarding_completed_at: string | null
+          onboarding_completed: boolean
           margen_phone_number: string | null
           margen_phone_digits: string | null
           margen_phone_sid: string | null
@@ -366,6 +367,13 @@ export type Database = {
           paid_at: string | null
           is_paid: boolean
           revenue_cents: number
+          job_address: string | null
+          job_lat: number | null
+          job_lng: number | null
+          started_at: string | null
+          actual_arrival: string | null
+          field_status: string | null
+          tech_notes: string | null
           created_at: string
         }
         Insert: {
@@ -401,6 +409,13 @@ export type Database = {
           paid_at?: string | null
           is_paid?: boolean
           revenue_cents?: number
+          job_address?: string | null
+          job_lat?: number | null
+          job_lng?: number | null
+          started_at?: string | null
+          actual_arrival?: string | null
+          field_status?: string | null
+          tech_notes?: string | null
           created_at?: string
         }
         Update: {
@@ -436,6 +451,13 @@ export type Database = {
           paid_at?: string | null
           is_paid?: boolean
           revenue_cents?: number
+          job_address?: string | null
+          job_lat?: number | null
+          job_lng?: number | null
+          started_at?: string | null
+          actual_arrival?: string | null
+          field_status?: string | null
+          tech_notes?: string | null
           created_at?: string
         }
         Relationships: [

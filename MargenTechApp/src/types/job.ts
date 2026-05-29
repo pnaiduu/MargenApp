@@ -16,5 +16,8 @@ export type JobRow = {
   field_status: string
   scheduled_at: string | null
   completed_at?: string | null
+  job_address?: string | null
+  job_lat?: number | null
+  job_lng?: number | null
   customers: Customer | null
 }

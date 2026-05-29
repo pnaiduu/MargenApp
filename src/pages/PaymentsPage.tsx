@@ -1,11 +1,15 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '../contexts/useAuth'
+import { createStripeInvoice } from '../lib/createStripeInvoice'
 import { localMonthRangeIso } from '../lib/dates'
-import { easePremium } from '../lib/motion'
 import { sendInvoiceReminderDirect } from '../lib/directSupabaseActions'
 import { formatUsdFromCents } from '../lib/formatUsd'
+import { easePremium } from '../lib/motion'
 import { supabase } from '../lib/supabase'
+import { StripeAnalyticsSetupModal } from '../components/settings/StripeAnalyticsSetupModal'
+import { syncStripeAnalyticsLedger } from '../lib/stripeAnalytics'
 
 type InvoiceRow = {
   id: string
@@ -16,21 +20,45 @@ type InvoiceRow = {
   paid_at: string | null
   last_reminder_at: string | null
   payment_method: string | null
-  customers: { name: string } | null
-  jobs: { title: string; job_type: string } | null
+  customers: { name: string; email?: string | null } | null
+  jobs: { title: string; job_type: string; id?: string } | null
+}
+
+type LedgerRow = {
+  id: string
+  amount_cents: number
+  stripe_created_at: string
+  description: string | null
+  reporting_category: string | null
+}
+
+type PayoutRow = {
+  id: string
+  amount_cents: number
+  stripe_created_at: string
+  description: string | null
 }
 
 function formatWhen(iso: string | null) {
   if (!iso) return '—'
-  const d = new Date(iso)
-  return d.toLocaleString(undefined, { month: 'short', day: 'numeric' })
+  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric' })
 }
 
-function statusPill(status: InvoiceRow['status']) {
-  const base = 'inline-flex items-center'
-  if (status === 'paid') return `${base} invoice-paid`
-  if (status === 'sent') return `${base} invoice-sent`
-  if (status === 'void') return `${base} invoice-void`
+function displayStatus(status: InvoiceRow['status'], createdAt: string): string {
+  if (status === 'paid') return 'paid'
+  if (status === 'void') return 'void'
+  const ageDays = (Date.now() - new Date(createdAt).getTime()) / (86400000)
+  if (status === 'sent' && ageDays > 30) return 'overdue'
+  if (status === 'sent') return 'pending'
+  return status
+}
+
+function statusPill(label: string) {
+  const base = 'inline-flex items-center capitalize'
+  if (label === 'paid') return `${base} invoice-paid`
+  if (label === 'pending') return `${base} invoice-sent`
+  if (label === 'overdue') return `${base} badge-overdue`
+  if (label === 'void') return `${base} invoice-void`
   return `${base} invoice-draft`
 }
 
@@ -38,9 +66,17 @@ export function PaymentsPage() {
   const { user } = useAuth()
   const invoicesRealtimeSeq = useRef(0)
   const [rows, setRows] = useState<InvoiceRow[]>([])
+  const [ledger, setLedger] = useState<LedgerRow[]>([])
+  const [stripeHint, setStripeHint] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [setupOpen, setSetupOpen] = useState(false)
+  const [syncBusy, setSyncBusy] = useState(false)
+  const [manualOpen, setManualOpen] = useState(false)
+  const [manualEmail, setManualEmail] = useState('')
+  const [manualAmount, setManualAmount] = useState('')
+  const [manualDesc, setManualDesc] = useState('')
 
   const { startIso, endIso } = useMemo(() => localMonthRangeIso(), [])
 
@@ -48,21 +84,31 @@ export function PaymentsPage() {
     setLoading(true)
     setError(null)
     try {
-      const { data, error: qErr } = await supabase
-        .from('invoices')
-        .select(
-          'id, status, amount_cents, stripe_checkout_url, created_at, paid_at, last_reminder_at, payment_method, customers(name), jobs(title, job_type)',
-        )
-        .eq('owner_id', ownerId)
-        .order('created_at', { ascending: false })
-        .abortSignal(signal)
+      const [invRes, profRes, ledgerRes] = await Promise.all([
+        supabase
+          .from('invoices')
+          .select(
+            'id, status, amount_cents, stripe_checkout_url, created_at, paid_at, last_reminder_at, payment_method, customers(name, email), jobs(title, job_type, id)',
+          )
+          .eq('owner_id', ownerId)
+          .order('created_at', { ascending: false })
+          .abortSignal(signal),
+        supabase.from('profiles').select('stripe_analytics_key_hint').eq('id', ownerId).maybeSingle(),
+        supabase
+          .from('stripe_ledger_lines')
+          .select('id, amount_cents, stripe_created_at, description, reporting_category')
+          .eq('owner_id', ownerId)
+          .order('stripe_created_at', { ascending: false })
+          .limit(200)
+          .abortSignal(signal),
+      ])
       if (signal.aborted) return
-      if (qErr) {
-        setError(qErr.message)
+      if (invRes.error) {
+        setError(invRes.error.message)
         setRows([])
-      } else {
-        setRows((data ?? []) as InvoiceRow[])
-      }
+      } else setRows((invRes.data ?? []) as InvoiceRow[])
+      setStripeHint((profRes.data as { stripe_analytics_key_hint?: string | null } | null)?.stripe_analytics_key_hint ?? null)
+      if (!ledgerRes.error && ledgerRes.data) setLedger(ledgerRes.data as LedgerRow[])
     } finally {
       if (!signal.aborted) setLoading(false)
     }
@@ -72,23 +118,21 @@ export function PaymentsPage() {
     if (!user) return
     const ac = new AbortController()
     void load(user.id, ac.signal)
-
     invoicesRealtimeSeq.current += 1
     const topic = `invoices:${user.id}:${invoicesRealtimeSeq.current}`
     const channel = supabase
       .channel(topic)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'invoices', filter: `owner_id=eq.${user.id}` },
-        () => void load(user.id, ac.signal),
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices', filter: `owner_id=eq.${user.id}` }, () =>
+        void load(user.id, ac.signal),
       )
       .subscribe()
-
     return () => {
       void supabase.removeChannel(channel)
       ac.abort()
     }
   }, [user])
+
+  const stripeConnected = Boolean(stripeHint)
 
   const collectedThisMonthCents = useMemo(() => {
     const start = new Date(startIso).getTime()
@@ -107,6 +151,41 @@ export function PaymentsPage() {
     [rows],
   )
 
+  const overdueCents = useMemo(
+    () =>
+      rows
+        .filter((r) => displayStatus(r.status, r.created_at) === 'overdue')
+        .reduce((a, r) => a + (r.amount_cents ?? 0), 0),
+    [rows],
+  )
+
+  const weeklyChart = useMemo(() => {
+    const weeks: { label: string; revenue: number }[] = []
+    const now = new Date()
+    for (let i = 7; i >= 0; i--) {
+      const end = new Date(now)
+      end.setDate(end.getDate() - i * 7)
+      const start = new Date(end)
+      start.setDate(start.getDate() - 6)
+      const label = start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+      const rev = rows
+        .filter((r) => r.status === 'paid' && r.paid_at)
+        .filter((r) => {
+          const t = new Date(r.paid_at!).getTime()
+          return t >= start.getTime() && t <= end.getTime() + 86400000
+        })
+        .reduce((a, r) => a + r.amount_cents, 0)
+      weeks.push({ label, revenue: rev / 100 })
+    }
+    return weeks
+  }, [rows])
+
+  const payouts = useMemo((): PayoutRow[] => {
+    return ledger
+      .filter((l) => (l.reporting_category ?? '').includes('payout') || (l.description ?? '').toLowerCase().includes('payout'))
+      .slice(0, 20)
+  }, [ledger])
+
   async function sendReminder(invoiceId: string) {
     if (!user) return
     setBusyId(invoiceId)
@@ -116,43 +195,147 @@ export function PaymentsPage() {
     setBusyId(null)
   }
 
+  async function syncStripe() {
+    setSyncBusy(true)
+    setError(null)
+    try {
+      await syncStripeAnalyticsLedger(120)
+      if (user) await load(user.id, new AbortController().signal)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sync failed')
+    } finally {
+      setSyncBusy(false)
+    }
+  }
+
+  async function submitManualInvoice() {
+    if (!user) return
+    const cents = Math.round(parseFloat(manualAmount) * 100)
+    if (!manualEmail.trim() || !Number.isFinite(cents) || cents <= 0) {
+      setError('Enter a valid email and amount.')
+      return
+    }
+    setBusyId('manual')
+    const { error: invErr } = await createStripeInvoice({
+      customer_email: manualEmail.trim(),
+      amount_cents: cents,
+      description: manualDesc.trim() || 'Manual invoice',
+      send_sms: false,
+    })
+    if (invErr) setError(invErr.message)
+    else {
+      setManualOpen(false)
+      setManualEmail('')
+      setManualAmount('')
+      setManualDesc('')
+      await load(user.id, new AbortController().signal)
+    }
+    setBusyId(null)
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.29, ease: easePremium }}>
         <h1 className="page-title">Payments</h1>
-        <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">Invoices, collection status, and cash flow.</p>
+        <p className="mt-1 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">
+          Invoices, Stripe payouts, and collection status.
+        </p>
       </motion.div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      {!stripeConnected ? (
+        <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-6">
+          <h2 className="text-lg font-semibold text-[var(--color-margen-text)]">Connect Stripe</h2>
+          <p className="mt-1 text-sm text-[var(--color-margen-muted)]">Follow these steps to import real payment data.</p>
+          <ol className="mt-4 space-y-3 text-sm text-[var(--color-margen-text-secondary)]">
+            <li>
+              <span className="font-semibold text-[var(--color-margen-text)]">1.</span> Create a free Stripe account at{' '}
+              <a href="https://stripe.com" target="_blank" rel="noreferrer" className="font-medium text-[var(--margen-accent)] underline">
+                stripe.com
+              </a>
+            </li>
+            <li>
+              <span className="font-semibold text-[var(--color-margen-text)]">2.</span> Go to Developers → API Keys and copy your Secret key
+            </li>
+            <li>
+              <span className="font-semibold text-[var(--color-margen-text)]">3.</span> Paste it below (Settings → Payments → Add API key)
+            </li>
+            <li>
+              <span className="font-semibold text-[var(--color-margen-text)]">4.</span> Click Sync from Stripe to import your data
+            </li>
+          </ol>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSetupOpen(true)}
+              className="rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
+            >
+              Add API key
+            </button>
+            <button
+              type="button"
+              disabled={syncBusy}
+              onClick={() => void syncStripe()}
+              className="rounded-lg border border-[var(--color-margen-border)] px-4 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-60"
+            >
+              {syncBusy ? 'Syncing…' : 'Sync from Stripe'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={syncBusy}
+            onClick={() => void syncStripe()}
+            className="rounded-lg border border-[var(--color-margen-border)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-margen-hover)] disabled:opacity-60"
+          >
+            {syncBusy ? 'Syncing…' : 'Sync from Stripe'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setManualOpen(true)}
+            className="rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
+          >
+            Create invoice
+          </button>
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-5 py-4">
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Collected this month</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--color-margen-text)]">{formatUsdFromCents(collectedThisMonthCents)}</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums">{formatUsdFromCents(collectedThisMonthCents)}</p>
         </div>
         <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-5 py-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Outstanding balance</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--color-margen-text)]">{formatUsdFromCents(outstandingCents)}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Outstanding</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums">{formatUsdFromCents(outstandingCents)}</p>
+        </div>
+        <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-5 py-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Overdue</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums">{formatUsdFromCents(overdueCents)}</p>
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        {error ? (
-          <motion.p
-            key="err"
-            className="text-sm text-danger"
-            role="alert"
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -2 }}
-            transition={{ duration: 0.22, ease: easePremium }}
-          >
-            {error}
-          </motion.p>
-        ) : null}
-      </AnimatePresence>
+      <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-4">
+        <p className="mb-3 text-sm font-medium text-[var(--color-margen-text)]">Revenue by week (last 8 weeks)</p>
+        <div className="h-56">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyChart}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-margen-border)" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v) => [`$${Number(v ?? 0).toFixed(2)}`, 'Revenue']} />
+              <Bar dataKey="revenue" fill="var(--margen-accent)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {error ? (
+        <p className="text-sm text-danger" role="alert">
+          {error}
+        </p>
+      ) : null}
 
       {loading ? (
         <div className="flex min-h-[220px] items-center justify-center rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)]">
@@ -160,7 +343,7 @@ export function PaymentsPage() {
         </div>
       ) : rows.length === 0 ? (
         <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-10 text-center text-sm text-[var(--color-margen-muted)]">
-          No invoices yet. Send an invoice from a completed job to start collecting.
+          No invoices yet. Complete a job and create an invoice, or add one manually.
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)]">
@@ -172,52 +355,89 @@ export function PaymentsPage() {
             <div className="col-span-2 text-right">Actions</div>
           </div>
           <ul className="divide-y divide-[var(--color-margen-border)]">
-            {rows.map((r) => (
-              <li key={r.id} className="grid grid-cols-12 items-center gap-3 px-4 py-3">
-                <div className="col-span-4 min-w-0">
-                  <p className="truncate font-medium text-[var(--color-margen-text)]">{r.customers?.name ?? '—'}</p>
-                  <p className="truncate text-sm text-[var(--color-margen-muted)]">
-                    {r.jobs?.job_type ?? 'job'} · {r.jobs?.title ?? '—'}
-                  </p>
-                </div>
-                <div className="col-span-2">
-                  <span className={statusPill(r.status)}>{r.status}</span>
-                  {r.status === 'paid' && r.payment_method ? (
-                    <p className="mt-1 text-xs capitalize text-[var(--color-margen-muted)]">via {r.payment_method}</p>
-                  ) : null}
-                </div>
-                <div className="col-span-2 text-right font-medium tabular-nums text-[var(--color-margen-text)]">
-                  {formatUsdFromCents(r.amount_cents)}
-                </div>
-                <div className="col-span-2 text-sm text-[var(--color-margen-muted)]">{formatWhen(r.created_at)}</div>
-                <div className="col-span-2 flex justify-end gap-2">
-                  {r.stripe_checkout_url ? (
-                    <a
-                      href={r.stripe_checkout_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-md border border-[var(--color-margen-border)] px-2.5 py-1 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)]"
-                    >
-                      Link
-                    </a>
-                  ) : null}
-                  {r.status !== 'paid' && r.status !== 'void' ? (
-                    <button
-                      type="button"
-                      disabled={busyId === r.id}
-                      onClick={() => void sendReminder(r.id)}
-                      className="rounded-md bg-[var(--margen-accent)] px-2.5 py-1 text-sm font-semibold text-white disabled:opacity-60"
-                    >
-                      Send reminder
-                    </button>
-                  ) : null}
-                </div>
+            {rows.map((r) => {
+              const label = displayStatus(r.status, r.created_at)
+              return (
+                <li key={r.id} className="grid grid-cols-12 items-center gap-3 px-4 py-3">
+                  <div className="col-span-4 min-w-0">
+                    <p className="truncate font-medium">{r.customers?.name ?? '—'}</p>
+                    <p className="truncate text-sm text-[var(--color-margen-muted)]">{r.jobs?.title ?? 'Manual'}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <span className={statusPill(label)}>{label}</span>
+                  </div>
+                  <div className="col-span-2 text-right font-medium tabular-nums">{formatUsdFromCents(r.amount_cents)}</div>
+                  <div className="col-span-2 text-sm text-[var(--color-margen-muted)]">{formatWhen(r.created_at)}</div>
+                  <div className="col-span-2 flex justify-end gap-2">
+                    {r.stripe_checkout_url ? (
+                      <a href={r.stripe_checkout_url} target="_blank" rel="noreferrer" className="rounded-md border px-2.5 py-1 text-sm">
+                        Link
+                      </a>
+                    ) : null}
+                    {label !== 'paid' && label !== 'void' ? (
+                      <button
+                        type="button"
+                        disabled={busyId === r.id}
+                        onClick={() => void sendReminder(r.id)}
+                        className="rounded-md bg-[var(--margen-accent)] px-2.5 py-1 text-sm font-semibold text-white disabled:opacity-60"
+                      >
+                        Remind
+                      </button>
+                    ) : null}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+
+      {payouts.length > 0 ? (
+        <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-4">
+          <h2 className="text-sm font-semibold text-[var(--color-margen-text)]">Payout history</h2>
+          <ul className="mt-3 divide-y divide-[var(--color-margen-border)]">
+            {payouts.map((p) => (
+              <li key={p.id} className="flex items-center justify-between py-2 text-sm">
+                <span className="text-[var(--color-margen-text-secondary)]">{formatWhen(p.stripe_created_at)}</span>
+                <span className="font-medium tabular-nums">{formatUsdFromCents(Math.abs(p.amount_cents))}</span>
+                <span className="truncate text-xs text-[var(--color-margen-muted)]">{p.description ?? 'Payout'}</span>
               </li>
             ))}
           </ul>
         </div>
-      )}
+      ) : null}
+
+      <StripeAnalyticsSetupModal
+        open={setupOpen}
+        onClose={() => setSetupOpen(false)}
+        hasExistingKey={Boolean(stripeHint)}
+        onSaved={() => {
+          setSetupOpen(false)
+          if (user) void load(user.id, new AbortController().signal)
+        }}
+      />
+
+      <AnimatePresence>
+        {manualOpen ? (
+          <motion.div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/30 px-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="w-full max-w-md rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-5" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-lg font-semibold">Create invoice</h2>
+              <label className="mt-4 block text-xs text-[var(--color-margen-muted)]">Customer email</label>
+              <input value={manualEmail} onChange={(e) => setManualEmail(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" />
+              <label className="mt-3 block text-xs text-[var(--color-margen-muted)]">Amount (USD)</label>
+              <input value={manualAmount} onChange={(e) => setManualAmount(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" placeholder="150.00" />
+              <label className="mt-3 block text-xs text-[var(--color-margen-muted)]">Description</label>
+              <input value={manualDesc} onChange={(e) => setManualDesc(e.target.value)} className="mt-1 w-full rounded-lg border px-3 py-2 text-sm" />
+              <div className="mt-5 flex justify-end gap-2">
+                <button type="button" onClick={() => setManualOpen(false)} className="rounded-lg border px-4 py-2 text-sm">Cancel</button>
+                <button type="button" disabled={busyId === 'manual'} onClick={() => void submitManualInvoice()} className="rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+                  Send invoice
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   )
 }
-

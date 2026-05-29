@@ -13,7 +13,8 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import MapView, { Marker } from 'react-native-maps'
+import MapView, { Marker, Polyline } from 'react-native-maps'
+import * as Location from 'expo-location'
 import NetInfo from '@react-native-community/netinfo'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -26,6 +27,8 @@ import { useTechnician } from '../context/TechnicianContext'
 import { useTheme } from '../context/ThemeContext'
 import { layout, typography } from '../theme'
 import type { JobRow } from '../types/job'
+import { distanceMiles, fetchDirectionsPolyline, formatMiles, type LatLng } from '../lib/geo'
+import { googleMapsApiKey } from '../lib/googleMapsKey'
 
 type JobDetail = JobRow & {
   owner_id: string
@@ -35,6 +38,9 @@ type JobDetail = JobRow & {
   assignment_note?: string | null
   started_at: string | null
   actual_arrival: string | null
+  job_address?: string | null
+  job_lat?: number | null
+  job_lng?: number | null
 }
 
 export default function JobDetailRoute() {
@@ -51,13 +57,18 @@ export default function JobDetailRoute() {
   const [photoBusy, setPhotoBusy] = useState<'before' | 'after' | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [timerTick, setTimerTick] = useState(0)
+  const [navMode, setNavMode] = useState(false)
+  const [techLoc, setTechLoc] = useState<LatLng | null>(null)
+  const [route, setRoute] = useState<LatLng[]>([])
+  const [eta, setEta] = useState<string | null>(null)
+  const [arrivalPrompt, setArrivalPrompt] = useState(false)
 
   const load = useCallback(async () => {
     if (!jobId) return
     const { data, error } = await supabase
       .from('jobs')
       .select(
-        'id, title, description, job_type, urgency, status, field_status, scheduled_at, started_at, actual_arrival, completed_at, tech_notes, before_photo_url, after_photo_url, owner_id, assignment_note, customers ( name, phone, address, lat, lng )',
+        'id, title, description, job_type, urgency, status, field_status, scheduled_at, started_at, actual_arrival, completed_at, tech_notes, before_photo_url, after_photo_url, owner_id, assignment_note, job_address, job_lat, job_lng, customers ( name, phone, address, lat, lng )',
       )
       .eq('id', jobId)
       .maybeSingle()
@@ -166,8 +177,59 @@ export default function JobDetailRoute() {
     }
   }
 
+  function jobDestination() {
+    if (!job) return null
+    const lat = job.job_lat ?? job.customers?.lat
+    const lng = job.job_lng ?? job.customers?.lng
+    if (lat == null || lng == null) return null
+    return { latitude: lat, longitude: lng }
+  }
+
+  async function startInAppNavigation() {
+    const dest = jobDestination()
+    if (!dest) {
+      setErr('Job has no location set.')
+      return
+    }
+    const { status } = await Location.requestForegroundPermissionsAsync()
+    if (status !== 'granted') {
+      setErr('Location permission is required for navigation.')
+      return
+    }
+    setNavMode(true)
+    const pos = await Location.getCurrentPositionAsync({})
+    const origin = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
+    setTechLoc(origin)
+    const key = googleMapsApiKey()
+    if (key) {
+      const dir = await fetchDirectionsPolyline(origin, dest, key)
+      if (dir) {
+        setRoute(dir.points)
+        setEta(dir.durationText)
+      } else setRoute([origin, dest])
+    } else setRoute([origin, dest])
+  }
+
+  useEffect(() => {
+    if (!navMode) return
+    const dest = jobDestination()
+    if (!dest) return
+    let sub: Location.LocationSubscription | null = null
+    void Location.watchPositionAsync({ accuracy: Location.Accuracy.High, distanceInterval: 25 }, (pos) => {
+      const here = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
+      setTechLoc(here)
+      const mi = distanceMiles(here.latitude, here.longitude, dest.latitude, dest.longitude)
+      if (mi <= 0.1 && fs === 'en_route') setArrivalPrompt(true)
+    }).then((s) => {
+      sub = s
+    })
+    return () => {
+      sub?.remove()
+    }
+  }, [navMode, fs, job])
+
   function openMaps() {
-    const addr = job?.customers?.address
+    const addr = job?.job_address ?? job?.customers?.address
     if (!addr) return
     const q = encodeURIComponent(addr)
     const url =
@@ -230,9 +292,10 @@ export default function JobDetailRoute() {
     )
   }
 
-  const lat = job.customers?.lat
-  const lng = job.customers?.lng
+  const lat = job.job_lat ?? job.customers?.lat
+  const lng = job.job_lng ?? job.customers?.lng
   const mapReady = lat != null && lng != null
+  const jobAddr = job.job_address ?? job.customers?.address
 
   return (
     <ScrollView
@@ -255,7 +318,20 @@ export default function JobDetailRoute() {
         </Pressable>
 
         <Text style={[styles.label, { color: colors.muted }]}>Address</Text>
-        <Text style={[styles.body, { color: colors.text }]}>{job.customers?.address ?? '—'}</Text>
+        <Text style={[styles.body, { color: colors.text }]}>{jobAddr ?? '—'}</Text>
+        <Pressable
+          onPress={() => void startInAppNavigation()}
+          style={[
+            styles.bigBtn,
+            {
+              backgroundColor: colors.accent,
+              minHeight: layout.tapMin,
+              marginTop: 10,
+            },
+          ]}
+        >
+          <Text style={[styles.bigBtnTxt, { color: colors.accentFg }]}>Navigate in app</Text>
+        </Pressable>
         <Pressable
           onPress={openMaps}
           style={[
@@ -269,23 +345,41 @@ export default function JobDetailRoute() {
             },
           ]}
         >
-          <Text style={[styles.bigBtnTxt, { color: colors.text }]}>Navigate</Text>
+          <Text style={[styles.bigBtnTxt, { color: colors.text }]}>Open in Maps app</Text>
         </Pressable>
+        {eta ? <Text style={[styles.body, { color: colors.muted, marginTop: 8 }]}>ETA: {eta}</Text> : null}
 
         {mapReady ? (
           <View style={[styles.mapWrap, { borderColor: colors.border }]}>
             <MapView
               style={styles.map}
-              scrollEnabled={false}
+              scrollEnabled={navMode}
               region={{
-                latitude: lat!,
-                longitude: lng!,
-                latitudeDelta: 0.04,
-                longitudeDelta: 0.04,
+                latitude: techLoc?.latitude ?? lat!,
+                longitude: techLoc?.longitude ?? lng!,
+                latitudeDelta: navMode ? 0.06 : 0.04,
+                longitudeDelta: navMode ? 0.06 : 0.04,
               }}
             >
-              <Marker coordinate={{ latitude: lat!, longitude: lng! }} title={job.customers?.address ?? ''} />
+              <Marker coordinate={{ latitude: lat!, longitude: lng! }} title={jobAddr ?? ''} />
+              {techLoc ? <Marker coordinate={techLoc} pinColor="blue" title="You" /> : null}
+              {route.length > 1 ? <Polyline coordinates={route} strokeColor={colors.accent} strokeWidth={4} /> : null}
             </MapView>
+          </View>
+        ) : null}
+
+        {arrivalPrompt ? (
+          <View style={[styles.timerBox, { borderColor: colors.accent, marginTop: 12 }]}>
+            <Text style={[styles.timerLbl, { color: colors.text }]}>Have you arrived?</Text>
+            <Pressable
+              onPress={() => {
+                setArrivalPrompt(false)
+                void patchJob({ field_status: 'arrived', actual_arrival: new Date().toISOString() })
+              }}
+              style={[styles.bigBtn, { backgroundColor: colors.accent, marginTop: 10, minHeight: layout.tapMin }]}
+            >
+              <Text style={[styles.bigBtnTxt, { color: colors.accentFg }]}>Start job</Text>
+            </Pressable>
           </View>
         ) : null}
 

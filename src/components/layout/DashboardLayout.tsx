@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useMediaMdUp } from '../../hooks/useMediaMdUp'
@@ -6,14 +6,39 @@ import { easePremium, pageVariants, tapButton, transitionOverlay } from '../../l
 import { Sidebar } from './Sidebar'
 import { NotificationsBell } from '../notifications/NotificationsBell'
 import { PageErrorBoundary } from '../PageErrorBoundary'
+import { OnboardingTutorial } from '../onboarding/OnboardingTutorial'
+import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../contexts/useAuth'
 
 export function DashboardLayout() {
   const location = useLocation()
+  const { user } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [tutorialOpen, setTutorialOpen] = useState(false)
   const isMd = useMediaMdUp()
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('onboarding_completed, onboarding_completed_at')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (cancelled) return
+      const row = data as { onboarding_completed?: boolean; onboarding_completed_at?: string | null } | null
+      const done = row?.onboarding_completed === true || Boolean(row?.onboarding_completed_at)
+      if (!done) setTutorialOpen(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   return (
     <div className="flex min-h-dvh bg-[var(--color-margen-surface)]">
+      <OnboardingTutorial open={tutorialOpen} onDone={() => setTutorialOpen(false)} />
       <AnimatePresence mode="wait">
         {!isMd && mobileOpen ? (
           <motion.button
