@@ -1,4 +1,4 @@
-import QRCode from 'react-qr-code'
+import { QRCode } from 'react-qr-code'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Modal } from '../ui/Modal'
 import { supabase } from '../../lib/supabase'
@@ -186,7 +186,7 @@ export function TechnicianInviteModal({
       title={
         step === 'form'
           ? 'Invite technician'
-          : existingInvite
+          : existingInvite != null
             ? 'Technician invite'
             : "Send invite to technician's phone"
       }
