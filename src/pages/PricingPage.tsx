@@ -167,7 +167,7 @@ export function PricingPage() {
       try {
         await redirectToSubscriptionCheckout({
           plan: planId,
-          billing,
+          billing: billing === 'annual' ? 'annual' : 'monthly',
           ownerId: user.id,
           customerEmail: user.email ?? '',
         })

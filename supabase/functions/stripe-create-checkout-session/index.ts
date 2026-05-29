@@ -17,13 +17,20 @@ function siteUrl(): string {
   return u
 }
 
-function priceIdForPlan(plan: Plan): string {
+function priceIdForPlan(plan: Plan, billing: string): string {
+  const annual = billing === 'annual'
   const key =
     plan === 'starter'
-      ? 'STRIPE_PRICE_STARTER'
+      ? annual
+        ? 'STRIPE_PRICE_STARTER_ANNUAL'
+        : 'STRIPE_PRICE_STARTER'
       : plan === 'growth'
-        ? 'STRIPE_PRICE_GROWTH'
-        : 'STRIPE_PRICE_SCALE'
+        ? annual
+          ? 'STRIPE_PRICE_GROWTH_ANNUAL'
+          : 'STRIPE_PRICE_GROWTH'
+        : annual
+          ? 'STRIPE_PRICE_SCALE_ANNUAL'
+          : 'STRIPE_PRICE_SCALE'
   const id = (Deno.env.get(key) ?? '').trim()
   if (!id) throw new Error(`Missing ${key} in function secrets`)
   return id
@@ -57,7 +64,7 @@ Deno.serve(async (req) => {
 
     const stripe = stripeClient()
     const base = siteUrl()
-    const price = priceIdFromClient || priceIdForPlan(plan)
+    const price = priceIdFromClient || priceIdForPlan(plan, billing)
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
