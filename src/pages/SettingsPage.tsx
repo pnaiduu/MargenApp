@@ -23,7 +23,7 @@ const PAGE_BG = '#fafaf8'
 const CARD_BORDER = '#ebebeb'
 
 const NAV: { id: string; label: string }[] = [
-  { id: 'profile', label: 'Profile' },
+  { id: 'profile', label: 'Business profile' },
   { id: 'service-area', label: 'Service Area' },
   { id: 'operations', label: 'Operations' },
   { id: 'subscription', label: 'Subscription' },

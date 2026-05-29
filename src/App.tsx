@@ -26,7 +26,6 @@ import { SubscribePage } from './pages/SubscribePage'
 import { PaymentsPage } from './pages/PaymentsPage'
 import { RevenuePage } from './pages/RevenuePage'
 import { SchedulePage } from './pages/SchedulePage'
-import { AIReceptionistSettingsPage } from './pages/AIReceptionistSettingsPage'
 import { OnboardingCallSetup } from './pages/OnboardingCallSetup'
 import { SettingsPage } from './pages/SettingsPage'
 import { TechnicianJoinPage } from './pages/TechnicianJoinPage'
@@ -142,7 +141,7 @@ export default function App() {
                     <Route path="revenue" element={<RevenuePage />} />
                     <Route path="payments" element={<PaymentsPage />} />
                     <Route path="settings" element={<SettingsPage />} />
-                    <Route path="settings/ai-receptionist" element={<AIReceptionistSettingsPage />} />
+                    <Route path="settings/ai-receptionist" element={<Navigate to="/settings" replace />} />
                     <Route path="subscribe" element={<SubscribePage />} />
                   </Route>
                 </Route>
