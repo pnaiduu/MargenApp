@@ -23,7 +23,6 @@ const PAGE_BG = '#fafaf8'
 const CARD_BORDER = '#ebebeb'
 
 const NAV: { id: string; label: string }[] = [
-  { id: 'profile', label: 'Business profile' },
   { id: 'service-area', label: 'Service Area' },
   { id: 'operations', label: 'Operations' },
   { id: 'subscription', label: 'Subscription' },
@@ -69,8 +68,6 @@ export function SettingsPage() {
   const location = useLocation()
   const { user } = useAuth()
 
-  const [companyDraft, setCompanyDraft] = useState('')
-  const [businessPhoneDraft, setBusinessPhoneDraft] = useState('')
   const [serviceAreaSnapshot, setServiceAreaSnapshot] = useState<ServiceAreaSnapshot>({
     business_address: null,
     business_lat: null,
@@ -80,9 +77,7 @@ export function SettingsPage() {
   })
   const [serviceAreaInitial, setServiceAreaInitial] = useState<ServiceAreaInitial | null>(null)
   const [serviceAreaResetToken, setServiceAreaResetToken] = useState(0)
-  const [profileBusy, setProfileBusy] = useState(false)
-  const [profileError, setProfileError] = useState<string | null>(null)
-  const [profileOk, setProfileOk] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [areaBusy, setAreaBusy] = useState(false)
   const [areaError, setAreaError] = useState<string | null>(null)
   const [areaOk, setAreaOk] = useState<string | null>(null)
@@ -119,7 +114,7 @@ export function SettingsPage() {
         supabase
           .from('profiles')
           .select(
-            'company_name, business_phone, auto_assign_jobs, auto_sort_schedule, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius',
+            'auto_assign_jobs, auto_sort_schedule, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius',
           )
           .eq('id', userId)
           .maybeSingle(),
@@ -137,17 +132,16 @@ export function SettingsPage() {
       if (cancelled) return
       const { data, error } = profRes
       if (error) {
-        setProfileError(error.message)
+        setLoadError(error.message)
         return
       }
+      setLoadError(null)
       if (!subRes.error && subRes.data) {
         setSaasSubscription(subRes.data as SubscriptionRow)
       } else {
         setSaasSubscription(null)
       }
       setTechnicianCount(techCountRes.count ?? 0)
-      setCompanyDraft(data?.company_name ?? '')
-      setBusinessPhoneDraft(data?.business_phone ?? '')
       setAutoAssignJobs((data as { auto_assign_jobs?: boolean }).auto_assign_jobs !== false)
       setAutoSortSchedule((data as { auto_sort_schedule?: boolean }).auto_sort_schedule !== false)
       const lat =
@@ -228,23 +222,6 @@ export function SettingsPage() {
     }
   }
 
-  async function saveProfileSection() {
-    if (!user) return
-    setProfileBusy(true)
-    setProfileError(null)
-    setProfileOk(null)
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        company_name: companyDraft.trim() || null,
-        business_phone: businessPhoneDraft.trim() || null,
-      } as never)
-      .eq('id', user.id)
-    if (error) setProfileError(error.message)
-    else setProfileOk('Profile saved.')
-    setProfileBusy(false)
-  }
-
   async function persistOperationsSetting(
     field: 'auto_assign_jobs' | 'auto_sort_schedule',
     value: boolean,
@@ -310,10 +287,6 @@ export function SettingsPage() {
     setAreaBusy(false)
   }
 
-  const fieldClass =
-    'w-full rounded-lg border border-[#ebebeb] bg-white px-3 py-2.5 text-sm text-[#111111] outline-none transition focus:border-[var(--margen-accent)] focus:ring-2 focus:ring-[var(--margen-accent-muted)]'
-  const labelClass = 'mb-1.5 block text-xs font-medium text-[#555555]'
-
   const effectiveSub = effectiveSubscriptionRow(saasSubscription, user?.email)
   const subscriptionPlanId = effectiveSub?.plan ?? 'starter'
   const technicianLimit = getTechnicianLimit(subscriptionPlanId)
@@ -355,54 +328,11 @@ export function SettingsPage() {
           </aside>
 
           <div className="min-w-0 flex-1 space-y-8 pb-16">
-            <SettingsSectionCard
-              id="profile"
-              title="Business profile"
-              footer={
-                <>
-                  {profileError ? <p className="mr-auto text-sm text-danger">{profileError}</p> : null}
-                  {profileOk ? <p className="mr-auto text-sm text-[#555555]">{profileOk}</p> : null}
-                  <button
-                    type="button"
-                    disabled={profileBusy}
-                    onClick={() => void saveProfileSection()}
-                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
-                  >
-                    {profileBusy ? 'Saving…' : 'Save'}
-                  </button>
-                </>
-              }
-            >
-              <div className="space-y-5">
-                <div>
-                  <label className={labelClass} htmlFor="settings-company">
-                    Company name
-                  </label>
-                  <input
-                    id="settings-company"
-                    value={companyDraft}
-                    onChange={(e) => setCompanyDraft(e.target.value)}
-                    className={fieldClass}
-                    placeholder="Your company"
-                  />
-                </div>
-                <div>
-                  <label className={labelClass} htmlFor="settings-phone">
-                    Business phone number
-                  </label>
-                  <input
-                    id="settings-phone"
-                    value={businessPhoneDraft}
-                    onChange={(e) => setBusinessPhoneDraft(e.target.value)}
-                    className={`${fieldClass} font-mono`}
-                    placeholder="+15551234567"
-                  />
-                  <p className="mt-1.5 text-xs leading-relaxed text-[#888888]">
-                    Your main business line for customer contact.
-                  </p>
-                </div>
-              </div>
-            </SettingsSectionCard>
+            {loadError ? (
+              <p className="text-sm text-danger" role="alert">
+                {loadError}
+              </p>
+            ) : null}
 
             <SettingsSectionCard
               id="service-area"
