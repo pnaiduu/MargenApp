@@ -1,5 +1,5 @@
 import { corsHeaders } from '../_shared/cors.ts'
-import { getUserFromAuthHeader, unauthorizedResponse } from '../_shared/supabaseAuthed.ts'
+import { getUserFromAuthHeader, unauthorizedResponse } from '../_shared/supabaseAuthHelpers.ts'
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { buildMargenReceptionistPrompt, type RetellFlowStep } from '../_shared/retellPromptTemplate.ts'
 

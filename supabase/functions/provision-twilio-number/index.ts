@@ -1,5 +1,5 @@
 import { corsHeaders } from '../_shared/cors.ts'
-import { getUserFromAuthHeader } from '../_shared/supabaseAuthed.ts'
+import { getUserFromAuthHeader } from '../_shared/supabaseAuthHelpers.ts'
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { twilioClient } from '../_shared/twilio.ts'
 

@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts'
-import { getUserFromAuthHeader, unauthorizedResponse } from '../_shared/supabaseAuthed.ts'
+import { getUserFromAuthHeader, unauthorizedResponse } from '../_shared/supabaseAuthHelpers.ts'
 
 type Body = { job_id: string }
 

@@ -49,9 +49,21 @@ export async function redirectToSubscriptionCheckout(params: {
 
   const priceId = priceIdForPlan(plan, billing)
 
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  if (signal?.aborted) return
+  if (sessionError) throw new Error(sessionError.message)
+
+  const accessToken = sessionData.session?.access_token
+  if (!accessToken) {
+    throw new Error('You must be signed in to start checkout.')
+  }
+
   const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
     'stripe-create-checkout-session',
-    { body: { priceId, plan, billing } },
+    {
+      body: { priceId, plan, billing },
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
   )
 
   if (signal?.aborted) return

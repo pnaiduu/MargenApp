@@ -1,6 +1,6 @@
 import { corsHeaders } from '../_shared/cors.ts'
 import { forwardingActivationSnippet, formatUsDisplay } from '../_shared/forwardingDialCode.ts'
-import { getUserFromAuthHeader } from '../_shared/supabaseAuthed.ts'
+import { getUserFromAuthHeader } from '../_shared/supabaseAuthHelpers.ts'
 import { supabaseAdmin } from '../_shared/supabaseAdmin.ts'
 import { twilioClient, twilioFromNumber } from '../_shared/twilio.ts'
 
