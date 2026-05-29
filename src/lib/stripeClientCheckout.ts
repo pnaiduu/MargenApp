@@ -51,6 +51,14 @@ export async function redirectToSubscriptionCheckout(params: {
     throw new Error('You must be signed in to start checkout.')
   }
 
+  console.log('Checkout debug:', {
+    supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+    hasToken: !!accessToken,
+    plan,
+    billing,
+    priceId,
+  })
+
   const response = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-create-checkout-session`,
     {

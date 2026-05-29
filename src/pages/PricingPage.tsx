@@ -21,7 +21,6 @@ type PlanCard = {
   included: FeatureRow[]
   locked: FeatureRow[]
   popular?: boolean
-  contactSales?: boolean
 }
 
 const PLANS: PlanCard[] = [
@@ -90,7 +89,6 @@ const PLANS: PlanCard[] = [
     annual: 20000,
     foundingAnnual: 16000,
     techLine: 'Unlimited technicians',
-    contactSales: true,
     included: [
       { text: 'Unlimited technicians', included: true },
       { text: 'Unlimited AI calls', included: true },
@@ -180,10 +178,6 @@ export function PricingPage() {
     },
     [billing, loading, persistCheckoutIntent, user],
   )
-
-  const onContactSales = useCallback(() => {
-    window.location.href = 'mailto:hello@margen.com?subject=Margen%20Scale%20plan'
-  }, [])
 
   if (!configured) {
     return (
@@ -345,33 +339,21 @@ export function PricingPage() {
                   ))}
                 </ul>
 
-                {plan.contactSales ? (
-                  <motion.button
-                    type="button"
-                    onClick={onContactSales}
-                    disabled={checkoutBusy}
-                    className="mt-8 w-full rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] py-3.5 text-sm font-semibold text-[var(--color-margen-text)] transition-colors hover:border-[var(--margen-accent)] hover:bg-[var(--margen-accent-muted)]"
-                    whileTap={tapButton}
-                  >
-                    Contact sales
-                  </motion.button>
-                ) : (
-                  <motion.button
-                    type="button"
-                    onClick={() => void onChoosePlan(plan.id)}
-                    disabled={checkoutBusy}
-                    className={[
-                      'mt-8 w-full rounded-xl py-3.5 text-sm font-semibold transition-opacity',
-                      isPopular
-                        ? 'bg-[var(--margen-accent)] text-[var(--margen-accent-fg)] shadow-md hover:opacity-95'
-                        : 'border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] text-[var(--color-margen-text)] hover:border-[var(--margen-accent)] hover:bg-[var(--margen-accent-muted)]',
-                      checkoutBusy ? 'opacity-50' : '',
-                    ].join(' ')}
-                    whileTap={checkoutBusy ? undefined : tapButton}
-                  >
-                    {checkoutBusy ? 'Opening Stripe…' : 'Continue to checkout'}
-                  </motion.button>
-                )}
+                <motion.button
+                  type="button"
+                  onClick={() => void onChoosePlan(plan.id)}
+                  disabled={checkoutBusy}
+                  className={[
+                    'mt-8 w-full rounded-xl py-3.5 text-sm font-semibold transition-opacity',
+                    isPopular
+                      ? 'bg-[var(--margen-accent)] text-[var(--margen-accent-fg)] shadow-md hover:opacity-95'
+                      : 'border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] text-[var(--color-margen-text)] hover:border-[var(--margen-accent)] hover:bg-[var(--margen-accent-muted)]',
+                    checkoutBusy ? 'opacity-50' : '',
+                  ].join(' ')}
+                  whileTap={checkoutBusy ? undefined : tapButton}
+                >
+                  {checkoutBusy ? 'Opening Stripe…' : 'Continue to checkout'}
+                </motion.button>
               </motion.div>
             )
           })}
