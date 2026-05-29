@@ -1,13 +1,6 @@
 import type { PlanId } from './plans'
 import { supabase } from './supabase'
 
-function fnMessage(data: unknown, err: { message?: string } | null): string {
-  if (data && typeof data === 'object' && 'error' in data && (data as { error: string }).error) {
-    return String((data as { error: string }).error)
-  }
-  return err?.message ?? 'Request failed'
-}
-
 function priceIdForPlan(plan: PlanId, billing: 'monthly' | 'annual'): string {
   const monthly: Record<PlanId, string | undefined> = {
     starter: import.meta.env.VITE_STRIPE_STARTER_PRICE_ID,
@@ -58,19 +51,24 @@ export async function redirectToSubscriptionCheckout(params: {
     throw new Error('You must be signed in to start checkout.')
   }
 
-  const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
-    'stripe-create-checkout-session',
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-create-checkout-session`,
     {
-      body: { priceId, plan, billing },
-      headers: { Authorization: `Bearer ${accessToken}` },
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ priceId, plan, billing }),
+      signal,
     },
   )
 
   if (signal?.aborted) return
-  if (error) throw new Error(fnMessage(data, error))
 
-  const url = data?.url
-  if (!url) throw new Error(fnMessage(data, null))
+  const data = (await response.json()) as { url?: string; error?: string }
+  if (!response.ok) throw new Error(data.error ?? 'Checkout failed')
+  if (!data.url) throw new Error('No checkout URL returned')
 
-  window.location.href = url
+  window.location.href = data.url
 }
