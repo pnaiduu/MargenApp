@@ -237,7 +237,7 @@ export function TechniciansPage() {
             onClick={() => tryOpenInvite()}
             className="shrink-0 rounded-md border border-transparent bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] hover:opacity-90 disabled:opacity-50"
           >
-            Send invite to technician&apos;s phone
+            Add Technician
           </button>
         </div>
       </div>
@@ -254,7 +254,7 @@ export function TechniciansPage() {
         <p className="text-sm text-[var(--color-margen-muted)]">Loading…</p>
       ) : technicians.length === 0 ? (
         <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-10 text-center text-sm text-[var(--color-margen-muted)]">
-          No technicians yet. Send an invite to add your first technician.
+          No technicians yet. Add your first technician to get started.
         </div>
       ) : (
         <motion.ul

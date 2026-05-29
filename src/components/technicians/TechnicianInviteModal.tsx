@@ -2,27 +2,24 @@ import { QRCode } from 'react-qr-code'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Modal } from '../ui/Modal'
 import { supabase } from '../../lib/supabase'
-import { inviteAppDeepLink, inviteJoinAbsoluteUrl } from '../../lib/inviteUrl'
+import { inviteAppDeepLink } from '../../lib/inviteUrl'
 import { easePremium, tapButton } from '../../lib/motion'
 import { motion } from 'framer-motion'
 
 type Step = 'form' | 'share'
 
-function normalizeSmsPhone(raw: string) {
-  const d = raw.replace(/[^\d+]/g, '')
-  if (!d) return ''
-  if (d.startsWith('+')) return d
-  if (d.length === 10) return `+1${d}`
-  if (d.length === 11 && d.startsWith('1')) return `+${d}`
-  return d.startsWith('1') && d.length === 11 ? `+${d}` : `+${d}`
-}
+const INVITE_CODE_LENGTH = 6
 
 function randomInviteToken() {
-  // 6-char uppercase invite code (also used as the invite token)
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   let out = ''
-  for (let i = 0; i < 6; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)]!
+  for (let i = 0; i < INVITE_CODE_LENGTH; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)]!
   return out
+}
+
+/** Uppercase display for invite codes; legacy long tokens still copy the full value. */
+function formatInviteCode(token: string) {
+  return token.trim().toUpperCase()
 }
 
 export function TechnicianInviteModal({
@@ -52,14 +49,12 @@ export function TechnicianInviteModal({
   const [phone, setPhone] = useState('')
   const [role, setRole] = useState('')
   const [token, setToken] = useState<string | null>(null)
-  const [invitedPhone, setInvitedPhone] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const inviteUrl = token ? inviteJoinAbsoluteUrl(token) : ''
   const appDeepLink = token ? inviteAppDeepLink(token) : ''
-  const inviteCode = token ?? ''
+  const inviteCode = token ? formatInviteCode(token) : ''
 
   function reset() {
     setStep('form')
@@ -67,7 +62,6 @@ export function TechnicianInviteModal({
     setPhone('')
     setRole('')
     setToken(null)
-    setInvitedPhone('')
     setError(null)
     setCopied(false)
     setSubmitting(false)
@@ -85,7 +79,6 @@ export function TechnicianInviteModal({
       setName(existingInvite.invitedName)
       setPhone(existingInvite.invitedPhone ?? '')
       setRole(existingInvite.role)
-      setInvitedPhone(existingInvite.invitedPhone ?? '')
       setStep('share')
       setError(null)
       setCopied(false)
@@ -149,7 +142,6 @@ export function TechnicianInviteModal({
     }
 
     setToken(newToken)
-    setInvitedPhone(phone.trim())
     setStep('share')
     setSubmitting(false)
     onCreated()
@@ -166,31 +158,12 @@ export function TechnicianInviteModal({
     }
   }
 
-  function sendViaText() {
-    if (!inviteCode) return
-    const body = encodeURIComponent(
-      `Your Margen invite code is: ${inviteCode}\n\nOpen in the app: ${appDeepLink}\nBackup link: ${inviteUrl}`,
-    )
-    const smsPhone = normalizeSmsPhone(invitedPhone)
-    const href = smsPhone ? `sms:${smsPhone}?&body=${body}` : `sms:&body=${body}`
-    const a = document.createElement('a')
-    a.href = href
-    a.rel = 'noopener noreferrer'
-    a.click()
-  }
-
   return (
     <Modal
       open={open}
       onClose={handleClose}
-      title={
-        step === 'form'
-          ? 'Invite technician'
-          : existingInvite != null
-            ? 'Technician invite'
-            : "Send invite to technician's phone"
-      }
-      panelClassName={step === 'share' ? 'max-w-lg' : 'max-w-md'}
+      title={step === 'form' ? 'Add Technician' : 'Technician invite'}
+      panelClassName={step === 'share' ? 'max-w-sm' : 'max-w-md'}
     >
       {step === 'form' ? (
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
@@ -263,52 +236,46 @@ export function TechnicianInviteModal({
               whileTap={submitting ? undefined : tapButton}
               transition={{ duration: 0.14, ease: easePremium }}
             >
-              {submitting ? 'Creating…' : 'Create invite'}
+              {submitting ? 'Adding…' : 'Add Technician'}
             </motion.button>
           </div>
         </form>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-4">
           <p className="text-sm text-[var(--color-margen-muted)]">
-            Read this invite code to your technician (or text it to them). They&apos;ll enter it when creating their Margen
-            account.
+            Share this 6-character code or QR with your technician. They&apos;ll enter it when signing up in the Margen app.
           </p>
-          <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-4">
+          <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-3">
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Invite code</p>
-            <div className="mt-2 flex flex-col items-center gap-3">
-              <p className="select-all font-mono text-4xl font-extrabold tracking-[0.28em] text-[var(--color-margen-text)]">
-                {inviteCode}
+            <p
+              className="mt-2 w-full max-w-[12rem] select-all break-all text-center font-mono text-lg font-semibold tracking-widest text-[var(--color-margen-text)] mx-auto"
+              title={inviteCode}
+            >
+              {inviteCode}
+            </p>
+            {inviteCode.length > INVITE_CODE_LENGTH ? (
+              <p className="mt-2 text-center text-xs text-[var(--color-margen-muted)]">
+                Legacy invite link — add a new technician for a short 6-character code.
               </p>
-              <div className="flex flex-wrap justify-center gap-2">
-                <motion.button
-                  type="button"
-                  onClick={() => void copyCode()}
-                  className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-1.5 text-xs font-medium text-[var(--margen-accent)] hover:bg-[var(--color-margen-hover)]"
-                  whileTap={tapButton}
-                  transition={{ duration: 0.14, ease: easePremium }}
-                >
-                  {copied ? 'Copied' : 'Copy code'}
-                </motion.button>
-                <motion.button
-                  type="button"
-                  onClick={sendViaText}
-                  className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-1.5 text-xs font-medium text-[var(--margen-accent)] hover:bg-[var(--color-margen-hover)]"
-                  whileTap={tapButton}
-                  transition={{ duration: 0.14, ease: easePremium }}
-                >
-                  Send invite to technician&apos;s phone
-                </motion.button>
-              </div>
-            </div>
+            ) : null}
+            <motion.button
+              type="button"
+              onClick={() => void copyCode()}
+              className="mt-3 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-2 text-sm font-medium text-[var(--margen-accent)] hover:bg-[var(--color-margen-hover)]"
+              whileTap={tapButton}
+              transition={{ duration: 0.14, ease: easePremium }}
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </motion.button>
           </div>
 
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center gap-2">
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">QR code</p>
-            <div className="rounded-lg border border-[var(--color-margen-border)] bg-white p-3">
-              {appDeepLink ? <QRCode value={appDeepLink} size={176} /> : null}
+            <div className="rounded-lg border border-[var(--color-margen-border)] bg-white p-2">
+              {appDeepLink ? <QRCode value={appDeepLink} size={128} /> : null}
             </div>
-            <p className="text-xs text-[var(--color-margen-muted)]">
-              They can scan this in the Margen app to fill the invite code automatically.
+            <p className="text-center text-xs text-[var(--color-margen-muted)]">
+              Scan in the Margen app to fill the code automatically.
             </p>
           </div>
           {error ? (
@@ -318,7 +285,7 @@ export function TechnicianInviteModal({
           ) : null}
           <motion.button
             type="button"
-            className="w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] py-2.5 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)]"
+            className="w-full rounded-md border border-transparent bg-[var(--margen-accent)] py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] hover:opacity-90"
             onClick={handleClose}
             whileTap={tapButton}
             transition={{ duration: 0.14, ease: easePremium }}
