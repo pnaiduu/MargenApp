@@ -504,12 +504,10 @@ export function DashboardHome() {
               ) : (
                 <div className="rounded-lg border border-dashed border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-4 text-sm text-[var(--color-margen-muted)]">
                   <span className="font-medium text-[var(--color-margen-text)]">Stripe cash movement</span> — In{' '}
-                  <Link to="/settings" className="font-semibold text-[var(--margen-accent)] underline underline-offset-2">
-                    Settings → Payments
-                  </Link>
-                  , use <strong className="text-[var(--color-margen-text)]">Add API key</strong> (your Stripe secret or
-                  restricted key), then <strong className="text-[var(--color-margen-text)]">Sync from Stripe</strong> to graph
-                  net balance transactions here.
+                  <Link to="/payments" className="font-semibold text-[var(--margen-accent)] underline underline-offset-2">
+                    Payments
+                  </Link>{' '}
+                  to connect Stripe and manage customer invoices.
                 </div>
               )}
             </div>

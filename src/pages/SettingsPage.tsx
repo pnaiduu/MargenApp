@@ -1,13 +1,9 @@
 import { motion } from 'framer-motion'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { HexColorPicker } from 'react-colorful'
 import { easePremium } from '../lib/motion'
-import { foregroundOnAccent, normalizeHex } from '../lib/logoFilter'
-import { stripeConnectStartDemo, stripeConnectSyncDemo } from '../lib/directSupabaseActions'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/useAuth'
-import { usePreferences } from '../contexts/usePreferences'
 import {
   parseCoveredCities,
   ServiceAreaEditor,
@@ -15,8 +11,6 @@ import {
   type ServiceAreaSnapshot,
 } from '../components/settings/ServiceAreaEditor'
 import { cancelSubscriptionAtPeriodEnd, openStripeBillingPortal } from '../lib/stripeSubscription'
-import { syncStripeAnalyticsLedger } from '../lib/stripeAnalytics'
-import { StripeAnalyticsSetupModal } from '../components/settings/StripeAnalyticsSetupModal'
 import { planById, type SubscriptionRow } from '../lib/plans'
 import {
   effectiveSubscriptionRow,
@@ -33,16 +27,7 @@ const NAV: { id: string; label: string }[] = [
   { id: 'service-area', label: 'Service Area' },
   { id: 'operations', label: 'Operations' },
   { id: 'subscription', label: 'Subscription' },
-  { id: 'payments', label: 'Payments' },
-  { id: 'appearance', label: 'Appearance' },
 ]
-
-function tryParseHex(s: string): string | null {
-  const t = s.trim()
-  if (/^#[0-9A-Fa-f]{6}$/i.test(t)) return normalizeHex(t)
-  if (/^[0-9A-Fa-f]{6}$/i.test(t)) return normalizeHex(`#${t}`)
-  return null
-}
 
 function scrollToSection(id: string) {
   document.getElementById(`settings-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -80,54 +65,12 @@ function SettingsSectionCard({
   )
 }
 
-function StripeHowItWorksAccordion() {
-  return (
-    <details className="group mt-5 rounded-xl border border-[#ebebeb] bg-[#fafafa]">
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3.5 text-sm font-medium text-[#111111] marker:hidden [&::-webkit-details-marker]:hidden">
-        <span>How does this work?</span>
-        <span className="text-[#888888] transition group-open:rotate-180">▾</span>
-      </summary>
-      <div
-        className="space-y-3 border-t border-[#ebebeb] px-4 py-4 text-sm leading-relaxed text-[#555555]"
-      >
-        <p>
-          <span className="font-medium text-[#111111]">Margen subscription</span> — Your Starter, Growth, or Scale plan is billed by Margen through Stripe Checkout or the customer portal. You never paste an API key for that; use{' '}
-          <strong className="text-[#111111]">View plans</strong> or <strong className="text-[#111111]">Manage billing</strong> in the subscription card above.
-        </p>
-        <p>
-          <span className="font-medium text-[#111111]">Your business Stripe (customers)</span> —{' '}
-          <strong className="text-[#111111]">Stripe Connect</strong> links your Stripe account so customer invoice payments can reach your bank.
-        </p>
-        <p>
-          <span className="font-medium text-[#111111]">Charts &amp; revenue (optional)</span> — To graph your own money movement, add a secret or restricted key from{' '}
-          <em>your</em> Stripe Dashboard → Developers → API keys. Use a restricted key with permission to read Balance Transactions if you prefer. That key is only for syncing ledger data into Margen; it is not your Margen subscription charge.
-        </p>
-      </div>
-    </details>
-  )
-}
-
 export function SettingsPage() {
   const location = useLocation()
   const { user } = useAuth()
-  const { accentHex, persistAccentColor, persistError, saving } = usePreferences()
-  const [accentDraft, setAccentDraft] = useState(accentHex)
-  const [hexDraft, setHexDraft] = useState(accentHex)
-  const [stripeAccountId, setStripeAccountId] = useState<string | null>(null)
-  const [stripeEnabled, setStripeEnabled] = useState<boolean | null>(null)
-  const [stripeDetailsSubmitted, setStripeDetailsSubmitted] = useState<boolean | null>(null)
-  const [stripeBusy, setStripeBusy] = useState(false)
-  const [stripeError, setStripeError] = useState<string | null>(null)
-  const [vipDraft, setVipDraft] = useState<string>('')
-  const [vipBusy, setVipBusy] = useState(false)
-  const [vipError, setVipError] = useState<string | null>(null)
 
   const [companyDraft, setCompanyDraft] = useState('')
   const [businessPhoneDraft, setBusinessPhoneDraft] = useState('')
-  const [bizHoursEnabled, setBizHoursEnabled] = useState(false)
-  const [bizHoursOpenDraft, setBizHoursOpenDraft] = useState('09:00')
-  const [bizHoursCloseDraft, setBizHoursCloseDraft] = useState('17:00')
-  const [afterHoursMsgDraft, setAfterHoursMsgDraft] = useState('')
   const [serviceAreaSnapshot, setServiceAreaSnapshot] = useState<ServiceAreaSnapshot>({
     business_address: null,
     business_lat: null,
@@ -147,23 +90,11 @@ export function SettingsPage() {
   const [technicianCount, setTechnicianCount] = useState(0)
   const [billingBusy, setBillingBusy] = useState(false)
   const [billingError, setBillingError] = useState<string | null>(null)
-  const [stripeAnalyticsHint, setStripeAnalyticsHint] = useState<string | null>(null)
-  const [stripeAnalyticsLastSyncAt, setStripeAnalyticsLastSyncAt] = useState<string | null>(null)
-  const [stripeAnalyticsModalOpen, setStripeAnalyticsModalOpen] = useState(false)
-  const [stripeAnalyticsOpBusy, setStripeAnalyticsOpBusy] = useState(false)
-  const [stripeAnalyticsOpError, setStripeAnalyticsOpError] = useState<string | null>(null)
 
-  const [appearanceBusy, setAppearanceBusy] = useState(false)
-  const [appearanceOk, setAppearanceOk] = useState<string | null>(null)
   const [autoAssignJobs, setAutoAssignJobs] = useState(true)
   const [autoSortSchedule, setAutoSortSchedule] = useState(true)
   const [operationsBusy, setOperationsBusy] = useState(false)
   const [operationsError, setOperationsError] = useState<string | null>(null)
-
-  useEffect(() => {
-    setAccentDraft(accentHex)
-    setHexDraft(accentHex)
-  }, [accentHex])
 
   useEffect(() => {
     const raw = location.hash?.replace(/^#/, '') ?? ''
@@ -183,12 +114,12 @@ export function SettingsPage() {
     if (!user) return
     const userId = user.id
     let cancelled = false
-    async function loadStripeState() {
+    async function load() {
       const [profRes, subRes, techCountRes] = await Promise.all([
         supabase
           .from('profiles')
           .select(
-            'company_name, business_phone, auto_assign_jobs, auto_sort_schedule, business_hours, after_hours_message, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius, stripe_account_id, stripe_charges_enabled, stripe_details_submitted, stripe_analytics_key_hint, stripe_analytics_last_sync_at, vip_threshold_cents',
+            'company_name, business_phone, auto_assign_jobs, auto_sort_schedule, business_address, business_lat, business_lng, service_radius_miles, covered_cities, service_area_center_lat, service_area_center_lng, service_area_radius',
           )
           .eq('id', userId)
           .maybeSingle(),
@@ -206,7 +137,7 @@ export function SettingsPage() {
       if (cancelled) return
       const { data, error } = profRes
       if (error) {
-        setStripeError(error.message)
+        setProfileError(error.message)
         return
       }
       if (!subRes.error && subRes.data) {
@@ -219,15 +150,6 @@ export function SettingsPage() {
       setBusinessPhoneDraft(data?.business_phone ?? '')
       setAutoAssignJobs((data as { auto_assign_jobs?: boolean }).auto_assign_jobs !== false)
       setAutoSortSchedule((data as { auto_sort_schedule?: boolean }).auto_sort_schedule !== false)
-      const bh = (data?.business_hours ?? {}) as {
-        enabled?: boolean
-        days?: Record<string, { open?: string; close?: string }>
-      }
-      setBizHoursEnabled(Boolean(bh.enabled))
-      const mon = bh.days?.mon
-      setBizHoursOpenDraft(mon?.open ?? '09:00')
-      setBizHoursCloseDraft(mon?.close ?? '17:00')
-      setAfterHoursMsgDraft(data?.after_hours_message ?? '')
       const lat =
         (data as { business_lat?: number | null }).business_lat ??
         data?.service_area_center_lat ??
@@ -258,20 +180,8 @@ export function SettingsPage() {
         service_radius_miles: lat != null && lng != null ? (radMiles ?? 25) : null,
         covered_cities: cities,
       })
-      setStripeAccountId(data?.stripe_account_id ?? null)
-      setStripeEnabled(data?.stripe_charges_enabled ?? null)
-      setStripeDetailsSubmitted(data?.stripe_details_submitted ?? null)
-      setStripeAnalyticsHint((data as { stripe_analytics_key_hint?: string | null })?.stripe_analytics_key_hint ?? null)
-      setStripeAnalyticsLastSyncAt(
-        (data as { stripe_analytics_last_sync_at?: string | null })?.stripe_analytics_last_sync_at ?? null,
-      )
-      setVipDraft(
-        typeof data?.vip_threshold_cents === 'number' && data.vip_threshold_cents > 0
-          ? ((data.vip_threshold_cents ?? 0) / 100).toFixed(0)
-          : '',
-      )
     }
-    void loadStripeState()
+    void load()
     return () => {
       cancelled = true
     }
@@ -290,33 +200,6 @@ export function SettingsPage() {
       .maybeSingle()
     if (!error && data) setSaasSubscription(data as SubscriptionRow)
     else setSaasSubscription(null)
-  }
-
-  const refreshStripeAnalyticsFromProfile = useCallback(async () => {
-    if (!user) return
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('stripe_analytics_key_hint, stripe_analytics_last_sync_at')
-      .eq('id', user.id)
-      .maybeSingle()
-    if (error) return
-    setStripeAnalyticsHint((data as { stripe_analytics_key_hint?: string | null })?.stripe_analytics_key_hint ?? null)
-    setStripeAnalyticsLastSyncAt(
-      (data as { stripe_analytics_last_sync_at?: string | null })?.stripe_analytics_last_sync_at ?? null,
-    )
-  }, [user])
-
-  async function handleSyncStripeLedger() {
-    setStripeAnalyticsOpBusy(true)
-    setStripeAnalyticsOpError(null)
-    try {
-      await syncStripeAnalyticsLedger(120)
-      await refreshStripeAnalyticsFromProfile()
-    } catch (e) {
-      setStripeAnalyticsOpError(e instanceof Error ? e.message : 'Sync failed')
-    } finally {
-      setStripeAnalyticsOpBusy(false)
-    }
   }
 
   async function handleBillingPortal() {
@@ -345,85 +228,16 @@ export function SettingsPage() {
     }
   }
 
-  async function startStripeConnect() {
-    if (!user) return
-    setStripeBusy(true)
-    setStripeError(null)
-    const { data, error } = await stripeConnectStartDemo(supabase, user.id)
-    if (error) {
-      setStripeError(error.message)
-      setStripeBusy(false)
-      return
-    }
-    const url = (data as { url?: string; stripe_account_id?: string } | null)?.url
-    const acct = (data as { url?: string; stripe_account_id?: string } | null)?.stripe_account_id ?? null
-    if (acct) setStripeAccountId(acct)
-    setStripeEnabled(true)
-    setStripeDetailsSubmitted(true)
-    if (url) window.location.assign(url)
-    setStripeBusy(false)
-  }
-
-  async function syncStripeConnect() {
-    if (!user) return
-    setStripeBusy(true)
-    setStripeError(null)
-    const { data, error } = await stripeConnectSyncDemo(supabase, user.id)
-    if (error) {
-      setStripeError(error.message)
-      setStripeBusy(false)
-      return
-    }
-    const d = data as { stripe_charges_enabled?: boolean; stripe_details_submitted?: boolean } | null
-    setStripeEnabled(Boolean(d?.stripe_charges_enabled))
-    setStripeDetailsSubmitted(Boolean(d?.stripe_details_submitted))
-    setStripeBusy(false)
-  }
-
-  async function saveVipThreshold() {
-    if (!user) return
-    setVipBusy(true)
-    setVipError(null)
-    const dollars = Number(vipDraft)
-    if (!Number.isFinite(dollars) || dollars < 0) {
-      setVipError('Enter a valid non-negative number.')
-      setVipBusy(false)
-      return
-    }
-    const cents = Math.round(dollars * 100)
-    const { error } = await supabase.from('profiles').update({ vip_threshold_cents: cents }).eq('id', user.id)
-    if (error) setVipError(error.message)
-    else setVipDraft(String(dollars))
-    setVipBusy(false)
-  }
-
   async function saveProfileSection() {
     if (!user) return
     setProfileBusy(true)
     setProfileError(null)
     setProfileOk(null)
-    if (!/^\d{2}:\d{2}$/.test(bizHoursOpenDraft.trim()) || !/^\d{2}:\d{2}$/.test(bizHoursCloseDraft.trim())) {
-      setProfileError('Business hours must be in HH:MM format.')
-      setProfileBusy(false)
-      return
-    }
-    const business_hours = {
-      enabled: bizHoursEnabled,
-      days: {
-        mon: { open: bizHoursOpenDraft.trim(), close: bizHoursCloseDraft.trim() },
-        tue: { open: bizHoursOpenDraft.trim(), close: bizHoursCloseDraft.trim() },
-        wed: { open: bizHoursOpenDraft.trim(), close: bizHoursCloseDraft.trim() },
-        thu: { open: bizHoursOpenDraft.trim(), close: bizHoursCloseDraft.trim() },
-        fri: { open: bizHoursOpenDraft.trim(), close: bizHoursCloseDraft.trim() },
-      },
-    }
     const { error } = await supabase
       .from('profiles')
       .update({
         company_name: companyDraft.trim() || null,
         business_phone: businessPhoneDraft.trim() || null,
-        business_hours,
-        after_hours_message: afterHoursMsgDraft.trim() || null,
       } as never)
       .eq('id', user.id)
     if (error) setProfileError(error.message)
@@ -496,26 +310,9 @@ export function SettingsPage() {
     setAreaBusy(false)
   }
 
-  async function saveAppearanceSection() {
-    setAppearanceBusy(true)
-    setAppearanceOk(null)
-    const parsed = tryParseHex(hexDraft) ?? tryParseHex(accentDraft)
-    if (!parsed) {
-      setAppearanceBusy(false)
-      return
-    }
-    setAccentDraft(parsed)
-    setHexDraft(parsed)
-    const ok = await persistAccentColor(parsed)
-    setAppearanceBusy(false)
-    if (ok) setAppearanceOk('Accent saved.')
-  }
-
   const fieldClass =
     'w-full rounded-lg border border-[#ebebeb] bg-white px-3 py-2.5 text-sm text-[#111111] outline-none transition focus:border-[var(--margen-accent)] focus:ring-2 focus:ring-[var(--margen-accent-muted)]'
   const labelClass = 'mb-1.5 block text-xs font-medium text-[#555555]'
-
-  const previewFg = foregroundOnAccent(accentDraft)
 
   const effectiveSub = effectiveSubscriptionRow(saasSubscription, user?.email)
   const subscriptionPlanId = effectiveSub?.plan ?? 'starter'
@@ -536,7 +333,9 @@ export function SettingsPage() {
           transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
         >
           <h1 className="page-title">Settings</h1>
-          <p className="mt-1 text-sm leading-relaxed text-[#555555]">Company profile, service area, operations, billing, and appearance.</p>
+          <p className="mt-1 text-sm leading-relaxed text-[#555555]">
+            Manage your workspace and team settings.
+          </p>
         </motion.div>
 
         <div className="flex flex-col gap-10 lg:flex-row lg:gap-12">
@@ -599,79 +398,8 @@ export function SettingsPage() {
                     placeholder="+15551234567"
                   />
                   <p className="mt-1.5 text-xs leading-relaxed text-[#888888]">
-                    Your existing number — customers call this.
+                    Your main business line for customer contact.
                   </p>
-                </div>
-                <div>
-                  <label className={labelClass} htmlFor="settings-after-hours">
-                    After-hours message
-                  </label>
-                  <input
-                    id="settings-after-hours"
-                    value={afterHoursMsgDraft}
-                    onChange={(e) => setAfterHoursMsgDraft(e.target.value)}
-                    className={fieldClass}
-                    placeholder="Thanks for calling — we’re closed right now…"
-                  />
-                </div>
-                <div className="rounded-xl border border-[#ebebeb] bg-[#fafafa] p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-[#111111]">Business hours</p>
-                      <p className="mt-1 text-xs leading-relaxed text-[#888888]">
-                        When enabled, jobs and scheduling respect these hours for your team.
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span className="text-xs font-medium tabular-nums text-[#555555]">{bizHoursEnabled ? 'On' : 'Off'}</span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={bizHoursEnabled}
-                        onClick={() => setBizHoursEnabled((v) => !v)}
-                        className={[
-                          'relative h-8 w-14 rounded-full border transition',
-                          bizHoursEnabled
-                            ? 'border-[var(--margen-accent)] bg-[var(--margen-accent)]'
-                            : 'border-[#ebebeb] bg-[#e8e8e8]',
-                        ].join(' ')}
-                      >
-                        <span
-                          className={[
-                            'absolute top-1 h-6 w-6 rounded-full bg-white shadow transition',
-                            bizHoursEnabled ? 'left-7' : 'left-1',
-                          ].join(' ')}
-                        />
-                        <span className="sr-only">{bizHoursEnabled ? 'On' : 'Off'}</span>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className={labelClass} htmlFor="settings-open">
-                        Opens (Mon–Fri)
-                      </label>
-                      <input
-                        id="settings-open"
-                        value={bizHoursOpenDraft}
-                        onChange={(e) => setBizHoursOpenDraft(e.target.value)}
-                        className={`${fieldClass} font-mono`}
-                        placeholder="09:00"
-                      />
-                    </div>
-                    <div>
-                      <label className={labelClass} htmlFor="settings-close">
-                        Closes (Mon–Fri)
-                      </label>
-                      <input
-                        id="settings-close"
-                        value={bizHoursCloseDraft}
-                        onChange={(e) => setBizHoursCloseDraft(e.target.value)}
-                        className={`${fieldClass} font-mono`}
-                        placeholder="17:00"
-                      />
-                    </div>
-                  </div>
                 </div>
               </div>
             </SettingsSectionCard>
@@ -891,208 +619,6 @@ export function SettingsPage() {
                   </div>
                 )}
                 {billingError ? <p className="mt-3 text-sm text-danger">{billingError}</p> : null}
-              </div>
-
-              <StripeHowItWorksAccordion />
-            </SettingsSectionCard>
-
-            <SettingsSectionCard
-              id="payments"
-              title="Payments"
-              footer={
-                <>
-                  {vipError ? <p className="mr-auto text-sm text-danger">{vipError}</p> : null}
-                  <button
-                    type="button"
-                    disabled={vipBusy}
-                    onClick={() => void saveVipThreshold()}
-                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
-                  >
-                    {vipBusy ? 'Saving…' : 'Save'}
-                  </button>
-                </>
-              }
-            >
-              <p className="text-sm leading-relaxed text-[#555555]">
-                Connect Stripe for customer invoices. Optional analytics key syncs revenue charts.
-              </p>
-
-              <div className="mt-6 rounded-xl border border-[#ebebeb] bg-white p-5">
-                <p className="text-sm font-medium text-[#111111]">Stripe Connect</p>
-                <p className="mt-1 text-xs text-[#888888]">
-                  {stripeAccountId ? (
-                    <>
-                      Account <span className="font-mono text-[#111111]">{stripeAccountId}</span>
-                      <span className="mx-2 text-[#cccccc]">·</span>
-                      Charges {stripeEnabled ? 'enabled' : 'disabled'}
-                    </>
-                  ) : (
-                    'Not connected yet.'
-                  )}
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={stripeBusy}
-                    onClick={() => void startStripeConnect()}
-                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
-                  >
-                    {stripeAccountId ? 'Reconnect Stripe' : 'Connect Stripe'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={stripeBusy || !stripeAccountId}
-                    onClick={() => void syncStripeConnect()}
-                    className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#fafafa] disabled:opacity-60"
-                  >
-                    Refresh status
-                  </button>
-                </div>
-                {stripeDetailsSubmitted === false ? (
-                  <p className="mt-3 text-xs text-[#888888]">Finish Stripe onboarding to accept payments.</p>
-                ) : null}
-                {stripeError ? <p className="mt-2 text-sm text-danger">{stripeError}</p> : null}
-              </div>
-
-              <div className="mt-5 rounded-xl border border-[#ebebeb] bg-white p-5">
-                <p className="text-sm font-medium text-[#111111]">Revenue analytics key</p>
-                <p className="mt-1 text-xs leading-relaxed text-[#888888]">
-                  Optional. Encrypted on save. See <span className="text-[#111111]">How does this work?</span> under Subscription.
-                </p>
-                {stripeAnalyticsHint ? (
-                  <p className="mt-3 text-xs text-[#888888]">
-                    Key <span className="font-mono text-[#111111]">{stripeAnalyticsHint}</span>
-                    <span className="mx-2 text-[#cccccc]">·</span>
-                    Last sync{' '}
-                    <span className="font-medium text-[#111111]">
-                      {stripeAnalyticsLastSyncAt
-                        ? new Date(stripeAnalyticsLastSyncAt).toLocaleString(undefined, {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                          })
-                        : 'Never'}
-                    </span>
-                  </p>
-                ) : (
-                  <p className="mt-3 text-xs text-[#888888]">No key saved.</p>
-                )}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={stripeAnalyticsOpBusy}
-                    onClick={() => {
-                      setStripeAnalyticsOpError(null)
-                      setStripeAnalyticsModalOpen(true)
-                    }}
-                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
-                  >
-                    {stripeAnalyticsHint ? 'Change API key' : 'Add API key'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={stripeAnalyticsOpBusy || !stripeAnalyticsHint}
-                    onClick={() => void handleSyncStripeLedger()}
-                    className="rounded-lg border border-[#ebebeb] bg-white px-4 py-2 text-sm font-medium text-[#111111] hover:bg-[#fafafa] disabled:opacity-60"
-                  >
-                    {stripeAnalyticsOpBusy ? 'Syncing…' : 'Sync from Stripe'}
-                  </button>
-                </div>
-                {stripeAnalyticsOpError ? <p className="mt-2 text-sm text-danger">{stripeAnalyticsOpError}</p> : null}
-              </div>
-
-              <div className="mt-6 border-t border-[#ebebeb] pt-6">
-                <label className={labelClass} htmlFor="vip-threshold">
-                  VIP lifetime value threshold (USD)
-                </label>
-                <p className="mb-2 text-xs text-[#888888]">Flag customers when lifetime value exceeds this amount.</p>
-                <input
-                  id="vip-threshold"
-                  value={vipDraft}
-                  onChange={(e) => setVipDraft(e.target.value)}
-                  inputMode="decimal"
-                  className={fieldClass}
-                  placeholder="e.g. 2000"
-                />
-              </div>
-            </SettingsSectionCard>
-
-            <StripeAnalyticsSetupModal
-              open={stripeAnalyticsModalOpen}
-              onClose={() => setStripeAnalyticsModalOpen(false)}
-              onSaved={() => void refreshStripeAnalyticsFromProfile()}
-              hasExistingKey={Boolean(stripeAnalyticsHint)}
-            />
-
-            <SettingsSectionCard
-              id="appearance"
-              title="Appearance"
-              footer={
-                <>
-                  {persistError ? <p className="mr-auto text-sm text-danger">{persistError}</p> : null}
-                  {appearanceOk ? <p className="mr-auto text-sm text-[#555555]">{appearanceOk}</p> : null}
-                  <button
-                    type="button"
-                    disabled={appearanceBusy || saving}
-                    onClick={() => void saveAppearanceSection()}
-                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
-                  >
-                    {appearanceBusy || saving ? 'Saving…' : 'Save'}
-                  </button>
-                </>
-              }
-            >
-              <div>
-                <label className="text-sm font-medium text-[#111111]">Accent color</label>
-                <p className="mt-1 text-xs leading-relaxed text-[#888888]">
-                  Applied to buttons, active states, and highlights.
-                </p>
-                <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-start">
-                  <div className="max-w-[220px] flex-1 overflow-hidden rounded-xl border border-[#ebebeb] p-3">
-                    <HexColorPicker
-                      color={accentDraft}
-                      onChange={(c) => {
-                        setAccentDraft(c)
-                        setHexDraft(c)
-                      }}
-                      style={{ width: '100%', height: 180 }}
-                    />
-                  </div>
-                  <div className="flex flex-1 flex-col gap-4">
-                    <div>
-                      <label htmlFor="accent-hex" className={labelClass}>
-                        Hex
-                      </label>
-                      <input
-                        id="accent-hex"
-                        type="text"
-                        value={hexDraft}
-                        onChange={(e) => setHexDraft(e.target.value)}
-                        onBlur={() => {
-                          const parsed = tryParseHex(hexDraft)
-                          if (parsed) {
-                            setAccentDraft(parsed)
-                            setHexDraft(parsed)
-                          } else {
-                            setHexDraft(accentDraft)
-                          }
-                        }}
-                        spellCheck={false}
-                        className={`${fieldClass} font-mono`}
-                        placeholder="#111111"
-                      />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-[#888888]">Preview</p>
-                      <button
-                        type="button"
-                        className="mt-2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-sm transition hover:opacity-95"
-                        style={{ backgroundColor: accentDraft, color: previewFg }}
-                      >
-                        Sample button
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </div>
             </SettingsSectionCard>
           </div>
