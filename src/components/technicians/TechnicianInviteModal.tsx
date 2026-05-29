@@ -163,7 +163,7 @@ export function TechnicianInviteModal({
       open={open}
       onClose={handleClose}
       title={step === 'form' ? 'Add Technician' : 'Technician invite'}
-      panelClassName={step === 'share' ? 'max-w-sm' : 'max-w-md'}
+      panelClassName={step === 'share' ? 'max-w-sm w-full mx-4 !p-4' : 'max-w-md w-full mx-4'}
     >
       {step === 'form' ? (
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
@@ -241,27 +241,30 @@ export function TechnicianInviteModal({
           </div>
         </form>
       ) : (
-        <div className="space-y-4">
-          <p className="text-sm text-[var(--color-margen-muted)]">
-            Share this 6-character code or QR with your technician. They&apos;ll enter it when signing up in the Margen app.
+        <div className="space-y-3">
+          <p className="text-xs leading-snug text-[var(--color-margen-muted)]">
+            Share the code or QR so they can sign up in the Margen app.
           </p>
-          <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-3">
+          <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2">
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Invite code</p>
-            <p
-              className="mt-2 w-full max-w-[12rem] select-all break-all text-center font-mono text-lg font-semibold tracking-widest text-[var(--color-margen-text)] mx-auto"
-              title={inviteCode}
-            >
-              {inviteCode}
-            </p>
+            <div className="mt-1.5 max-w-full overflow-hidden">
+              <p
+                className="select-all break-all text-center font-mono text-2xl font-bold tracking-widest text-[var(--color-margen-text)]"
+                style={{ wordBreak: 'break-all' }}
+                title={inviteCode}
+              >
+                {inviteCode}
+              </p>
+            </div>
             {inviteCode.length > INVITE_CODE_LENGTH ? (
-              <p className="mt-2 text-center text-xs text-[var(--color-margen-muted)]">
-                Legacy invite link — add a new technician for a short 6-character code.
+              <p className="mt-1.5 break-all text-center text-xs text-[var(--color-margen-muted)]">
+                Legacy invite — add a new technician for a 6-character code.
               </p>
             ) : null}
             <motion.button
               type="button"
               onClick={() => void copyCode()}
-              className="mt-3 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-2 text-sm font-medium text-[var(--margen-accent)] hover:bg-[var(--color-margen-hover)]"
+              className="mt-2 w-full rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-1.5 text-sm font-medium text-[var(--margen-accent)] hover:bg-[var(--color-margen-hover)]"
               whileTap={tapButton}
               transition={{ duration: 0.14, ease: easePremium }}
             >
@@ -269,23 +272,29 @@ export function TechnicianInviteModal({
             </motion.button>
           </div>
 
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">QR code</p>
-            <div className="rounded-lg border border-[var(--color-margen-border)] bg-white p-2">
-              {appDeepLink ? <QRCode value={appDeepLink} size={128} /> : null}
+            <div className="mx-auto flex max-h-[160px] max-w-[160px] items-center justify-center overflow-hidden rounded-lg border border-[var(--color-margen-border)] bg-white p-1">
+              {appDeepLink ? (
+                <QRCode
+                  value={appDeepLink}
+                  size={160}
+                  className="h-auto max-h-[160px] max-w-[160px] w-full"
+                />
+              ) : null}
             </div>
-            <p className="text-center text-xs text-[var(--color-margen-muted)]">
-              Scan in the Margen app to fill the code automatically.
+            <p className="text-center text-xs leading-snug text-[var(--color-margen-muted)]">
+              Scan to fill the code in the app.
             </p>
           </div>
           {error ? (
-            <p className="text-sm text-danger" role="alert">
+            <p className="break-all text-sm text-danger" role="alert">
               {error}
             </p>
           ) : null}
           <motion.button
             type="button"
-            className="w-full rounded-md border border-transparent bg-[var(--margen-accent)] py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] hover:opacity-90"
+            className="w-full rounded-md border border-transparent bg-[var(--margen-accent)] py-2 text-sm font-semibold text-[var(--margen-accent-fg)] hover:opacity-90"
             onClick={handleClose}
             whileTap={tapButton}
             transition={{ duration: 0.14, ease: easePremium }}
