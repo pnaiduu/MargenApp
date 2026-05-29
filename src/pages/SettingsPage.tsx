@@ -536,7 +536,7 @@ export function SettingsPage() {
           transition={{ duration: 0.29, ease: easePremium, delay: 0.028 }}
         >
           <h1 className="page-title">Settings</h1>
-          <p className="mt-1 text-sm leading-relaxed text-[#555555]">Manage your workspace, phone, billing, and appearance.</p>
+          <p className="mt-1 text-sm leading-relaxed text-[#555555]">Company profile, service area, operations, billing, and appearance.</p>
         </motion.div>
 
         <div className="flex flex-col gap-10 lg:flex-row lg:gap-12">
@@ -619,7 +619,7 @@ export function SettingsPage() {
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-[#111111]">Business hours</p>
                       <p className="mt-1 text-xs leading-relaxed text-[#888888]">
-                        When enabled, callers outside these hours hear your after-hours message and can reach your AI receptionist.
+                        When enabled, jobs and scheduling respect these hours for your team.
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">

@@ -11,7 +11,6 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { SubscriptionAccessRoute } from './components/SubscriptionAccessRoute'
 import { AppShell } from './components/layout/AppShell'
 import { DashboardLayout } from './components/layout/DashboardLayout'
-import { CallsLeadsPage } from './pages/CallsLeadsPage'
 import { CustomersPage } from './pages/CustomersPage'
 import { CustomerProfilePage } from './pages/CustomerProfilePage'
 import { CustomerPaymentConfirmPage } from './pages/CustomerPaymentConfirmPage'
@@ -140,7 +139,6 @@ export default function App() {
                     <Route path="technicians/:id" element={<TechnicianProfilePage />} />
                     <Route path="hours" element={<HoursAttendancePage />} />
                     <Route path="schedule" element={<SchedulePage />} />
-                    <Route path="calls" element={<CallsLeadsPage />} />
                     <Route path="revenue" element={<RevenuePage />} />
                     <Route path="payments" element={<PaymentsPage />} />
                     <Route path="settings" element={<SettingsPage />} />

@@ -1,10 +1,9 @@
 import { motion } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/useAuth'
-import { easePremium, tapButton } from '../lib/motion'
+import { easePremium } from '../lib/motion'
 import { FOUNDING_MEMBER_BANNER, type PlanId } from '../lib/plans'
-import { redirectToSubscriptionCheckout } from '../lib/stripeClientCheckout'
 
 type Billing = 'monthly' | 'annual'
 
@@ -34,7 +33,6 @@ const PLANS: PlanCard[] = [
     techLine: 'Up to 5 technicians',
     included: [
       { text: 'Up to 5 technicians', included: true },
-      { text: 'AI receptionist up to 300 calls/month', included: true },
       { text: 'Job creation and scheduling', included: true },
       { text: 'Customer profiles', included: true },
       { text: 'Basic revenue tracking', included: true },
@@ -61,7 +59,6 @@ const PLANS: PlanCard[] = [
     popular: true,
     included: [
       { text: 'Up to 20 technicians', included: true },
-      { text: 'AI receptionist up to 1,000 calls/month', included: true },
       { text: 'Everything in Starter', included: true },
       { text: 'AI auto job assignment', included: true },
       { text: 'Live GPS technician tracking', included: true },
@@ -75,8 +72,7 @@ const PLANS: PlanCard[] = [
     ],
     locked: [
       { text: 'Unlimited technicians', included: false },
-      { text: 'Unlimited calls', included: false },
-      { text: 'White label AI', included: false },
+      { text: 'White label', included: false },
       { text: 'API access', included: false },
       { text: 'Phone support', included: false },
     ],
@@ -91,9 +87,8 @@ const PLANS: PlanCard[] = [
     techLine: 'Unlimited technicians',
     included: [
       { text: 'Unlimited technicians', included: true },
-      { text: 'Unlimited AI calls', included: true },
       { text: 'Everything in Growth', included: true },
-      { text: 'White label AI receptionist', included: true },
+      { text: 'White label branding', included: true },
       { text: 'Unlimited service areas', included: true },
       { text: 'API access', included: true },
       { text: 'Custom reporting', included: true },
@@ -139,8 +134,6 @@ export function PricingPage() {
   const location = useLocation()
   const [billing, setBilling] = useState<Billing>('monthly')
   const [subscriptionRequiredBanner, setSubscriptionRequiredBanner] = useState(false)
-  const [checkoutError, setCheckoutError] = useState<string | null>(null)
-  const [checkoutBusy, setCheckoutBusy] = useState(false)
 
   useEffect(() => {
     const st = location.state as { subscriptionRequired?: boolean } | undefined
@@ -148,36 +141,6 @@ export function PricingPage() {
     setSubscriptionRequiredBanner(true)
     navigate('.', { replace: true, state: {} })
   }, [location.state, navigate])
-
-  const persistCheckoutIntent = useCallback((planId: PlanId, b: Billing) => {
-    try {
-      sessionStorage.setItem('margen_checkout_plan', planId)
-      sessionStorage.setItem('margen_checkout_billing', b)
-    } catch {
-      // ignore
-    }
-  }, [])
-
-  const onChoosePlan = useCallback(
-    async (planId: PlanId) => {
-      setCheckoutError(null)
-      if (loading || !user) return
-      persistCheckoutIntent(planId, billing)
-      setCheckoutBusy(true)
-      try {
-        await redirectToSubscriptionCheckout({
-          plan: planId,
-          billing: billing === 'annual' ? 'annual' : 'monthly',
-          ownerId: user.id,
-          customerEmail: user.email ?? '',
-        })
-      } catch (e) {
-        setCheckoutError(e instanceof Error ? e.message : 'Checkout could not start')
-        setCheckoutBusy(false)
-      }
-    },
-    [billing, loading, persistCheckoutIntent, user],
-  )
 
   if (!configured) {
     return (
@@ -223,12 +186,6 @@ export function PricingPage() {
               Choose a Margen plan below to unlock the dashboard. After checkout, you&apos;ll land on your dashboard.
             </div>
           ) : null}
-          {checkoutError ? (
-            <div className="mx-auto mb-6 max-w-xl rounded-xl px-4 py-3 text-sm alert-error">
-              {checkoutError}
-            </div>
-          ) : null}
-
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Margen</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--color-margen-text)] sm:text-4xl">
             Plans built for field service teams
@@ -237,12 +194,14 @@ export function PricingPage() {
             Pick monthly or annual billing. Annual is billed as 10× the monthly rate — two months on us.
           </p>
           <p className="mx-auto mt-4 max-w-xl text-sm text-[var(--color-margen-muted)]">
-            Choose a plan below to continue to secure checkout, or{' '}
-            <Link to="/dashboard" className="font-medium text-[var(--margen-accent)] underline-offset-2 hover:underline">
-              open your dashboard
-            </Link>
-            .
+            Manage billing from your dashboard, or choose a plan below to upgrade.
           </p>
+          <Link
+            to="/dashboard"
+            className="mt-5 inline-flex items-center justify-center rounded-xl bg-[var(--margen-accent)] px-6 py-3 text-sm font-semibold text-[var(--margen-accent-fg)] hover:opacity-95"
+          >
+            Go to dashboard
+          </Link>
 
           <div className="mx-auto mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <div className="inline-flex rounded-full border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-1">
@@ -339,21 +298,17 @@ export function PricingPage() {
                   ))}
                 </ul>
 
-                <motion.button
-                  type="button"
-                  onClick={() => void onChoosePlan(plan.id)}
-                  disabled={checkoutBusy}
+                <Link
+                  to="/dashboard"
                   className={[
-                    'mt-8 w-full rounded-xl py-3.5 text-sm font-semibold transition-opacity',
+                    'mt-8 flex w-full items-center justify-center rounded-xl py-3.5 text-sm font-semibold transition-opacity',
                     isPopular
                       ? 'bg-[var(--margen-accent)] text-[var(--margen-accent-fg)] shadow-md hover:opacity-95'
                       : 'border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] text-[var(--color-margen-text)] hover:border-[var(--margen-accent)] hover:bg-[var(--margen-accent-muted)]',
-                    checkoutBusy ? 'opacity-50' : '',
                   ].join(' ')}
-                  whileTap={checkoutBusy ? undefined : tapButton}
                 >
-                  {checkoutBusy ? 'Opening Stripe…' : 'Continue to checkout'}
-                </motion.button>
+                  Go to dashboard
+                </Link>
               </motion.div>
             )
           })}

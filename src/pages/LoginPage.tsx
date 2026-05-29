@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion'
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Modal } from '../components/ui/Modal'
 import { PasswordField } from '../components/ui/PasswordField'
 import { useAuth } from '../contexts/useAuth'
 import { easePremium, tapButton } from '../lib/motion'
-import { safeReturnPath } from '../lib/safeReturnPath'
+import { postLoginPath } from '../lib/safeReturnPath'
 
 function formatSubmitError(caught: unknown): string {
   const name =
@@ -45,6 +45,7 @@ function planIdFromSubscribeReturn(from: string | undefined): string | null {
 export function LoginPage() {
   const { user, loading, configured, signIn } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
   const routeIntent = (location.state as { intent?: string } | undefined)?.intent
@@ -91,7 +92,7 @@ export function LoginPage() {
   }
 
   if (!loading && user) {
-    return <Navigate to={safeReturnPath(location.state)} replace />
+    return <Navigate to={postLoginPath(location.state)} replace />
   }
 
   async function onSubmit(e: FormEvent) {
@@ -100,7 +101,11 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       const { error: err } = await signIn(email, password)
-      if (err) setError(err.message)
+      if (err) {
+        setError(err.message)
+      } else {
+        navigate(postLoginPath(location.state), { replace: true })
+      }
     } catch (caught) {
       setError(formatSubmitError(caught))
     } finally {
@@ -137,10 +142,10 @@ export function LoginPage() {
           <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Margen</p>
           <h1 className="mt-1 text-center text-2xl font-semibold text-[var(--color-margen-text)]">Sign in</h1>
           <p className="mt-2 text-sm text-[var(--color-margen-muted)]">AI-powered operations for home service teams.</p>
-          {(returnFrom === '/pricing' || (typeof returnFrom === 'string' && returnFrom.startsWith('/pricing?'))) &&
+          {(returnFrom === '/pricing' || (typeof returnFrom === 'string' && returnFrom.startsWith('/pricing'))) &&
           routeIntent !== 'sign-in-only' ? (
             <p className="mt-3 rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-3 py-2 text-xs text-[var(--color-margen-muted)]">
-              After you sign in, you&apos;ll go to the plans page to pick a tier and complete checkout.
+              After you sign in, you&apos;ll go to your dashboard. You can upgrade your plan anytime under Settings.
             </p>
           ) : null}
           {planHint ? (
