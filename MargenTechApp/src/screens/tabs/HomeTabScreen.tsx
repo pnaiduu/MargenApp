@@ -19,6 +19,7 @@ import { useTechnician } from '../../context/TechnicianContext'
 import { useTheme } from '../../context/ThemeContext'
 import { cacheJobsJson, readJobsCache } from '../../lib/offlineQueue'
 import { supabase } from '../../lib/supabase'
+import { fetchTechnicianHomeStats, type TechHomeStats } from '../../lib/technicianStats'
 import { layout, typography } from '../../theme'
 import type { JobRow } from '../../types/job'
 
@@ -59,14 +60,31 @@ export default function HomeTabScreen() {
   const { colors } = useTheme()
   const { signOut } = useAuth()
   const { technician, loading: techLoading, refresh: refreshTech } = useTechnician()
-  const { isClockedIn, isSyncing, clockIn, clockOut } = useClock()
+  const { isClockedIn, isSyncing, clockIn, clockOut, clockInAt } = useClock()
   const [jobs, setJobs] = useState<JobRow[]>([])
   const [loadingJobs, setLoadingJobs] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [clockBusy, setClockBusy] = useState(false)
   const [offline, setOffline] = useState(false)
   const [company, setCompany] = useState<string | null>(null)
-  const [completedToday, setCompletedToday] = useState(0)
+  const [homeStats, setHomeStats] = useState<TechHomeStats | null>(null)
+  const [loadingStats, setLoadingStats] = useState(true)
+  const [shiftTick, setShiftTick] = useState(0)
+
+  const loadStats = useCallback(async () => {
+    if (!technician) {
+      setHomeStats(null)
+      setLoadingStats(false)
+      return
+    }
+    setLoadingStats(true)
+    try {
+      const stats = await fetchTechnicianHomeStats(technician.id, technician.owner_id, technician.name)
+      setHomeStats(stats)
+    } finally {
+      setLoadingStats(false)
+    }
+  }, [technician])
 
   const loadJobs = useCallback(async () => {
     if (!technician) {
@@ -84,16 +102,6 @@ export default function HomeTabScreen() {
       .gte('scheduled_at', startIso)
       .lte('scheduled_at', endIso)
       .order('scheduled_at', { ascending: true })
-
-    const { count: doneCount } = await supabase
-      .from('jobs')
-      .select('id', { count: 'exact', head: true })
-      .eq('technician_id', technician.id)
-      .eq('status', 'completed')
-      .gte('completed_at', startIso)
-      .lte('completed_at', endIso)
-
-    setCompletedToday(doneCount ?? 0)
 
     if (error || !data) {
       const cached = await readJobsCache(technician.id)
@@ -124,6 +132,16 @@ export default function HomeTabScreen() {
   useEffect(() => {
     void loadJobs()
   }, [loadJobs])
+
+  useEffect(() => {
+    void loadStats()
+  }, [loadStats])
+
+  useEffect(() => {
+    if (!isClockedIn || !clockInAt) return
+    const id = setInterval(() => setShiftTick((t) => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [isClockedIn, clockInAt])
 
   useEffect(() => {
     if (!technician) return
@@ -165,9 +183,19 @@ export default function HomeTabScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
     await refreshTech()
-    await loadJobs()
+    await Promise.all([loadJobs(), loadStats()])
     setRefreshing(false)
-  }, [loadJobs, refreshTech])
+  }, [loadJobs, loadStats, refreshTech])
+
+  const shiftDurationLabel = useMemo(() => {
+    if (!isClockedIn || !clockInAt) return null
+    const ms = Date.now() - new Date(clockInAt).getTime()
+    if (!Number.isFinite(ms) || ms < 0) return null
+    const totalMin = Math.floor(ms / 60000)
+    const h = Math.floor(totalMin / 60)
+    const m = totalMin % 60
+    return h > 0 ? `${h}h ${m}m on shift` : `${m}m on shift`
+  }, [isClockedIn, clockInAt, shiftTick])
 
   async function onClockPress() {
     setClockBusy(true)
@@ -244,7 +272,9 @@ export default function HomeTabScreen() {
 
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.greet, { color: colors.text }]}>{technician.name}</Text>
+            <Text style={[styles.greet, { color: colors.text }]}>
+              {homeStats?.greeting ?? technician.name}
+            </Text>
             <Text style={[styles.company, { color: colors.muted }]}>{company ?? 'Your company'}</Text>
           </View>
           <View style={[styles.badge, { borderColor: colors.border, backgroundColor: colors.surface }]}>
@@ -252,12 +282,78 @@ export default function HomeTabScreen() {
           </View>
         </View>
 
-        <View style={styles.locRow}>
-          <View style={[styles.locDot, { backgroundColor: isClockedIn ? colors.success : colors.border }]} />
-          <Text style={[styles.locTxt, { color: isClockedIn ? colors.success : colors.muted }]}>
-            {isClockedIn ? 'Location sharing on' : 'Location sharing off'}
-          </Text>
-        </View>
+        {loadingStats ? (
+          <SkeletonBlock colors={colors} />
+        ) : homeStats ? (
+          <>
+            <View style={styles.statsGrid}>
+              <View style={[styles.statCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Text style={[styles.statNum, { color: colors.text }]}>{homeStats.jobsToday}</Text>
+                <Text style={[styles.statLbl, { color: colors.muted }]}>Jobs today</Text>
+              </View>
+              <View style={[styles.statCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Text style={[styles.statNum, { color: colors.text }]}>{homeStats.hoursToday}h</Text>
+                <Text style={[styles.statLbl, { color: colors.muted }]}>Hours today</Text>
+              </View>
+              <View style={[styles.statCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Text style={[styles.statNum, { color: colors.text }]}>{homeStats.jobsWeek}</Text>
+                <Text style={[styles.statLbl, { color: colors.muted }]}>Jobs this week</Text>
+              </View>
+            </View>
+
+            <View style={[styles.weekCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <Text style={[styles.weekTitle, { color: colors.muted }]}>This week</Text>
+              <Text style={[styles.weekLine, { color: colors.text }]}>
+                On-time:{' '}
+                {homeStats.onTimeRateWeek != null
+                  ? `${Math.round(homeStats.onTimeRateWeek * 100)}%`
+                  : '—'}
+                {' · '}
+                Avg rating: {homeStats.avgRatingWeek != null ? `${homeStats.avgRatingWeek}★` : '—'}
+              </Text>
+              {homeStats.teamRank != null && homeStats.teamSize > 1 ? (
+                <Text style={[styles.rankLine, { color: colors.accent }]}>
+                  You&apos;re #{homeStats.teamRank} on your team this week
+                </Text>
+              ) : null}
+              {homeStats.streakDays >= 2 ? (
+                <Text style={[styles.streakLine, { color: colors.muted }]}>
+                  {homeStats.streakDays} days in a row with 5-star ratings
+                </Text>
+              ) : null}
+              <View style={styles.barRow}>
+                {homeStats.jobsPerDay.map((d) => {
+                  const max = Math.max(1, ...homeStats.jobsPerDay.map((x) => x.count))
+                  const h = Math.max(4, (d.count / max) * 48)
+                  return (
+                    <View key={d.label} style={styles.barCol}>
+                      <View style={[styles.bar, { height: h, backgroundColor: colors.accent }]} />
+                      <Text style={[styles.barLbl, { color: colors.muted2 }]}>{d.label}</Text>
+                    </View>
+                  )
+                })}
+              </View>
+            </View>
+
+            {homeStats.nextJob ? (
+              <Pressable
+                onPress={() => router.push(`/(main)/job/${homeStats.nextJob!.id}`)}
+                style={[styles.nextJob, { borderColor: colors.accent, backgroundColor: colors.surface }]}
+              >
+                <Text style={[styles.nextLbl, { color: colors.muted }]}>Next job</Text>
+                <Text style={[styles.nextTitle, { color: colors.text }]} numberOfLines={2}>
+                  {homeStats.nextJob.title}
+                </Text>
+                <Text style={{ color: colors.muted, marginTop: 4 }}>{homeStats.nextJob.customer}</Text>
+                <Text style={{ color: colors.text, marginTop: 4, fontWeight: '700' }}>
+                  {formatTime(homeStats.nextJob.scheduledAt)}
+                </Text>
+              </Pressable>
+            ) : null}
+          </>
+        ) : (
+          <Text style={{ color: colors.muted, marginTop: 8 }}>No productivity data yet this week.</Text>
+        )}
 
         <Pressable
           onPress={() => void onClockPress()}
@@ -265,18 +361,22 @@ export default function HomeTabScreen() {
           style={[
             styles.bigClockBtn,
             {
-              backgroundColor: isClockedIn ? colors.success : colors.surfaceMuted,
-              minHeight: layout.tapMin,
+              backgroundColor: isClockedIn ? '#dc2626' : '#16a34a',
+              minHeight: 56,
+              marginTop: 20,
             },
           ]}
         >
           <Ionicons name={isClockedIn ? 'log-out-outline' : 'log-in-outline'} size={26} color="#fff" />
-          <Text style={styles.bigClockTxt}>{isClockedIn ? 'Clock out' : 'Clock in'}</Text>
+          <Text style={styles.bigClockTxt}>{isClockedIn ? 'Clock Out' : 'Clock In'}</Text>
         </Pressable>
+        {shiftDurationLabel ? (
+          <Text style={[styles.shiftDur, { color: colors.text }]}>{shiftDurationLabel}</Text>
+        ) : null}
         <Text style={[styles.clockHint, { color: colors.muted2 }]}>
           {isClockedIn
             ? 'GPS updates about every minute while clocked in.'
-            : 'GPS tracking is off while clocked out.'}
+            : 'Clock in to start your shift and share location with dispatch.'}
         </Text>
 
         <Text style={[styles.section, { color: colors.muted }]}>Today&apos;s jobs</Text>
@@ -312,16 +412,6 @@ export default function HomeTabScreen() {
           })
         )}
 
-        <View style={[styles.summary, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-          <View style={styles.sumCol}>
-            <Text style={[styles.sumNum, { color: colors.text }]}>{completedToday}</Text>
-            <Text style={[styles.sumLbl, { color: colors.muted }]}>Completed today</Text>
-          </View>
-          <View style={styles.sumCol}>
-            <Text style={[styles.sumNum, { color: colors.text }]}>{statusLabel}</Text>
-            <Text style={[styles.sumLbl, { color: colors.muted }]}>Status</Text>
-          </View>
-        </View>
       </View>
     </ScrollView>
   )
@@ -361,9 +451,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   badgeTxt: { fontSize: typography.caption, fontWeight: '700' },
-  locRow: { marginTop: 14, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  locDot: { width: 10, height: 10, borderRadius: 999 },
-  locTxt: { fontSize: typography.caption, fontWeight: '700' },
+  statsGrid: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  statCard: {
+    flex: 1,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    padding: 12,
+    alignItems: 'center',
+  },
+  statNum: { fontSize: 20, fontWeight: '800' },
+  statLbl: { marginTop: 4, fontSize: 10, textAlign: 'center' },
+  weekCard: {
+    marginTop: 14,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    padding: 14,
+  },
+  weekTitle: { fontSize: typography.caption, fontWeight: '800', textTransform: 'uppercase' },
+  weekLine: { marginTop: 8, fontSize: typography.small },
+  rankLine: { marginTop: 8, fontSize: typography.body, fontWeight: '800' },
+  streakLine: { marginTop: 6, fontSize: typography.small },
+  barRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 14, gap: 4 },
+  barCol: { flex: 1, alignItems: 'center' },
+  bar: { width: '70%', borderRadius: 4, minHeight: 4 },
+  barLbl: { marginTop: 4, fontSize: 10, fontWeight: '700' },
+  nextJob: {
+    marginTop: 14,
+    borderRadius: layout.radius,
+    borderWidth: 2,
+    padding: 14,
+  },
+  nextLbl: { fontSize: typography.caption, fontWeight: '800', textTransform: 'uppercase' },
+  nextTitle: { marginTop: 6, fontSize: typography.body, fontWeight: '800' },
+  shiftDur: { marginTop: 10, textAlign: 'center', fontSize: typography.body, fontWeight: '800' },
   bigClockBtn: {
     marginTop: 16,
     borderRadius: layout.radius,
@@ -393,15 +513,4 @@ const styles = StyleSheet.create({
   jobTitleEm: { flex: 1, fontSize: 20, fontWeight: '900' },
   jobType: { marginTop: 8, fontSize: typography.caption, textTransform: 'capitalize' },
   jobTime: { marginTop: 4, fontSize: typography.small, fontWeight: '600' },
-  summary: {
-    marginTop: 24,
-    flexDirection: 'row',
-    borderRadius: layout.radius,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-  },
-  sumCol: { flex: 1 },
-  sumNum: { fontSize: 22, fontWeight: '800' },
-  sumLbl: { marginTop: 4, fontSize: typography.caption },
 })

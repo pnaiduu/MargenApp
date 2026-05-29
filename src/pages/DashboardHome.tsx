@@ -13,6 +13,7 @@ import { DashboardRevenueChart, type DailyRevenue } from '../components/dashboar
 import { MissedCallsPanel, type MissedCallRow } from '../components/dashboard/MissedCallsPanel'
 import { RecentJobsPanel, type RecentJobRow } from '../components/dashboard/RecentJobsPanel'
 import { TechniciansMap, type TechMapPoint } from '../components/dashboard/TechniciansMap'
+import { TeamPerformanceLeaderboard } from '../components/dashboard/TeamPerformanceLeaderboard'
 import { formatUsdFromCents } from '../lib/formatUsd'
 import { formatUsDisplay } from '../lib/forwardingDialCode'
 import { isPlaceholderMargenE164 } from '../lib/margenTwilio'
@@ -686,6 +687,8 @@ export function DashboardHome() {
               hint="Logged today"
             />
           </motion.div>
+
+          <TeamPerformanceLeaderboard />
 
           <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
             <div className="space-y-6 lg:col-span-8">

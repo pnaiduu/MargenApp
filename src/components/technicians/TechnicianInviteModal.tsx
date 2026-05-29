@@ -1,5 +1,5 @@
 import QRCode from 'react-qr-code'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Modal } from '../ui/Modal'
 import { supabase } from '../../lib/supabase'
 import { inviteAppDeepLink, inviteJoinAbsoluteUrl } from '../../lib/inviteUrl'
@@ -31,6 +31,7 @@ export function TechnicianInviteModal({
   ownerId,
   onCreated,
   inviteBlockedReason,
+  existingInvite,
 }: {
   open: boolean
   onClose: () => void
@@ -38,6 +39,13 @@ export function TechnicianInviteModal({
   onCreated: () => void
   /** When set, invite submit is blocked and this message is shown */
   inviteBlockedReason?: string | null
+  /** Re-open share step for an existing pending invite */
+  existingInvite?: {
+    token: string
+    invitedName: string
+    invitedPhone?: string | null
+    role: string
+  } | null
 }) {
   const [step, setStep] = useState<Step>('form')
   const [name, setName] = useState('')
@@ -70,6 +78,22 @@ export function TechnicianInviteModal({
     onClose()
   }
 
+  useEffect(() => {
+    if (!open) return
+    if (existingInvite) {
+      setToken(existingInvite.token)
+      setName(existingInvite.invitedName)
+      setPhone(existingInvite.invitedPhone ?? '')
+      setRole(existingInvite.role)
+      setInvitedPhone(existingInvite.invitedPhone ?? '')
+      setStep('share')
+      setError(null)
+      setCopied(false)
+    } else {
+      reset()
+    }
+  }, [open, existingInvite])
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
@@ -96,7 +120,7 @@ export function TechnicianInviteModal({
         name: n,
         phone: phone.trim() || null,
         role: r,
-        status: 'off_duty',
+        status: 'pending',
       })
       .select('id')
       .single()
@@ -159,7 +183,13 @@ export function TechnicianInviteModal({
     <Modal
       open={open}
       onClose={handleClose}
-      title={step === 'form' ? 'Invite technician' : 'Send invite to technician\'s phone'}
+      title={
+        step === 'form'
+          ? 'Invite technician'
+          : existingInvite
+            ? 'Technician invite'
+            : "Send invite to technician's phone"
+      }
       panelClassName={step === 'share' ? 'max-w-lg' : 'max-w-md'}
     >
       {step === 'form' ? (

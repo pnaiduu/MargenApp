@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Linking,
   Platform,
@@ -32,6 +33,8 @@ type JobDetail = JobRow & {
   before_photo_url: string | null
   after_photo_url: string | null
   assignment_note?: string | null
+  started_at: string | null
+  actual_arrival: string | null
 }
 
 export default function JobDetailRoute() {
@@ -47,13 +50,14 @@ export default function JobDetailRoute() {
   const [busy, setBusy] = useState(false)
   const [photoBusy, setPhotoBusy] = useState<'before' | 'after' | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  const [timerTick, setTimerTick] = useState(0)
 
   const load = useCallback(async () => {
     if (!jobId) return
     const { data, error } = await supabase
       .from('jobs')
       .select(
-        'id, title, description, job_type, urgency, status, field_status, scheduled_at, tech_notes, before_photo_url, after_photo_url, owner_id, assignment_note, customers ( name, phone, address, lat, lng )',
+        'id, title, description, job_type, urgency, status, field_status, scheduled_at, started_at, actual_arrival, completed_at, tech_notes, before_photo_url, after_photo_url, owner_id, assignment_note, customers ( name, phone, address, lat, lng )',
       )
       .eq('id', jobId)
       .maybeSingle()
@@ -70,6 +74,26 @@ export default function JobDetailRoute() {
     void load()
   }, [load])
 
+  const fs = job?.field_status ?? 'scheduled'
+
+  useEffect(() => {
+    if (fs !== 'working' || !job?.started_at) return
+    const id = setInterval(() => setTimerTick((t) => t + 1), 1000)
+    return () => clearInterval(id)
+  }, [fs, job?.started_at])
+
+  const liveTimerLabel = useMemo(() => {
+    if (!job?.started_at) return null
+    const ms = Date.now() - new Date(job.started_at).getTime()
+    if (!Number.isFinite(ms) || ms < 0) return null
+    const totalSec = Math.floor(ms / 1000)
+    const h = Math.floor(totalSec / 3600)
+    const m = Math.floor((totalSec % 3600) / 60)
+    const s = totalSec % 60
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+    return `${m}:${String(s).padStart(2, '0')}`
+  }, [job?.started_at, timerTick])
+
   async function patchJob(patch: Record<string, unknown>) {
     if (!technician || !jobId) return
     const net = await NetInfo.fetch()
@@ -82,8 +106,6 @@ export default function JobDetailRoute() {
     if (error) await enqueueOp({ kind: 'job_patch', jobId, expectedTechnicianId: technician.id, patch })
     await load()
   }
-
-  const fs = job?.field_status ?? 'scheduled'
 
   const primaryLabel = useMemo(() => {
     if (fs === 'scheduled') return 'On my way'
@@ -101,11 +123,15 @@ export default function JobDetailRoute() {
       return
     }
     if (fs === 'en_route') {
-      await patchJob({ field_status: 'arrived' })
+      await patchJob({ field_status: 'arrived', actual_arrival: new Date().toISOString() })
       return
     }
     if (fs === 'arrived') {
-      await patchJob({ field_status: 'working', status: 'in_progress' })
+      await patchJob({
+        field_status: 'working',
+        status: 'in_progress',
+        started_at: new Date().toISOString(),
+      })
       return
     }
     if (fs === 'working') {
@@ -160,6 +186,10 @@ export default function JobDetailRoute() {
 
   async function onCompleteJob() {
     if (!job || !technician || !jobId || !user) return
+    if (!notes.trim()) {
+      Alert.alert('Add notes before completing', 'Please add on-site notes summarizing the visit, then tap Complete job again.')
+      return
+    }
     setBusy(true)
     setErr(null)
     const jobPatch = {
@@ -307,6 +337,12 @@ export default function JobDetailRoute() {
         {photoBusy ? <ActivityIndicator color={colors.accent} style={{ marginTop: 8 }} /> : null}
 
         <Text style={[styles.label, { color: colors.muted }]}>Status</Text>
+        {fs === 'working' && liveTimerLabel ? (
+          <View style={[styles.timerBox, { borderColor: colors.border, backgroundColor: colors.surfaceMuted }]}>
+            <Text style={[styles.timerLbl, { color: colors.muted }]}>Job timer</Text>
+            <Text style={[styles.timerVal, { color: colors.text }]}>{liveTimerLabel}</Text>
+          </View>
+        ) : null}
         {err ? (
           <Text style={{ color: colors.danger, marginBottom: 8 }} accessibilityRole="alert">
             {err}
@@ -384,4 +420,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryFlowTxt: { fontSize: 18, fontWeight: '900' },
+  timerBox: {
+    marginBottom: 12,
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    padding: 14,
+    alignItems: 'center',
+  },
+  timerLbl: { fontSize: typography.caption, fontWeight: '800', textTransform: 'uppercase' },
+  timerVal: { marginTop: 6, fontSize: 32, fontWeight: '900', fontVariant: ['tabular-nums'] },
 })

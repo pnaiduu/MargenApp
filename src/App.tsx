@@ -32,6 +32,7 @@ import { OnboardingCallSetup } from './pages/OnboardingCallSetup'
 import { SettingsPage } from './pages/SettingsPage'
 import { TechnicianJoinPage } from './pages/TechnicianJoinPage'
 import { TechniciansPage } from './pages/TechniciansPage'
+import { TechnicianProfilePage } from './pages/TechnicianProfilePage'
 
 function AuthSlowLoginFallback() {
   const { loading, configured } = useAuth()
@@ -136,6 +137,7 @@ export default function App() {
                     <Route path="customers" element={<CustomersPage />} />
                     <Route path="customers/:id" element={<CustomerProfilePage />} />
                     <Route path="technicians" element={<TechniciansPage />} />
+                    <Route path="technicians/:id" element={<TechnicianProfilePage />} />
                     <Route path="hours" element={<HoursAttendancePage />} />
                     <Route path="schedule" element={<SchedulePage />} />
                     <Route path="calls" element={<CallsLeadsPage />} />

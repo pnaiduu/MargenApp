@@ -34,6 +34,10 @@ export default function SplashRoute() {
         router.replace('/(main)/(tabs)/home')
         return
       }
+      if (user && !technician) {
+        router.replace('/link-invite')
+        return
+      }
       router.replace('/login')
     }, wait)
     return () => clearTimeout(t)

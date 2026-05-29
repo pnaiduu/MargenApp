@@ -8,6 +8,7 @@ import { useTechnician } from '../../context/TechnicianContext'
 import { useTheme } from '../../context/ThemeContext'
 import { enqueueOp } from '../../lib/offlineQueue'
 import { supabase } from '../../lib/supabase'
+import { fetchTechnicianProfileStats, type TechProfileStats } from '../../lib/technicianStats'
 import { layout, typography } from '../../theme'
 
 type SessionRow = {
@@ -27,19 +28,35 @@ function startOfLocalDay() {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime()
 }
 
+function Skeleton({ colors }: { colors: { surfaceMuted: string; border: string } }) {
+  return (
+    <View
+      style={{
+        height: 120,
+        borderRadius: layout.radius,
+        backgroundColor: colors.surfaceMuted,
+        borderWidth: 1,
+        borderColor: colors.border,
+        marginTop: 16,
+      }}
+    />
+  )
+}
+
 export default function ProfileTabScreen() {
   const insets = useSafeAreaInsets()
   const { colors } = useTheme()
   const { signOut, user } = useAuth()
   const { technician, refresh: refreshTech } = useTechnician()
   const [company, setCompany] = useState<string | null>(null)
-  const [completedWeek, setCompletedWeek] = useState(0)
-  const [avgRating, setAvgRating] = useState<number | null>(null)
+  const [profileStats, setProfileStats] = useState<TechProfileStats | null>(null)
+  const [loadingProfile, setLoadingProfile] = useState(true)
   const [sessions, setSessions] = useState<SessionRow[]>([])
   const [hoursTodayMs, setHoursTodayMs] = useState(0)
 
   const load = useCallback(async () => {
     if (!technician) return
+    setLoadingProfile(true)
     const { data: prof } = await supabase
       .from('profiles')
       .select('company_name')
@@ -47,29 +64,12 @@ export default function ProfileTabScreen() {
       .maybeSingle()
     setCompany((prof as { company_name: string | null } | null)?.company_name ?? null)
 
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
-    const { count } = await supabase
-      .from('jobs')
-      .select('id', { count: 'exact', head: true })
-      .eq('technician_id', technician.id)
-      .eq('status', 'completed')
-      .gte('completed_at', weekAgo)
-    setCompletedWeek(count ?? 0)
-
-    const { data: jobRows } = await supabase.from('jobs').select('id').eq('technician_id', technician.id)
-    const jobIds = (jobRows ?? []).map((j) => j.id)
-    let list: { rating: number | null }[] = []
-    if (jobIds.length > 0) {
-      const { data: ratings } = await supabase
-        .from('job_customer_ratings')
-        .select('rating')
-        .in('job_id', jobIds)
-        .not('submitted_at', 'is', null)
-      list = (ratings ?? []) as { rating: number | null }[]
+    try {
+      const stats = await fetchTechnicianProfileStats(technician.id)
+      setProfileStats(stats)
+    } finally {
+      setLoadingProfile(false)
     }
-    const nums = list.map((r) => r.rating).filter((n): n is number => n != null)
-    if (nums.length === 0) setAvgRating(null)
-    else setAvgRating(nums.reduce((a, b) => a + b, 0) / nums.length)
 
     const { data: sess } = await supabase
       .from('technician_clock_sessions')
@@ -106,6 +106,11 @@ export default function ProfileTabScreen() {
     const day0 = startOfLocalDay()
     return sessions.filter((s) => new Date(s.clock_in_at).getTime() >= day0)
   }, [sessions])
+
+  const maxMonthJobs = useMemo(() => {
+    if (!profileStats) return 1
+    return Math.max(1, ...profileStats.jobsPerMonth.map((m) => m.count))
+  }, [profileStats])
 
   async function setTechStatus(next: string) {
     if (!technician) return
@@ -148,21 +153,90 @@ export default function ProfileTabScreen() {
         <Text style={[styles.line, { color: colors.muted }]}>{company ?? 'Company'}</Text>
         <Text style={[styles.email, { color: colors.muted2 }]}>{user?.email}</Text>
 
-        <View style={styles.stats}>
-          <View style={[styles.stat, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-            <Text style={[styles.statNum, { color: colors.text }]}>{completedWeek}</Text>
-            <Text style={[styles.statLbl, { color: colors.muted }]}>Jobs this week</Text>
-          </View>
-          <View style={[styles.stat, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-            <Text style={[styles.statNum, { color: colors.text }]}>
-              {avgRating != null ? avgRating.toFixed(1) : '—'}
-            </Text>
-            <Text style={[styles.statLbl, { color: colors.muted }]}>Avg. rating</Text>
-          </View>
-          <View style={[styles.stat, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-            <Text style={[styles.statNum, { color: colors.text }]}>{hoursTodayLabel}</Text>
-            <Text style={[styles.statLbl, { color: colors.muted }]}>Hours today</Text>
-          </View>
+        {loadingProfile ? (
+          <Skeleton colors={colors} />
+        ) : profileStats ? (
+          <>
+            <Text style={[styles.section, { color: colors.muted }]}>All-time</Text>
+            <View style={styles.stats}>
+              <View style={[styles.stat, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Text style={[styles.statNum, { color: colors.text }]}>{profileStats.totalJobs}</Text>
+                <Text style={[styles.statLbl, { color: colors.muted }]}>Total jobs</Text>
+              </View>
+              <View style={[styles.stat, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Text style={[styles.statNum, { color: colors.text }]}>{profileStats.totalHours}h</Text>
+                <Text style={[styles.statLbl, { color: colors.muted }]}>Total hours</Text>
+              </View>
+              <View style={[styles.stat, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                <Text style={[styles.statNum, { color: colors.text }]}>
+                  {profileStats.avgRating != null ? profileStats.avgRating.toFixed(1) : '—'}
+                </Text>
+                <Text style={[styles.statLbl, { color: colors.muted }]}>Avg. rating</Text>
+              </View>
+            </View>
+
+            <Text style={[styles.section, { color: colors.muted }]}>Monthly jobs</Text>
+            <View style={[styles.chartCard, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              {profileStats.jobsPerMonth.every((m) => m.count === 0) ? (
+                <Text style={{ color: colors.muted }}>No jobs completed yet.</Text>
+              ) : (
+                <View style={styles.barRow}>
+                  {profileStats.jobsPerMonth.map((m) => {
+                    const h = Math.max(4, (m.count / maxMonthJobs) * 64)
+                    return (
+                      <View key={m.label} style={styles.barCol}>
+                        <Text style={[styles.barCount, { color: colors.text }]}>{m.count}</Text>
+                        <View style={[styles.bar, { height: h, backgroundColor: colors.accent }]} />
+                        <Text style={[styles.barLbl, { color: colors.muted2 }]}>{m.label}</Text>
+                      </View>
+                    )
+                  })}
+                </View>
+              )}
+            </View>
+
+            <Text style={[styles.section, { color: colors.muted }]}>Badges</Text>
+            {profileStats.badges.length === 0 ? (
+              <Text style={{ color: colors.muted }}>Complete jobs to earn badges.</Text>
+            ) : (
+              <View style={styles.badgeWrap}>
+                {profileStats.badges.map((b) => (
+                  <View key={b} style={[styles.badgePill, { borderColor: colors.accent, backgroundColor: colors.surfaceMuted }]}>
+                    <Text style={{ color: colors.accent, fontWeight: '800', fontSize: typography.caption }}>{b}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={[styles.section, { color: colors.muted }]}>Recent jobs</Text>
+            {profileStats.recentJobs.length === 0 ? (
+              <Text style={{ color: colors.muted }}>No completed jobs yet.</Text>
+            ) : (
+              profileStats.recentJobs.map((j) => (
+                <Pressable
+                  key={j.id}
+                  onPress={() => router.push(`/(main)/job/${j.id}`)}
+                  style={[styles.jobRow, { borderBottomColor: colors.border }]}
+                >
+                  <Text style={[styles.jobTitle, { color: colors.text }]} numberOfLines={1}>
+                    {j.title}
+                  </Text>
+                  <Text style={{ color: colors.muted, fontSize: typography.small, marginTop: 4 }}>
+                    {j.status}
+                    {j.rating != null ? ` · ${j.rating}★` : ''}
+                    {j.completedAt
+                      ? ` · ${new Date(j.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+                      : ''}
+                  </Text>
+                </Pressable>
+              ))
+            )}
+          </>
+        ) : null}
+
+        <View style={[styles.stat, { borderColor: colors.border, backgroundColor: colors.surface, marginTop: 20 }]}>
+          <Text style={[styles.statNum, { color: colors.text }]}>{hoursTodayLabel}</Text>
+          <Text style={[styles.statLbl, { color: colors.muted }]}>Hours today</Text>
         </View>
 
         <Text style={[styles.section, { color: colors.muted }]}>Availability</Text>
@@ -246,7 +320,7 @@ const styles = StyleSheet.create({
   name: { marginTop: 16, fontSize: 26, fontWeight: '800', textAlign: 'center' },
   line: { marginTop: 4, fontSize: typography.body, textAlign: 'center' },
   email: { marginTop: 8, fontSize: typography.small, textAlign: 'center' },
-  stats: { flexDirection: 'row', gap: 8, marginTop: 24 },
+  stats: { flexDirection: 'row', gap: 8, marginTop: 8 },
   stat: {
     flex: 1,
     borderRadius: layout.radius,
@@ -256,6 +330,25 @@ const styles = StyleSheet.create({
   },
   statNum: { fontSize: 20, fontWeight: '800' },
   statLbl: { marginTop: 4, fontSize: 11, textAlign: 'center' },
+  chartCard: {
+    borderRadius: layout.radius,
+    borderWidth: 1,
+    padding: 14,
+  },
+  barRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 4 },
+  barCol: { flex: 1, alignItems: 'center' },
+  barCount: { fontSize: 11, fontWeight: '700', marginBottom: 4 },
+  bar: { width: '70%', borderRadius: 4, minHeight: 4 },
+  barLbl: { marginTop: 4, fontSize: 10, fontWeight: '700' },
+  badgeWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  badgePill: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  jobRow: { paddingVertical: 12, borderBottomWidth: 1 },
+  jobTitle: { fontSize: typography.body, fontWeight: '700' },
   section: {
     marginTop: 28,
     marginBottom: 10,

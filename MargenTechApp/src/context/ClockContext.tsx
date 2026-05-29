@@ -61,6 +61,7 @@ async function syncTechniciansLiveRow(
 type ClockCtx = {
   isClockedIn: boolean
   activeSessionId: string | null
+  clockInAt: string | null
   isSyncing: boolean
   clockIn: () => Promise<void>
   clockOut: () => Promise<void>
@@ -130,6 +131,7 @@ export function ClockProvider({ children }: { children: ReactNode }) {
   const { technician } = useTechnician()
   const [isClockedIn, setIsClockedIn] = useState(false)
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [clockInAt, setClockInAt] = useState<string | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -198,11 +200,12 @@ export function ClockProvider({ children }: { children: ReactNode }) {
     if (!technician || !configured) {
       setIsClockedIn(false)
       setActiveSessionId(null)
+      setClockInAt(null)
       return
     }
     const { data } = await supabase
       .from('technician_clock_sessions')
-      .select('id')
+      .select('id, clock_in_at')
       .eq('technician_id', technician.id)
       .is('clock_out_at', null)
       .order('clock_in_at', { ascending: false })
@@ -211,9 +214,11 @@ export function ClockProvider({ children }: { children: ReactNode }) {
 
     if (data?.id) {
       setActiveSessionId(data.id)
+      setClockInAt((data as { clock_in_at?: string }).clock_in_at ?? null)
       setIsClockedIn(true)
     } else {
       setActiveSessionId(null)
+      setClockInAt(null)
       setIsClockedIn(false)
     }
   }, [configured, technician])
@@ -254,12 +259,13 @@ export function ClockProvider({ children }: { children: ReactNode }) {
       })
       setIsClockedIn(true)
       setActiveSessionId('local-pending')
+      setClockInAt(new Date().toISOString())
       return
     }
     const { data, error } = await supabase
       .from('technician_clock_sessions')
       .insert({ technician_id: technician.id, owner_id: technician.owner_id })
-      .select('id')
+      .select('id, clock_in_at')
       .single()
     if (error) throw error
     await supabase
@@ -267,6 +273,7 @@ export function ClockProvider({ children }: { children: ReactNode }) {
       .update({ status: 'available', clocked_in: true })
       .eq('id', technician.id)
     setActiveSessionId(data.id)
+    setClockInAt((data as { clock_in_at?: string }).clock_in_at ?? new Date().toISOString())
     setIsClockedIn(true)
   }, [technician])
 
@@ -287,6 +294,7 @@ export function ClockProvider({ children }: { children: ReactNode }) {
       })
       setIsClockedIn(false)
       setActiveSessionId(null)
+      setClockInAt(null)
       return
     }
     if (activeSessionId === 'local-pending') {
@@ -308,6 +316,7 @@ export function ClockProvider({ children }: { children: ReactNode }) {
       await supabase.from('technicians').update({ clocked_in: false }).eq('id', technician.id)
       setIsClockedIn(false)
       setActiveSessionId(null)
+      setClockInAt(null)
       return
     }
     const sid = activeSessionId
@@ -315,6 +324,7 @@ export function ClockProvider({ children }: { children: ReactNode }) {
       await supabase.from('technicians').update({ clocked_in: false }).eq('id', technician.id)
       setIsClockedIn(false)
       setActiveSessionId(null)
+      setClockInAt(null)
       return
     }
     const { error } = await supabase
@@ -327,11 +337,12 @@ export function ClockProvider({ children }: { children: ReactNode }) {
     await supabase.from('technicians').update({ status: 'off_duty', clocked_in: false }).eq('id', technician.id)
     setIsClockedIn(false)
     setActiveSessionId(null)
+    setClockInAt(null)
   }, [activeSessionId, loadOpenSession, stopLocationInterval, technician])
 
   const value = useMemo(
-    () => ({ isClockedIn, activeSessionId, isSyncing, clockIn, clockOut }),
-    [isClockedIn, activeSessionId, isSyncing, clockIn, clockOut],
+    () => ({ isClockedIn, activeSessionId, clockInAt, isSyncing, clockIn, clockOut }),
+    [isClockedIn, activeSessionId, clockInAt, isSyncing, clockIn, clockOut],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

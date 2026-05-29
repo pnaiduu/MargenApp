@@ -17,11 +17,9 @@ export default function TechnicianLoginRoute() {
   const [showPw, setShowPw] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [noTech, setNoTech] = useState(false)
 
   async function onSubmit() {
     setError(null)
-    setNoTech(false)
     if (!configured) {
       setError('Supabase is not configured.')
       return
@@ -37,7 +35,7 @@ export default function TechnicianLoginRoute() {
     const tech = await refreshTech()
     setBusy(false)
     if (!tech) {
-      setNoTech(true)
+      router.replace('/link-invite')
       return
     }
     router.replace('/(main)/(tabs)/home')
@@ -66,11 +64,6 @@ export default function TechnicianLoginRoute() {
         {error ? (
           <Text style={styles.err} accessibilityRole="alert">
             {error}
-          </Text>
-        ) : null}
-        {noTech ? (
-          <Text style={styles.err}>
-            You&apos;re signed in, but this account isn&apos;t linked to a technician yet. Ask your employer to add you or send an invite code.
           </Text>
         ) : null}
 

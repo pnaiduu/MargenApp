@@ -21,7 +21,7 @@ import { parseInviteToken } from '../src/lib/inviteToken'
 import { setAppViewMode } from '../src/lib/viewMode'
 import { layout, typography } from '../src/theme'
 
-type Step = 'form' | 'pending' | 'email_confirm'
+type Step = 'form' | 'email_confirm'
 
 export default function SignupRoute() {
   const insets = useSafeAreaInsets()
@@ -97,43 +97,7 @@ export default function SignupRoute() {
       router.replace('/(main)/(tabs)/home')
       return
     }
-    setStep('pending')
-  }
-
-  if (step === 'pending') {
-    return (
-      <View
-        style={[
-          styles.root,
-          {
-            backgroundColor: colors.page,
-            paddingTop: insets.top + 24,
-            paddingBottom: insets.bottom + 32,
-            paddingHorizontal: layout.pad,
-          },
-        ]}
-      >
-        <Text style={[styles.wordmark, { color: colors.text }]}>Margen</Text>
-        <Text style={[styles.title, { color: colors.text }]}>You're signed up!</Text>
-        <Text style={[styles.hint, { color: colors.muted }]}>
-          Ask your employer to add you to their team or enter your invite code.
-        </Text>
-        <Pressable
-          onPress={() => router.replace('/login')}
-          style={({ pressed }) => [
-            styles.btn,
-            {
-              backgroundColor: colors.accent,
-              opacity: pressed ? 0.88 : 1,
-              minHeight: layout.tapMin,
-              marginTop: 32,
-            },
-          ]}
-        >
-          <Text style={[styles.btnText, { color: colors.accentFg }]}>Back to sign in</Text>
-        </Pressable>
-      </View>
-    )
+    router.replace('/link-invite')
   }
 
   if (step === 'email_confirm') {

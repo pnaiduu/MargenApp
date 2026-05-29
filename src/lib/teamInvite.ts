@@ -40,7 +40,7 @@ export async function getOrCreateOwnerTeamInviteUrl(
       owner_id: ownerId,
       name: OPEN_TEAM_INVITE_NAME,
       role: 'Technician',
-      status: 'pending',
+      status: 'off_duty',
     })
     .select('id')
     .single()

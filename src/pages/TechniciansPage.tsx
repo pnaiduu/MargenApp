@@ -8,7 +8,6 @@ import { staggerContainer, staggerItem } from '../lib/motion'
 import type { TechnicianStatus } from '../types/database'
 import { Modal } from '../components/ui/Modal'
 import { TechnicianInviteModal } from '../components/technicians/TechnicianInviteModal'
-import { getOrCreateOwnerTeamInviteUrl, OPEN_TEAM_INVITE_NAME } from '../lib/teamInvite'
 import type { PlanId } from '../lib/plans'
 import {
   canAddTechnician,
@@ -28,6 +27,14 @@ type TechRow = {
   role: string | null
   user_id: string | null
   status: TechnicianStatus
+}
+
+type InviteRow = {
+  technician_id: string
+  token: string
+  invited_name: string
+  invited_phone: string | null
+  role: string
 }
 
 type SessRow = { technician_id: string; clock_in_at: string; clock_out_at: string | null }
@@ -70,12 +77,12 @@ export function TechniciansPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
+  const [viewInvite, setViewInvite] = useState<InviteRow | null>(null)
+  const [pendingInvites, setPendingInvites] = useState<Map<string, InviteRow>>(new Map())
   const [listTick, setListTick] = useState(0)
   const [busyTechId, setBusyTechId] = useState<string | null>(null)
   const [removeTarget, setRemoveTarget] = useState<TechRow | null>(null)
   const [removing, setRemoving] = useState(false)
-  const [teamLinkCopied, setTeamLinkCopied] = useState(false)
-  const [teamLinkBusy, setTeamLinkBusy] = useState(false)
   const [limitModalOpen, setLimitModalOpen] = useState(false)
   useEffect(() => {
     if (!user) return
@@ -104,17 +111,34 @@ export function TechniciansPage() {
           .lte('clock_in_at', weekEnd)
           .abortSignal(s)
 
-        const [techRes, sessRes] = await Promise.all([techQ, sessQ])
+        const invQ = supabase
+          .from('technician_invites')
+          .select('technician_id, token, invited_name, invited_phone, role')
+          .eq('owner_id', ownerId)
+          .is('consumed_at', null)
+          .gt('expires_at', new Date().toISOString())
+          .abortSignal(s)
+
+        const [techRes, sessRes, invRes] = await Promise.all([techQ, sessQ, invQ])
 
         if (ac.signal.aborted) return
         if (techRes.error) {
           setError(techRes.error.message)
           setTechnicians([])
         } else {
-          setTechnicians(((techRes.data ?? []) as TechRow[]).filter((t) => t.name !== OPEN_TEAM_INVITE_NAME))
+          setTechnicians((techRes.data ?? []) as TechRow[])
         }
         if (!sessRes.error) setSessions((sessRes.data ?? []) as SessRow[])
         else setSessions([])
+        if (!invRes.error) {
+          const m = new Map<string, InviteRow>()
+          for (const row of (invRes.data ?? []) as InviteRow[]) {
+            m.set(row.technician_id, row)
+          }
+          setPendingInvites(m)
+        } else {
+          setPendingInvites(new Map())
+        }
       } finally {
         if (!ac.signal.aborted) setLoading(false)
       }
@@ -134,17 +158,30 @@ export function TechniciansPage() {
       setLimitModalOpen(true)
       return
     }
+    setViewInvite(null)
     setInviteOpen(true)
   }
 
-  async function tryCopyTeamInviteLink() {
-    if (!user || teamLinkBusy) return
-    if (atCap) {
-      setLimitModalOpen(true)
-      return
-    }
-    await copyTeamInviteLink()
+  function openViewInvite(techId: string) {
+    const inv = pendingInvites.get(techId)
+    if (!inv) return
+    setViewInvite(inv)
+    setInviteOpen(true)
   }
+
+  function closeInviteModal() {
+    setInviteOpen(false)
+    setViewInvite(null)
+  }
+
+  const existingInviteForModal = viewInvite
+    ? {
+        token: viewInvite.token,
+        invitedName: viewInvite.invited_name,
+        invitedPhone: viewInvite.invited_phone,
+        role: viewInvite.role,
+      }
+    : null
 
   const clockedInByTech = useMemo(() => {
     const m = new Map<string, boolean>()
@@ -153,26 +190,6 @@ export function TechniciansPage() {
     }
     return m
   }, [sessions])
-
-  async function copyTeamInviteLink() {
-    if (!user || teamLinkBusy) return
-    setTeamLinkBusy(true)
-    setError(null)
-    const result = await getOrCreateOwnerTeamInviteUrl(supabase, user.id)
-    setTeamLinkBusy(false)
-    if ('error' in result) {
-      setError(result.error)
-      return
-    }
-    try {
-      await navigator.clipboard.writeText(result.url)
-      setTeamLinkCopied(true)
-      window.setTimeout(() => setTeamLinkCopied(false), 2000)
-      setListTick((t) => t + 1)
-    } catch {
-      setError('Could not copy team invite link.')
-    }
-  }
 
   async function onConfirmRemove() {
     if (!user || !removeTarget) return
@@ -214,19 +231,6 @@ export function TechniciansPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={teamLinkBusy || noSubscription}
-            onClick={() => void tryCopyTeamInviteLink()}
-            className="relative inline-flex shrink-0 items-center justify-center rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-4 py-2 text-sm font-semibold text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-50"
-          >
-            <span className="invisible whitespace-nowrap" aria-hidden>
-              Copy team invite link
-            </span>
-            <span className="absolute inset-0 flex items-center justify-center whitespace-nowrap">
-              {teamLinkBusy ? 'Preparing…' : teamLinkCopied ? 'Link copied!' : 'Copy team invite link'}
-            </span>
-          </button>
           <button
             type="button"
             disabled={noSubscription}
@@ -273,6 +277,15 @@ export function TechniciansPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={t.status} invitePending={t.user_id == null} />
+                {t.user_id == null && pendingInvites.has(t.id) ? (
+                  <button
+                    type="button"
+                    onClick={() => openViewInvite(t.id)}
+                    className="rounded-md border border-[var(--color-margen-border)] bg-[var(--color-margen-surface)] px-3 py-1.5 text-sm font-medium text-[var(--margen-accent)] hover:bg-[var(--color-margen-hover)]"
+                  >
+                    View invite
+                  </button>
+                ) : null}
                 {t.status === 'available' || t.status === 'busy' ? (
                   <button
                     type="button"
@@ -367,9 +380,13 @@ export function TechniciansPage() {
       {user ? (
         <TechnicianInviteModal
           open={inviteOpen}
-          onClose={() => setInviteOpen(false)}
+          onClose={closeInviteModal}
           ownerId={user.id}
-          onCreated={() => setListTick((x) => x + 1)}
+          onCreated={() => {
+            setListTick((x) => x + 1)
+            setViewInvite(null)
+          }}
+          existingInvite={existingInviteForModal}
           inviteBlockedReason={
             atCap
               ? `Your plan allows up to ${limitLabel} technicians.`

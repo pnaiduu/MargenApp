@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/useAuth'
 import { formatUsdFromCents, formatUsdFromDollarsPlain } from '../lib/formatUsd'
 import { localMonthRangeIso } from '../lib/dates'
 import { supabase } from '../lib/supabase'
+import { fetchIdleTimeByTechnician, type IdleTimeRow } from '../lib/technicianProductivity'
 import { easePremium } from '../lib/motion'
 
 const PIE_COLORS = ['#6366f1', '#0ea5e9', '#14b8a6', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b']
@@ -57,6 +58,8 @@ export function RevenuePage() {
   const [stripeAnalyticsHint, setStripeAnalyticsHint] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [idleRows, setIdleRows] = useState<IdleTimeRow[]>([])
+  const [idleLoading, setIdleLoading] = useState(true)
 
   const { startIso, endIso } = useMemo(() => localMonthRangeIso(), [])
 
@@ -166,6 +169,20 @@ export function RevenuePage() {
     return () => {
       ac.abort()
     }
+  }, [user, startIso, endIso])
+
+  useEffect(() => {
+    if (!user) return
+    const ac = new AbortController()
+    setIdleLoading(true)
+    void fetchIdleTimeByTechnician(supabase, user.id, startIso, endIso)
+      .then((rows) => {
+        if (!ac.signal.aborted) setIdleRows(rows)
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) setIdleLoading(false)
+      })
+    return () => ac.abort()
   }, [user, startIso, endIso])
 
   const monthTotalCents = useMemo(
@@ -387,6 +404,65 @@ export function RevenuePage() {
                   </ResponsiveContainer>
                 )}
               </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-2 py-4 md:px-4">
+            <p className="mb-1 px-2 text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
+              Idle time analysis · {monthLabel}
+            </p>
+            <p className="mb-3 px-2 text-sm text-[var(--color-margen-muted)]">
+              Hours each technician was clocked in minus time recorded on active jobs (started → completed).
+            </p>
+            <div className="h-[280px] w-full min-h-[280px] min-w-0">
+              {idleLoading ? (
+                <div className="flex h-full items-center justify-center text-sm text-[var(--color-margen-muted)]">
+                  Loading idle time…
+                </div>
+              ) : idleRows.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-sm text-[var(--color-margen-muted)]">
+                  No clock sessions this month. Technicians need to clock in on the mobile app.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={260}>
+                  <BarChart data={idleRows} margin={{ top: 4, right: 8, left: 8, bottom: 4 }}>
+                    <CartesianGrid stroke="var(--color-margen-border)" strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: 'var(--color-margen-muted)', fontSize: 11 }}
+                      axisLine={{ stroke: 'var(--color-margen-border)' }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: 'var(--color-margen-muted)', fontSize: 11 }}
+                      axisLine={{ stroke: 'var(--color-margen-border)' }}
+                      tickLine={false}
+                      label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: 'var(--color-margen-muted)' }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: 'var(--color-margen-surface-elevated)',
+                        border: '1px solid var(--color-margen-border)',
+                        borderRadius: 8,
+                        fontSize: 13,
+                        color: 'var(--color-margen-text)',
+                      }}
+                      formatter={(value, name) => {
+                        const n = typeof value === 'number' ? value : Number(value)
+                        const label =
+                          name === 'idleHours'
+                            ? 'Idle'
+                            : name === 'onJobHours'
+                              ? 'On job'
+                              : 'Clocked in'
+                        return [Number.isFinite(n) ? `${n.toFixed(1)}h` : '—', label]
+                      }}
+                    />
+                    <Bar dataKey="onJobHours" stackId="a" fill="#14b8a6" name="onJobHours" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="idleHours" stackId="a" fill="#f59e0b" name="idleHours" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
