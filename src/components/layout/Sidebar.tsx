@@ -68,6 +68,7 @@ export function Sidebar({
               <NavLink
                 to={to}
                 end={end}
+                data-onboarding-nav={to}
                 title={title}
                 aria-disabled={blocked}
                 onClick={(e) => {

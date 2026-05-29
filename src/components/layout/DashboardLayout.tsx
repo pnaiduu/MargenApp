@@ -36,6 +36,10 @@ export function DashboardLayout() {
     }
   }, [user])
 
+  useEffect(() => {
+    if (tutorialOpen && !isMd) setMobileOpen(true)
+  }, [tutorialOpen, isMd])
+
   return (
     <div className="flex min-h-dvh bg-[var(--color-margen-surface)]">
       <OnboardingTutorial open={tutorialOpen} onDone={() => setTutorialOpen(false)} />

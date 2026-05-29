@@ -1,34 +1,35 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
+import { useCallback, useLayoutEffect, useState } from 'react'
 import { easePremium } from '../../lib/motion'
 import { supabase } from '../../lib/supabase'
 
 const STEPS = [
   {
-    title: 'Welcome to Margen',
-    body: "Here's how to get started — set up your team, jobs, and payments in a few minutes.",
+    navTarget: '/dashboard',
+    description: "Welcome to Margen — here's how to get started.",
   },
   {
-    title: 'Add your first technician',
-    body: 'Go to Technicians and click Add Technician to invite someone to your crew.',
-    link: { to: '/technicians', label: 'Open Technicians' },
+    navTarget: '/technicians',
+    description: 'Add your first technician — go here and click Add Technician.',
   },
   {
-    title: 'Create your first job',
-    body: 'Go to Jobs and click New Job to schedule work for a customer.',
-    link: { to: '/jobs', label: 'Open Jobs' },
+    navTarget: '/jobs',
+    description: 'Create your first job — go here and click New Job.',
   },
   {
-    title: 'Connect Stripe to collect payments',
-    body: 'Go to Payments to connect Stripe and send invoices when jobs are done.',
-    link: { to: '/payments', label: 'Open Payments' },
+    navTarget: '/payments',
+    description: 'Connect Stripe to collect payments when jobs are done.',
   },
   {
-    title: "You're ready",
-    body: "Your workspace is set up. Explore the dashboard and we'll stay out of your way.",
+    navTarget: '/dashboard',
+    description: "You're ready — explore your workspace.",
   },
 ] as const
+
+type Anchor = {
+  top: number
+  left: number
+}
 
 type Props = {
   open: boolean
@@ -37,6 +38,38 @@ type Props = {
 
 export function OnboardingTutorial({ open, onDone }: Props) {
   const [step, setStep] = useState(0)
+  const [anchor, setAnchor] = useState<Anchor | null>(null)
+
+  const measure = useCallback(() => {
+    if (!open) return
+    const target = STEPS[step]?.navTarget
+    if (!target) return
+    const el = document.querySelector(`[data-onboarding-nav="${target}"]`)
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setAnchor({
+      top: rect.top + rect.height / 2,
+      left: rect.right + 10,
+    })
+  }, [open, step])
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setAnchor(null)
+      return
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    const sidebar = document.getElementById('app-sidebar')
+    const ro = sidebar ? new ResizeObserver(measure) : null
+    if (sidebar) ro?.observe(sidebar)
+    return () => {
+      window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure, true)
+      ro?.disconnect()
+    }
+  }, [open, measure])
 
   async function finish() {
     const { data: userRes } = await supabase.auth.getUser()
@@ -67,59 +100,45 @@ export function OnboardingTutorial({ open, onDone }: Props) {
 
   const current = STEPS[step]
 
+  if (!open || !anchor) return null
+
   return (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 px-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <motion.div
-            className="w-full max-w-md rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-6 shadow-xl"
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.98 }}
-            transition={{ duration: 0.24, ease: easePremium }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="onboarding-title"
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={step}
+        role="dialog"
+        aria-labelledby="onboarding-desc"
+        aria-live="polite"
+        className="onboarding-bubble pointer-events-auto fixed z-[60] w-[220px]"
+        style={{ top: anchor.top, left: anchor.left, transform: 'translateY(-50%)' }}
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: 10 }}
+        transition={{ duration: 0.22, ease: easePremium }}
+      >
+        <p className="text-[11px] font-medium text-[#888888]">
+          {step + 1} of {STEPS.length}
+        </p>
+        <p id="onboarding-desc" className="mt-1 text-[13px] leading-snug text-[#111111]">
+          {current.description}
+        </p>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => void skip()}
+            className="text-[12px] font-medium text-[#888888] hover:text-[#111111]"
           >
-            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">
-              Step {step + 1} of {STEPS.length}
-            </p>
-            <h2 id="onboarding-title" className="mt-2 text-xl font-semibold text-[var(--color-margen-text)]">
-              {current.title}
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--color-margen-text-secondary)]">{current.body}</p>
-            {'link' in current && current.link ? (
-              <Link
-                to={current.link.to}
-                className="mt-4 inline-flex text-sm font-semibold text-[var(--margen-accent)] hover:underline"
-              >
-                {current.link.label} →
-              </Link>
-            ) : null}
-            <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => void skip()}
-                className="text-sm font-medium text-[var(--color-margen-muted)] hover:text-[var(--color-margen-text)]"
-              >
-                Skip tutorial
-              </button>
-              <button
-                type="button"
-                onClick={() => void next()}
-                className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)]"
-              >
-                {step >= STEPS.length - 1 ? "Let's go" : 'Next'}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
+            Skip
+          </button>
+          <button
+            type="button"
+            onClick={() => void next()}
+            className="rounded-md bg-[#111111] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#333333]"
+          >
+            {step >= STEPS.length - 1 ? "Let's go" : 'Next'}
+          </button>
+        </div>
+      </motion.div>
     </AnimatePresence>
   )
 }
