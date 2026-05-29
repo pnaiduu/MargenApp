@@ -10,7 +10,13 @@ import {
 } from 'react'
 import { supabase, supabaseConfigured } from '../lib/supabase'
 import { ensureOwnerProfile } from '../lib/ensureOwnerProfile'
-import { foregroundOnAccent, normalizeHex } from '../lib/logoFilter'
+import { normalizeHex } from '../lib/logoFilter'
+import {
+  applyAccentToRoot,
+  applyThemeToRoot,
+  parseThemeMode,
+  type ThemeMode,
+} from '../lib/appearanceTheme'
 import { useAuth } from './useAuth'
 import { PreferencesContext } from './preferences-context'
 
@@ -18,9 +24,14 @@ function accentStorageKey(userId: string) {
   return `margen_accent_v1:${userId}`
 }
 
+function themeStorageKey(userId: string) {
+  return `margen_theme_v1:${userId}`
+}
+
 export function PreferencesProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [accentHex, setAccentHexState] = useState('#111111')
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('system')
   const [persistError, setPersistError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const prevUserIdRef = useRef<string | undefined>(undefined)
@@ -34,19 +45,25 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     prevUserIdRef.current = undefined
     startTransition(() => {
       setAccentHexState('#111111')
+      setThemeModeState('system')
       setPersistError(null)
+      applyThemeToRoot('system')
+      applyAccentToRoot('#111111')
     })
   }, [user])
 
   useLayoutEffect(() => {
     if (!user?.id) return
     try {
-      const raw = localStorage.getItem(accentStorageKey(user.id))
-      if (!raw) return
-      const t = raw.trim()
-      if (/^#[0-9A-Fa-f]{6}$/i.test(t) || /^[0-9A-Fa-f]{6}$/i.test(t)) {
-        setAccentHexState(normalizeHex(t.startsWith('#') ? t : `#${t}`))
+      const rawAccent = localStorage.getItem(accentStorageKey(user.id))
+      if (rawAccent) {
+        const t = rawAccent.trim()
+        if (/^#[0-9A-Fa-f]{6}$/i.test(t) || /^[0-9A-Fa-f]{6}$/i.test(t)) {
+          setAccentHexState(normalizeHex(t.startsWith('#') ? t : `#${t}`))
+        }
       }
+      const rawTheme = localStorage.getItem(themeStorageKey(user.id))
+      if (rawTheme) setThemeModeState(parseThemeMode(rawTheme))
     } catch {
       /* ignore */
     }
@@ -60,16 +77,35 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     void (async () => {
       const ensured = await ensureOwnerProfile(supabase, user)
       if (cancelled || !ensured.ok) return
-      const { data, error } = await supabase.from('profiles').select('accent_color').eq('id', user.id).maybeSingle()
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('accent_color, theme_mode, theme')
+        .eq('id', user.id)
+        .maybeSingle()
       if (cancelled || error) return
-      if (data?.accent_color && typeof data.accent_color === 'string') {
-        const n = normalizeHex(data.accent_color)
+
+      const row = data as {
+        accent_color?: string | null
+        theme_mode?: string | null
+        theme?: string | null
+      } | null
+
+      if (row?.accent_color && typeof row.accent_color === 'string') {
+        const n = normalizeHex(row.accent_color)
         setAccentHexState(n)
         try {
           localStorage.setItem(accentStorageKey(user.id), n)
         } catch {
           /* ignore */
         }
+      }
+
+      const mode = parseThemeMode(row?.theme_mode ?? row?.theme)
+      setThemeModeState(mode)
+      try {
+        localStorage.setItem(themeStorageKey(user.id), mode)
+      } catch {
+        /* ignore */
       }
     })()
 
@@ -79,18 +115,23 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   }, [user])
 
   useLayoutEffect(() => {
-    const root = document.documentElement
-    const accent = normalizeHex(accentHex)
-    const fg = foregroundOnAccent(accent)
-    root.style.setProperty('--margen-accent', accent)
-    root.style.setProperty('--margen-accent-fg', fg)
-    root.style.setProperty('--margen-accent-muted', `color-mix(in srgb, ${accent} 10%, #fafaf8)`)
-    root.classList.remove('dark')
-    root.style.colorScheme = 'light'
-  }, [accentHex])
+    applyThemeToRoot(themeMode)
+  }, [themeMode])
+
+  useLayoutEffect(() => {
+    applyAccentToRoot(accentHex)
+  }, [accentHex, themeMode])
+
+  useEffect(() => {
+    if (themeMode !== 'system') return
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => applyThemeToRoot('system')
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [themeMode])
 
   const persist = useCallback(
-    async (patch: { accent_color?: string }): Promise<boolean> => {
+    async (patch: { accent_color?: string; theme_mode?: ThemeMode }): Promise<boolean> => {
       if (!user || !supabaseConfigured) return false
       setSaving(true)
       setPersistError(null)
@@ -113,6 +154,13 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
           /* ignore */
         }
       }
+      if (typeof patch.theme_mode === 'string') {
+        try {
+          localStorage.setItem(themeStorageKey(user.id), patch.theme_mode)
+        } catch {
+          /* ignore */
+        }
+      }
       return true
     },
     [user],
@@ -122,11 +170,24 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     setAccentHexState(normalizeHex(hex))
   }, [])
 
-  const persistAccentColor = useCallback(
-    async (hex: string) => {
-      const n = normalizeHex(hex)
-      setAccentHexState(n)
-      return persist({ accent_color: n })
+  const setThemeMode = useCallback((mode: ThemeMode) => {
+    setThemeModeState(mode)
+  }, [])
+
+  const persistAppearance = useCallback(
+    async (patch: { accent_color?: string; theme_mode?: ThemeMode }) => {
+      const payload: { accent_color?: string; theme_mode?: ThemeMode } = {}
+      if (typeof patch.accent_color === 'string') {
+        const n = normalizeHex(patch.accent_color)
+        setAccentHexState(n)
+        payload.accent_color = n
+      }
+      if (typeof patch.theme_mode === 'string') {
+        setThemeModeState(patch.theme_mode)
+        payload.theme_mode = patch.theme_mode
+      }
+      if (Object.keys(payload).length === 0) return true
+      return persist(payload)
     },
     [persist],
   )
@@ -135,11 +196,13 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     () => ({
       accentHex: normalizeHex(accentHex),
       setAccentHex,
-      persistAccentColor,
+      themeMode,
+      setThemeMode,
+      persistAppearance,
       persistError,
       saving,
     }),
-    [accentHex, setAccentHex, persistAccentColor, persistError, saving],
+    [accentHex, setAccentHex, themeMode, setThemeMode, persistAppearance, persistError, saving],
   )
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>

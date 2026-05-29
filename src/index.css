@@ -24,6 +24,19 @@ html {
   color-scheme: light;
 }
 
+html.dark {
+  color-scheme: dark;
+  --color-margen-border: #2e2e2e;
+  --color-margen-border-hover: #444444;
+  --color-margen-muted: #9a9a9a;
+  --color-margen-text-secondary: #b8b8b8;
+  --color-margen-text: #f2f2f2;
+  --color-margen-body: #d8d8d8;
+  --color-margen-surface: #121212;
+  --color-margen-surface-elevated: #1c1c1c;
+  --color-margen-hover: #262626;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

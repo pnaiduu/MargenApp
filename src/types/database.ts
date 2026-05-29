@@ -12,6 +12,7 @@ export type Database = {
           full_name: string | null
           company_name: string | null
           theme: 'light' | 'dark' | 'system' | string | null
+          theme_mode: 'light' | 'dark' | 'system' | string | null
           accent_color: string | null
           service_area_radius: number | null
           retell_agent_id: string | null
@@ -53,6 +54,7 @@ export type Database = {
           full_name?: string | null
           company_name?: string | null
           theme?: 'light' | 'dark' | 'system' | string | null
+          theme_mode?: 'light' | 'dark' | 'system' | string | null
           accent_color?: string | null
           service_area_radius?: number | null
           retell_agent_id?: string | null
@@ -93,6 +95,7 @@ export type Database = {
           full_name?: string | null
           company_name?: string | null
           theme?: 'light' | 'dark' | 'system' | string | null
+          theme_mode?: 'light' | 'dark' | 'system' | string | null
           accent_color?: string | null
           service_area_radius?: number | null
           retell_agent_id?: string | null

@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/useAuth'
 import { usePreferences } from '../contexts/usePreferences'
 import { foregroundOnAccent, normalizeHex } from '../lib/logoFilter'
+import { AppearanceSettings } from '../components/settings/AppearanceSettings'
 import {
   parseCoveredCities,
   ServiceAreaEditor,
@@ -30,9 +31,6 @@ const NAV: { id: string; label: string }[] = [
   { id: 'subscription', label: 'Subscription' },
   { id: 'appearance', label: 'Appearance' },
 ]
-
-const fieldClass =
-  'w-full rounded-lg border border-[#ebebeb] bg-white px-3 py-2.5 text-sm text-[#111111] outline-none transition focus:border-[var(--margen-accent)] focus:ring-2 focus:ring-[var(--margen-accent-muted)]'
 
 function scrollToSection(id: string) {
   document.getElementById(`settings-section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -73,7 +71,7 @@ function SettingsSectionCard({
 export function SettingsPage() {
   const location = useLocation()
   const { user } = useAuth()
-  const { accentHex, setAccentHex, persistAccentColor, persistError, saving: accentSaving } =
+  const { accentHex, themeMode, persistAppearance, persistError, saving: appearanceSaving } =
     usePreferences()
 
   const [serviceAreaSnapshot, setServiceAreaSnapshot] = useState<ServiceAreaSnapshot>({
@@ -98,12 +96,7 @@ export function SettingsPage() {
   const [autoSortSchedule, setAutoSortSchedule] = useState(true)
   const [operationsBusy, setOperationsBusy] = useState(false)
   const [operationsError, setOperationsError] = useState<string | null>(null)
-  const [appearanceDraft, setAppearanceDraft] = useState(accentHex)
   const [appearanceOk, setAppearanceOk] = useState<string | null>(null)
-
-  useEffect(() => {
-    setAppearanceDraft(accentHex)
-  }, [accentHex])
 
   useEffect(() => {
     const raw = location.hash?.replace(/^#/, '') ?? ''
@@ -309,24 +302,14 @@ export function SettingsPage() {
     : `${technicianCount} / unlimited technicians`
   const showPlanUpgrade = subscriptionPlanId !== 'scale'
   const hasSubscriptionCard = Boolean(saasSubscription) || isDevBypassEmail(user?.email)
-  const appearancePreviewHex = normalizeHex(appearanceDraft)
-
-  function handleAppearanceHexChange(raw: string) {
-    setAppearanceOk(null)
-    setAppearanceDraft(raw.startsWith('#') ? raw : `#${raw}`)
-  }
-
-  function handleAppearancePreview() {
-    const n = normalizeHex(appearanceDraft)
-    setAppearanceDraft(n)
-    setAccentHex(n)
-  }
+  const appearancePreviewHex = normalizeHex(accentHex)
 
   async function saveAppearanceSection() {
     setAppearanceOk(null)
-    const n = normalizeHex(appearanceDraft)
-    setAppearanceDraft(n)
-    const ok = await persistAccentColor(n)
+    const ok = await persistAppearance({
+      accent_color: appearancePreviewHex,
+      theme_mode: themeMode,
+    })
     if (ok) setAppearanceOk('Appearance saved.')
   }
 
@@ -595,63 +578,20 @@ export function SettingsPage() {
                   {appearanceOk ? <p className="mr-auto text-sm text-[#555555]">{appearanceOk}</p> : null}
                   <button
                     type="button"
-                    disabled={accentSaving}
+                    disabled={appearanceSaving}
                     onClick={() => void saveAppearanceSection()}
-                    className="rounded-lg bg-[var(--margen-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-60"
+                    style={{
+                      backgroundColor: appearancePreviewHex,
+                      color: foregroundOnAccent(appearancePreviewHex),
+                    }}
+                    className="rounded-lg px-4 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:opacity-60"
                   >
-                    {accentSaving ? 'Saving…' : 'Save'}
+                    {appearanceSaving ? 'Saving…' : 'Save'}
                   </button>
                 </>
               }
             >
-              <p className="text-sm leading-relaxed text-[#555555]">
-                Choose an accent color for buttons and highlights across your workspace.
-              </p>
-              <div className="mt-5 flex flex-wrap items-end gap-4">
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-[#555555]" htmlFor="settings-accent-picker">
-                    Accent color
-                  </label>
-                  <input
-                    id="settings-accent-picker"
-                    type="color"
-                    value={appearancePreviewHex}
-                    onChange={(e) => {
-                      setAppearanceOk(null)
-                      setAppearanceDraft(e.target.value.toUpperCase())
-                    }}
-                    className="h-11 w-14 cursor-pointer rounded-lg border border-[#ebebeb] bg-white p-1"
-                  />
-                </div>
-                <div className="min-w-[7.5rem] flex-1 sm:max-w-[10rem]">
-                  <label className="mb-1.5 block text-xs font-medium text-[#555555]" htmlFor="settings-accent-hex">
-                    Hex
-                  </label>
-                  <input
-                    id="settings-accent-hex"
-                    type="text"
-                    value={appearanceDraft}
-                    onChange={(e) => handleAppearanceHexChange(e.target.value)}
-                    onBlur={() => setAppearanceDraft(normalizeHex(appearanceDraft))}
-                    className={`${fieldClass} font-mono uppercase`}
-                    placeholder="#111111"
-                    spellCheck={false}
-                    maxLength={7}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAppearancePreview}
-                  style={{
-                    backgroundColor: appearancePreviewHex,
-                    color: foregroundOnAccent(appearancePreviewHex),
-                    borderColor: CARD_BORDER,
-                  }}
-                  className="rounded-lg border px-4 py-2.5 text-sm font-semibold transition hover:opacity-90"
-                >
-                  Preview
-                </button>
-              </div>
+              <AppearanceSettings />
             </SettingsSectionCard>
           </div>
         </div>
