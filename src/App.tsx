@@ -24,6 +24,7 @@ import { SignupPage } from './pages/SignupPage'
 import { PricingPage } from './pages/PricingPage'
 import { SubscribePage } from './pages/SubscribePage'
 import { PaymentsPage } from './pages/PaymentsPage'
+import { StripeCallbackPage } from './pages/StripeCallbackPage'
 import { RevenuePage } from './pages/RevenuePage'
 import { SchedulePage } from './pages/SchedulePage'
 import { OnboardingCallSetup } from './pages/OnboardingCallSetup'
@@ -140,6 +141,7 @@ export default function App() {
                     <Route path="schedule" element={<SchedulePage />} />
                     <Route path="revenue" element={<RevenuePage />} />
                     <Route path="payments" element={<PaymentsPage />} />
+                    <Route path="settings/stripe-callback" element={<StripeCallbackPage />} />
                     <Route path="settings" element={<SettingsPage />} />
                     <Route path="settings/ai-receptionist" element={<Navigate to="/settings" replace />} />
                     <Route path="subscribe" element={<SubscribePage />} />

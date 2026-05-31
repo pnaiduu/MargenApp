@@ -85,13 +85,14 @@ Deno.serve(async (req) => {
 
   const { data: ownerProfile, error: profErr } = await admin
     .from('profiles')
-    .select('company_name, stripe_account_id, stripe_charges_enabled')
+    .select('company_name, stripe_account_id, stripe_connect_account_id, stripe_charges_enabled')
     .eq('id', ownerId)
     .maybeSingle()
 
   if (profErr || !ownerProfile) return json(400, { error: profErr?.message ?? 'Owner profile not found' })
 
-  if (!ownerProfile.stripe_account_id || !ownerProfile.stripe_charges_enabled) {
+  const stripeAccountId = ownerProfile.stripe_connect_account_id ?? ownerProfile.stripe_account_id
+  if (!stripeAccountId || !ownerProfile.stripe_charges_enabled) {
     return json(409, {
       error: 'Stripe Connect is not ready. Complete Stripe setup under Payments.',
     })
@@ -139,7 +140,7 @@ Deno.serve(async (req) => {
       success_url: `${siteUrl.replace(/\/$/, '')}/payments?paid=1&invoice=${invoice.id}`,
       cancel_url: `${siteUrl.replace(/\/$/, '')}/payments?cancelled=1&invoice=${invoice.id}`,
     },
-    { stripeAccount: ownerProfile.stripe_account_id },
+    { stripeAccount: stripeAccountId },
   )
 
   const { error: invUpErr } = await admin

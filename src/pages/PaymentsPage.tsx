@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useAuth } from '../contexts/useAuth'
 import { createStripeInvoice } from '../lib/createStripeInvoice'
@@ -8,8 +9,7 @@ import { sendInvoiceReminderDirect } from '../lib/directSupabaseActions'
 import { formatUsdFromCents } from '../lib/formatUsd'
 import { easePremium } from '../lib/motion'
 import { supabase } from '../lib/supabase'
-import { StripeAnalyticsSetupModal } from '../components/settings/StripeAnalyticsSetupModal'
-import { syncStripeAnalyticsLedger } from '../lib/stripeAnalytics'
+import { disconnectStripeConnect, stripeConnectOAuthUrl } from '../lib/stripeConnect'
 
 type InvoiceRow = {
   id: string
@@ -39,6 +39,13 @@ type PayoutRow = {
   description: string | null
 }
 
+type StripeProfile = {
+  stripe_connect_account_id: string | null
+  stripe_connect_email: string | null
+  stripe_charges_enabled: boolean
+  stripe_details_submitted: boolean
+}
+
 function formatWhen(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric' })
@@ -62,21 +69,33 @@ function statusPill(label: string) {
   return `${base} invoice-draft`
 }
 
+function stripeAccountStatusLabel(profile: StripeProfile): string {
+  if (!profile.stripe_connect_account_id) return 'Not connected'
+  if (profile.stripe_charges_enabled) return 'Active — ready to accept payments'
+  if (profile.stripe_details_submitted) return 'Pending — Stripe is reviewing your account'
+  return 'Incomplete — finish setup in Stripe'
+}
+
 export function PaymentsPage() {
   const { user } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const invoicesRealtimeSeq = useRef(0)
   const [rows, setRows] = useState<InvoiceRow[]>([])
   const [ledger, setLedger] = useState<LedgerRow[]>([])
-  const [stripeHint, setStripeHint] = useState<string | null>(null)
+  const [stripeProfile, setStripeProfile] = useState<StripeProfile>({
+    stripe_connect_account_id: null,
+    stripe_connect_email: null,
+    stripe_charges_enabled: false,
+    stripe_details_submitted: false,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [setupOpen, setSetupOpen] = useState(false)
-  const [syncBusy, setSyncBusy] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
   const [manualEmail, setManualEmail] = useState('')
   const [manualAmount, setManualAmount] = useState('')
   const [manualDesc, setManualDesc] = useState('')
+  const [connectNotice, setConnectNotice] = useState<string | null>(null)
 
   const { startIso, endIso } = useMemo(() => localMonthRangeIso(), [])
 
@@ -93,7 +112,11 @@ export function PaymentsPage() {
           .eq('owner_id', ownerId)
           .order('created_at', { ascending: false })
           .abortSignal(signal),
-        supabase.from('profiles').select('stripe_analytics_key_hint').eq('id', ownerId).maybeSingle(),
+        supabase
+          .from('profiles')
+          .select('stripe_connect_account_id, stripe_connect_email, stripe_charges_enabled, stripe_details_submitted')
+          .eq('id', ownerId)
+          .maybeSingle(),
         supabase
           .from('stripe_ledger_lines')
           .select('id, amount_cents, stripe_created_at, description, reporting_category')
@@ -107,7 +130,15 @@ export function PaymentsPage() {
         setError(invRes.error.message)
         setRows([])
       } else setRows((invRes.data ?? []) as InvoiceRow[])
-      setStripeHint((profRes.data as { stripe_analytics_key_hint?: string | null } | null)?.stripe_analytics_key_hint ?? null)
+      const prof = profRes.data as StripeProfile | null
+      if (prof) {
+        setStripeProfile({
+          stripe_connect_account_id: prof.stripe_connect_account_id ?? null,
+          stripe_connect_email: prof.stripe_connect_email ?? null,
+          stripe_charges_enabled: Boolean(prof.stripe_charges_enabled),
+          stripe_details_submitted: Boolean(prof.stripe_details_submitted),
+        })
+      }
       if (!ledgerRes.error && ledgerRes.data) setLedger(ledgerRes.data as LedgerRow[])
     } finally {
       if (!signal.aborted) setLoading(false)
@@ -132,7 +163,20 @@ export function PaymentsPage() {
     }
   }, [user])
 
-  const stripeConnected = Boolean(stripeHint)
+  useEffect(() => {
+    const stripeParam = searchParams.get('stripe')
+    if (stripeParam === 'connected') {
+      setConnectNotice('Stripe connected successfully.')
+      searchParams.delete('stripe')
+      setSearchParams(searchParams, { replace: true })
+    } else if (stripeParam === 'error') {
+      setConnectNotice(null)
+      searchParams.delete('stripe')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
+
+  const stripeConnected = Boolean(stripeProfile.stripe_connect_account_id)
 
   const collectedThisMonthCents = useMemo(() => {
     const start = new Date(startIso).getTime()
@@ -195,17 +239,33 @@ export function PaymentsPage() {
     setBusyId(null)
   }
 
-  async function syncStripe() {
-    setSyncBusy(true)
+  function startStripeConnect() {
     setError(null)
     try {
-      await syncStripeAnalyticsLedger(120)
-      if (user) await load(user.id, new AbortController().signal)
+      window.location.href = stripeConnectOAuthUrl()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sync failed')
-    } finally {
-      setSyncBusy(false)
+      setError(e instanceof Error ? e.message : 'Stripe Connect is not configured.')
     }
+  }
+
+  async function disconnectStripe() {
+    if (!user) return
+    if (!window.confirm('Disconnect your Stripe account from Margen?')) return
+    setBusyId('disconnect')
+    setError(null)
+    try {
+      await disconnectStripeConnect()
+      setStripeProfile({
+        stripe_connect_account_id: null,
+        stripe_connect_email: null,
+        stripe_charges_enabled: false,
+        stripe_details_submitted: false,
+      })
+      setConnectNotice(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not disconnect Stripe.')
+    }
+    setBusyId(null)
   }
 
   async function submitManualInvoice() {
@@ -242,64 +302,77 @@ export function PaymentsPage() {
         </p>
       </motion.div>
 
-      {!stripeConnected ? (
-        <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-6">
-          <h2 className="text-lg font-semibold text-[var(--color-margen-text)]">Connect Stripe</h2>
-          <p className="mt-1 text-sm text-[var(--color-margen-muted)]">Follow these steps to import real payment data.</p>
-          <ol className="mt-4 space-y-3 text-sm text-[var(--color-margen-text-secondary)]">
-            <li>
-              <span className="font-semibold text-[var(--color-margen-text)]">1.</span> Create a free Stripe account at{' '}
-              <a href="https://stripe.com" target="_blank" rel="noreferrer" className="font-medium text-[var(--margen-accent)] underline">
-                stripe.com
-              </a>
-            </li>
-            <li>
-              <span className="font-semibold text-[var(--color-margen-text)]">2.</span> Go to Developers → API Keys and copy your Secret key
-            </li>
-            <li>
-              <span className="font-semibold text-[var(--color-margen-text)]">3.</span> Paste it below (Settings → Payments → Add API key)
-            </li>
-            <li>
-              <span className="font-semibold text-[var(--color-margen-text)]">4.</span> Click Sync from Stripe to import your data
-            </li>
-          </ol>
-          <div className="mt-5 flex flex-wrap gap-2">
+      {connectNotice ? (
+        <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{connectNotice}</p>
+      ) : null}
+
+      <div className="rounded-xl border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] p-6">
+        <h2 className="text-lg font-semibold text-[var(--color-margen-text)]">Stripe Connect</h2>
+        {!stripeConnected ? (
+          <>
+            <p className="mt-1 text-sm text-[var(--color-margen-muted)]">
+              Connect your Stripe account to send invoices and collect payments from customers.
+            </p>
+            <ol className="mt-4 space-y-2 text-sm text-[var(--color-margen-text-secondary)]">
+              <li>
+                <span className="font-semibold text-[var(--color-margen-text)]">1.</span> Create a free Stripe account at{' '}
+                <a href="https://stripe.com" target="_blank" rel="noreferrer" className="font-medium text-[var(--margen-accent)] underline">
+                  stripe.com
+                </a>{' '}
+                if you do not have one yet
+              </li>
+              <li>
+                <span className="font-semibold text-[var(--color-margen-text)]">2.</span> Click Connect with Stripe below and authorize Margen
+              </li>
+            </ol>
             <button
               type="button"
-              onClick={() => setSetupOpen(true)}
-              className="rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
+              onClick={startStripeConnect}
+              className="mt-5 rounded-lg bg-[#635bff] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5249e6]"
             >
-              Add API key
+              Connect with Stripe
             </button>
-            <button
-              type="button"
-              disabled={syncBusy}
-              onClick={() => void syncStripe()}
-              className="rounded-lg border border-[var(--color-margen-border)] px-4 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-60"
-            >
-              {syncBusy ? 'Syncing…' : 'Sync from Stripe'}
-            </button>
+          </>
+        ) : (
+          <div className="mt-3 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Status</p>
+                <p className="mt-1 text-sm font-medium text-[var(--color-margen-text)]">
+                  {stripeAccountStatusLabel(stripeProfile)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-margen-muted)]">Connected email</p>
+                <p className="mt-1 text-sm text-[var(--color-margen-text)]">
+                  {stripeProfile.stripe_connect_email ?? '—'}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-[var(--color-margen-muted)]">
+              Account ID: {stripeProfile.stripe_connect_account_id}
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setManualOpen(true)}
+                disabled={!stripeProfile.stripe_charges_enabled}
+                className="rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)] disabled:opacity-50"
+              >
+                Create invoice
+              </button>
+              <button
+                type="button"
+                disabled={busyId === 'disconnect'}
+                onClick={() => void disconnectStripe()}
+                className="rounded-lg border border-[var(--color-margen-border)] px-4 py-2 text-sm font-medium text-[var(--color-margen-text)] hover:bg-[var(--color-margen-hover)] disabled:opacity-60"
+              >
+                {busyId === 'disconnect' ? 'Disconnecting…' : 'Disconnect'}
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={syncBusy}
-            onClick={() => void syncStripe()}
-            className="rounded-lg border border-[var(--color-margen-border)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-margen-hover)] disabled:opacity-60"
-          >
-            {syncBusy ? 'Syncing…' : 'Sync from Stripe'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setManualOpen(true)}
-            className="rounded-lg bg-[var(--margen-accent)] px-4 py-2 text-sm font-semibold text-[var(--margen-accent-fg)]"
-          >
-            Create invoice
-          </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border border-[var(--color-margen-border)] bg-[var(--color-margen-surface-elevated)] px-5 py-4">
@@ -406,16 +479,6 @@ export function PaymentsPage() {
           </ul>
         </div>
       ) : null}
-
-      <StripeAnalyticsSetupModal
-        open={setupOpen}
-        onClose={() => setSetupOpen(false)}
-        hasExistingKey={Boolean(stripeHint)}
-        onSaved={() => {
-          setSetupOpen(false)
-          if (user) void load(user.id, new AbortController().signal)
-        }}
-      />
 
       <AnimatePresence>
         {manualOpen ? (

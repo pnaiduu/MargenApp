@@ -17,6 +17,8 @@ export type Database = {
           service_area_radius: number | null
           retell_agent_id: string | null
           stripe_account_id: string | null
+          stripe_connect_account_id: string | null
+          stripe_connect_email: string | null
           stripe_charges_enabled: boolean
           stripe_details_submitted: boolean
           stripe_analytics_key_hint: string | null
