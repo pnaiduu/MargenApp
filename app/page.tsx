@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { SiteFooter } from './components/SiteFooter'
+import { SiteNav } from './components/SiteNav'
 
 const CALENDLY = 'https://calendly.com/davynaidu/30min'
 
@@ -106,14 +108,7 @@ export default function Home() {
   return (
     <div className="page">
       {/* Nav */}
-      <header className="nav">
-        <a href="#" className="nav-logo">
-          Margen
-        </a>
-        <a href={CALENDLY} target="_blank" rel="noopener noreferrer" className="btn btn--accent">
-          Book a free audit
-        </a>
-      </header>
+      <SiteNav />
 
       {/* Hero */}
       <section className="hero section">
@@ -219,10 +214,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="footer">
-        <span>Margen · Allen, Texas · trymargen.com</span>
-        <span>© 2026 Margen</span>
-      </footer>
+      <SiteFooter />
 
       {/* Modal */}
       {activeSample && sample ? (
