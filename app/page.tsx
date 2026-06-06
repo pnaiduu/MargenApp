@@ -50,57 +50,6 @@ const STEPS = [
   },
 ]
 
-const FEATURES = [
-  'Mobile technician app',
-  'Stripe Connect billing',
-  'Live map dispatch',
-  'Role-based onboarding',
-]
-
-const TECH = ['Next.js', 'React Native', 'Expo', 'Supabase', 'Stripe', 'Google Maps API', 'TypeScript']
-
-const PLANS = [
-  {
-    tier: 'Starter',
-    price: '$500–$750/mo',
-    audience: 'Solo operators, small local businesses',
-    includes: [
-      'Professional website build',
-      'Unlimited text and copy updates',
-      'Mobile-first design',
-      'Basic SEO setup',
-      '48hr turnaround',
-    ],
-    popular: false,
-  },
-  {
-    tier: 'Growth',
-    price: '$1,000–$1,500/mo',
-    audience: 'Law firms, med spas, real estate teams',
-    includes: [
-      'Everything in Starter',
-      'New pages on request',
-      'Booking and contact integrations',
-      'Monthly SEO improvements',
-      'Speed and performance audits',
-    ],
-    popular: true,
-  },
-  {
-    tier: 'Premium',
-    price: '$1,500–$2,000/mo',
-    audience: 'Multi-location businesses, high-revenue firms',
-    includes: [
-      'Everything in Growth',
-      'Custom web app features',
-      'Priority same-day updates',
-      'Analytics dashboard',
-      'Dedicated point of contact',
-    ],
-    popular: false,
-  },
-]
-
 function FadeIn({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -235,64 +184,19 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Case study */}
-      <section id="case-study" className="section">
+      {/* Work CTA */}
+      <section className="section">
         <div className="container">
           <FadeIn>
-            <p className="section-label">Case study</p>
-            <h2 className="section-headline">Built from scratch.</h2>
-          </FadeIn>
-          <FadeIn>
-            <article className="case-card">
-              <h3 className="case-name">Margen Field Operations Platform</h3>
-              <p className="case-desc">
-                Full-stack SaaS for home service companies. Live technician GPS tracking, job dispatch, Stripe
-                payments, invoicing, and real-time analytics. Built for HVAC, plumbing, and electrical businesses.
+            <div className="work-cta">
+              <p className="work-cta-text">
+                Our work speaks for itself. Book an audit to see what we can build for you.
               </p>
-              <div className="tech-pills">
-                {TECH.map((t) => (
-                  <span key={t} className="tech-pill">
-                    {t}
-                  </span>
-                ))}
-              </div>
-              <div className="features-grid">
-                {FEATURES.map((f) => (
-                  <div key={f} className="feature">
-                    <p className="feature-label">{f}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
+              <a href={CALENDLY} target="_blank" rel="noopener noreferrer" className="btn btn--accent">
+                Book a free audit
+              </a>
+            </div>
           </FadeIn>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="section">
-        <div className="container">
-          <FadeIn>
-            <p className="section-label">Pricing</p>
-            <h2 className="section-headline">Simple, flat monthly rates.</h2>
-            <p className="section-subtext">No project fees. No hourly billing. Cancel anytime.</p>
-          </FadeIn>
-          <div className="pricing-grid">
-            {PLANS.map((plan) => (
-              <FadeIn key={plan.tier}>
-                <div className={`pricing-card${plan.popular ? ' pricing-card--popular' : ''}`}>
-                  {plan.popular ? <span className="pricing-badge">Most popular</span> : null}
-                  <h3 className="pricing-tier">{plan.tier}</h3>
-                  <p className="pricing-price">{plan.price}</p>
-                  <p className="pricing-audience">{plan.audience}</p>
-                  <ul className="pricing-includes">
-                    {plan.includes.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </FadeIn>
-            ))}
-          </div>
         </div>
       </section>
 

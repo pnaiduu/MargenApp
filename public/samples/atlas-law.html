@@ -3,81 +3,522 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Atlas Law Group</title>
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet" />
+  <title>Atlas Law Group | Dallas Personal Injury & Criminal Defense</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Source Sans 3', sans-serif; background: #0c1424; color: #e8e4dc; line-height: 1.6; }
-    .nav { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 2rem; border-bottom: 1px solid rgba(201,169,98,0.2); }
-    .logo { font-family: 'Libre Baskerville', serif; font-size: 1.35rem; color: #c9a962; letter-spacing: 0.04em; }
-    .nav-links { display: flex; gap: 2rem; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.12em; color: #a8a29a; }
-    .hero { padding: 5rem 2rem 4rem; max-width: 900px; margin: 0 auto; text-align: center; }
-    .hero h1 { font-family: 'Libre Baskerville', serif; font-size: clamp(2.2rem, 5vw, 3.5rem); font-weight: 400; line-height: 1.2; color: #f5f0e8; margin-bottom: 1.5rem; }
-    .hero p { font-size: 1.1rem; color: #9ca3af; max-width: 560px; margin: 0 auto 2rem; font-weight: 300; }
-    .btn { display: inline-block; padding: 0.85rem 2rem; background: #c9a962; color: #0c1424; text-decoration: none; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.15em; font-weight: 600; }
-    .section { padding: 4rem 2rem; max-width: 1100px; margin: 0 auto; }
-    .section-title { font-family: 'Libre Baskerville', serif; font-size: 2rem; color: #c9a962; margin-bottom: 2.5rem; text-align: center; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; }
-    .card { border: 1px solid rgba(201,169,98,0.25); padding: 2rem 1.5rem; background: rgba(255,255,255,0.02); }
-    .card h3 { font-family: 'Libre Baskerville', serif; font-size: 1.15rem; color: #f5f0e8; margin-bottom: 0.75rem; }
-    .card p { font-size: 0.9rem; color: #9ca3af; font-weight: 300; }
-    .about { background: rgba(201,169,98,0.06); border-top: 1px solid rgba(201,169,98,0.15); border-bottom: 1px solid rgba(201,169,98,0.15); }
-    .about-inner { max-width: 720px; margin: 0 auto; text-align: center; }
-    .about-inner p { color: #b8b4ac; font-size: 1.05rem; font-weight: 300; margin-bottom: 1rem; }
-    .testimonials { display: grid; gap: 1.5rem; max-width: 800px; margin: 0 auto; }
-    .quote { border-left: 2px solid #c9a962; padding-left: 1.5rem; font-style: italic; color: #d4d0c8; font-size: 1.05rem; }
-    .quote cite { display: block; margin-top: 0.75rem; font-style: normal; font-size: 0.85rem; color: #c9a962; }
-    .contact { text-align: center; }
-    .form { max-width: 480px; margin: 2rem auto 0; display: flex; flex-direction: column; gap: 0.75rem; }
-    .form input, .form textarea { background: rgba(255,255,255,0.05); border: 1px solid rgba(201,169,98,0.3); padding: 0.85rem 1rem; color: #f5f0e8; font-family: inherit; font-size: 0.95rem; }
-    .form textarea { min-height: 100px; resize: vertical; }
-    footer { text-align: center; padding: 2rem; font-size: 0.8rem; color: #6b7280; border-top: 1px solid rgba(201,169,98,0.15); }
+    :root {
+      --navy: #0a1628;
+      --navy-mid: #111f36;
+      --gold: #c9a962;
+      --gold-dim: rgba(201, 169, 98, 0.15);
+      --cream: #f5f0e8;
+      --muted: #9ca3af;
+      --max: 1120px;
+      --pad: clamp(1.25rem, 4vw, 2.5rem);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: 'Source Sans 3', system-ui, sans-serif;
+      font-weight: 400;
+      background: var(--navy);
+      color: var(--cream);
+      line-height: 1.65;
+      font-size: 1rem;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    img { max-width: 100%; display: block; }
+
+    a { color: inherit; text-decoration: none; }
+
+    .wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding-inline: var(--pad); }
+
+    /* Nav */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(10, 22, 40, 0.96);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(201, 169, 98, 0.2);
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      min-height: 4.25rem;
+    }
+
+    .logo {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: clamp(1.1rem, 2.5vw, 1.35rem);
+      color: var(--gold);
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: clamp(1rem, 3vw, 2rem);
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-size: 0.75rem;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--gold); }
+
+    .nav-cta {
+      padding: 0.65rem 1.25rem;
+      background: var(--gold);
+      color: var(--navy) !important;
+      font-weight: 600 !important;
+    }
+
+    /* Hero */
+    .hero {
+      padding: clamp(4rem, 10vw, 6.5rem) 0 clamp(3.5rem, 8vw, 5rem);
+      text-align: center;
+      border-bottom: 1px solid rgba(201, 169, 98, 0.12);
+    }
+
+    .hero-eyebrow {
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 1.25rem;
+    }
+
+    .hero h1 {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: clamp(2rem, 6vw, 3.25rem);
+      font-weight: 400;
+      line-height: 1.15;
+      color: var(--cream);
+      max-width: 16ch;
+      margin: 0 auto 1.5rem;
+    }
+
+    .hero-lead {
+      font-size: clamp(1rem, 2.2vw, 1.125rem);
+      font-weight: 300;
+      color: var(--muted);
+      max-width: 38rem;
+      margin: 0 auto 2rem;
+      line-height: 1.75;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.9rem 2rem;
+      background: var(--gold);
+      color: var(--navy);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn:hover { opacity: 0.9; }
+
+    .hero-stats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: clamp(1.5rem, 4vw, 3rem);
+      margin-top: 3rem;
+      padding-top: 2.5rem;
+      border-top: 1px solid rgba(201, 169, 98, 0.15);
+    }
+
+    .stat { text-align: center; min-width: 120px; }
+
+    .stat-num {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: 1.75rem;
+      color: var(--gold);
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* Sections */
+    .section { padding: clamp(3.5rem, 8vw, 5rem) 0; }
+
+    .section-head {
+      text-align: center;
+      margin-bottom: clamp(2rem, 5vw, 3rem);
+    }
+
+    .section-head h2 {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      font-weight: 400;
+      color: var(--gold);
+      margin-bottom: 0.75rem;
+    }
+
+    .section-head p {
+      font-size: 1rem;
+      color: var(--muted);
+      max-width: 32rem;
+      margin: 0 auto;
+      font-weight: 300;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.25rem;
+    }
+
+    .card {
+      padding: 1.75rem 1.5rem;
+      border: 1px solid rgba(201, 169, 98, 0.22);
+      background: var(--navy-mid);
+      height: 100%;
+    }
+
+    .card h3 {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: 1.125rem;
+      color: var(--cream);
+      margin-bottom: 0.75rem;
+    }
+
+    .card p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 300;
+      line-height: 1.65;
+    }
+
+    /* About */
+    .about {
+      background: var(--gold-dim);
+      border-block: 1px solid rgba(201, 169, 98, 0.15);
+    }
+
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(2rem, 5vw, 4rem);
+      align-items: center;
+    }
+
+    .about-copy p {
+      color: #b8b4ac;
+      font-size: 1.05rem;
+      font-weight: 300;
+      margin-bottom: 1rem;
+      line-height: 1.75;
+    }
+
+    .about-copy p:last-child { margin-bottom: 0; }
+
+    .about-highlights {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .highlight {
+      padding: 1.25rem 1.5rem;
+      border-left: 2px solid var(--gold);
+      background: rgba(10, 22, 40, 0.5);
+    }
+
+    .highlight strong {
+      display: block;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.35rem;
+    }
+
+    .highlight span { font-size: 0.95rem; color: var(--muted); font-weight: 300; }
+
+    /* Testimonials */
+    .testimonials {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .quote {
+      padding: 2rem;
+      border: 1px solid rgba(201, 169, 98, 0.2);
+      background: var(--navy-mid);
+    }
+
+    .quote p {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-style: italic;
+      font-size: 1.05rem;
+      color: #d4d0c8;
+      line-height: 1.7;
+      margin-bottom: 1.25rem;
+    }
+
+    .quote footer {
+      font-size: 0.85rem;
+      color: var(--gold);
+      font-style: normal;
+      border: none;
+      padding: 0;
+      background: none;
+    }
+
+    /* Contact */
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(2rem, 5vw, 3.5rem);
+      align-items: start;
+    }
+
+    .contact-info h3 {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: 1.5rem;
+      color: var(--cream);
+      margin-bottom: 1rem;
+    }
+
+    .contact-info p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 0.5rem;
+      font-weight: 300;
+    }
+
+    .contact-info .hours { margin-top: 1.5rem; }
+
+    .form { display: flex; flex-direction: column; gap: 0.85rem; }
+
+    .form label {
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .form input,
+    .form textarea,
+    .form select {
+      width: 100%;
+      padding: 0.85rem 1rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(201, 169, 98, 0.28);
+      color: var(--cream);
+      font-family: inherit;
+      font-size: 0.95rem;
+      border-radius: 2px;
+    }
+
+    .form input::placeholder,
+    .form textarea::placeholder { color: #6b7280; }
+
+    .form textarea { min-height: 120px; resize: vertical; }
+
+    .form .btn { width: 100%; margin-top: 0.5rem; }
+
+    /* Footer */
+    .site-footer {
+      text-align: center;
+      padding: 2rem var(--pad);
+      font-size: 0.78rem;
+      color: #6b7280;
+      border-top: 1px solid rgba(201, 169, 98, 0.15);
+      line-height: 1.6;
+    }
+
+    @media (max-width: 900px) {
+      .grid-4 { grid-template-columns: 1fr 1fr; }
+      .about-grid,
+      .testimonials,
+      .contact-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .grid-4 { grid-template-columns: 1fr; }
+      .nav-links li:not(:last-child) { display: none; }
+      .hero-stats { flex-direction: column; gap: 1.25rem; }
+    }
   </style>
 </head>
 <body>
-  <nav class="nav">
-    <div class="logo">Atlas Law Group</div>
-    <div class="nav-links"><span>Practice Areas</span><span>About</span><span>Contact</span></div>
-  </nav>
+  <header class="header">
+    <div class="wrap nav">
+      <a href="#" class="logo">Atlas Law Group</a>
+      <ul class="nav-links">
+        <li><a href="#areas">Practice Areas</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="#contact" class="nav-cta">Free Consultation</a></li>
+      </ul>
+    </div>
+  </header>
+
   <section class="hero">
-    <h1>Experienced. Relentless.<br />On Your Side.</h1>
-    <p>For over 25 years, Atlas Law Group has fought for individuals and businesses across North Texas — with the discipline of a firm and the dedication of a partner.</p>
-    <a href="#" class="btn">Free Consultation</a>
+    <div class="wrap">
+      <p class="hero-eyebrow">Dallas · Collin · Denton County</p>
+      <h1>Experienced. Relentless. On Your Side.</h1>
+      <p class="hero-lead">For over 25 years, Atlas Law Group has fought for individuals and businesses across North Texas — with the discipline of a firm and the dedication of a partner.</p>
+      <a href="#contact" class="btn">Schedule Free Consultation</a>
+      <div class="hero-stats">
+        <div class="stat"><span class="stat-num">$120M+</span><span class="stat-label">Recovered for clients</span></div>
+        <div class="stat"><span class="stat-num">25+</span><span class="stat-label">Years in practice</span></div>
+        <div class="stat"><span class="stat-num">4.9</span><span class="stat-label">Client rating</span></div>
+      </div>
+    </div>
   </section>
+
+  <section id="areas" class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Practice Areas</h2>
+        <p>Focused expertise across the cases that matter most to North Texas families and businesses.</p>
+      </div>
+      <div class="grid-4">
+        <article class="card">
+          <h3>Personal Injury</h3>
+          <p>Car accidents, truck collisions, slip and fall, wrongful death. We pursue maximum compensation while you focus on recovery.</p>
+        </article>
+        <article class="card">
+          <h3>Criminal Defense</h3>
+          <p>DWI, drug charges, assault, white-collar defense. Aggressive representation from arraignment through trial.</p>
+        </article>
+        <article class="card">
+          <h3>Family Law</h3>
+          <p>Divorce, custody, support modifications, protective orders. Compassionate counsel during difficult transitions.</p>
+        </article>
+        <article class="card">
+          <h3>Business Law</h3>
+          <p>Contracts, partnership disputes, entity formation, commercial litigation. Protecting the companies that built this community.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="about" class="section about">
+    <div class="wrap about-grid">
+      <div class="about-copy">
+        <div class="section-head" style="text-align:left;margin-bottom:1.5rem;">
+          <h2>About Atlas</h2>
+        </div>
+        <p>Founded in 1998 by James Atlas, our firm combines courtroom experience with a client-first philosophy. We don't take cases we can't win — and we don't bill you for conversations you didn't need.</p>
+        <p>Our attorneys have recovered over $120 million for clients across Dallas, Collin, and Denton counties. Every case receives partner-level attention from day one.</p>
+      </div>
+      <div class="about-highlights">
+        <div class="highlight"><strong>No fee unless we win</strong><span>Contingency representation available for qualifying injury cases.</span></div>
+        <div class="highlight"><strong>24-hour response</strong><span>We return every inquiry within one business day — often sooner.</span></div>
+        <div class="highlight"><strong>Trial-ready attorneys</strong><span>We prepare every case for trial, which is why most settle favorably.</span></div>
+      </div>
+    </div>
+  </section>
+
   <section class="section">
-    <h2 class="section-title">Practice Areas</h2>
-    <div class="grid">
-      <div class="card"><h3>Personal Injury</h3><p>Car accidents, slip and fall, wrongful death. We pursue maximum compensation while you focus on recovery.</p></div>
-      <div class="card"><h3>Criminal Defense</h3><p>DWI, drug charges, white-collar defense. Aggressive representation from arraignment through trial.</p></div>
-      <div class="card"><h3>Family Law</h3><p>Divorce, custody, support modifications. Compassionate counsel during life's most difficult transitions.</p></div>
-      <div class="card"><h3>Business Law</h3><p>Contracts, disputes, entity formation. Protecting the companies that built this community.</p></div>
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Client Testimonials</h2>
+        <p>Results and relationships that speak for themselves.</p>
+      </div>
+      <div class="testimonials">
+        <blockquote class="quote">
+          <p>"They treated my case like it was the only one on their desk. I received a settlement three times what the insurance company first offered."</p>
+          <footer>— Maria S., Personal Injury Client</footer>
+        </blockquote>
+        <blockquote class="quote">
+          <p>"Professional, prepared, and unflappable in court. They explained every step and never made me feel like a number."</p>
+          <footer>— Robert K., Criminal Defense Client</footer>
+        </blockquote>
+      </div>
     </div>
   </section>
-  <section class="section about">
-    <div class="about-inner">
-      <h2 class="section-title">About Atlas</h2>
-      <p>Founded in 1998 by James Atlas, our firm combines courtroom experience with a client-first philosophy. We don't take cases we can't win — and we don't bill you for conversations you didn't need.</p>
-      <p>Our attorneys have recovered over $120 million for clients. We serve Dallas, Collin, and Denton counties.</p>
+
+  <section id="contact" class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Contact Us</h2>
+        <p>Tell us about your situation. Consultations are free and confidential.</p>
+      </div>
+      <div class="contact-grid">
+        <div class="contact-info">
+          <h3>Visit Our Office</h3>
+          <p>1200 Commerce Street, Suite 400</p>
+          <p>Dallas, Texas 75201</p>
+          <p style="margin-top:1rem;"><strong style="color:var(--gold);">(214) 555-0192</strong></p>
+          <p>info@atlaslawgroup.com</p>
+          <div class="hours">
+            <p><strong style="color:var(--cream);font-weight:500;">Office Hours</strong></p>
+            <p>Monday – Friday: 8:00 AM – 6:00 PM</p>
+            <p>Saturday: By appointment</p>
+          </div>
+        </div>
+        <form class="form" onsubmit="return false;">
+          <div>
+            <label for="name">Full name</label>
+            <input id="name" type="text" placeholder="Jane Smith" />
+          </div>
+          <div>
+            <label for="email">Email</label>
+            <input id="email" type="email" placeholder="you@email.com" />
+          </div>
+          <div>
+            <label for="phone">Phone</label>
+            <input id="phone" type="tel" placeholder="(214) 555-0000" />
+          </div>
+          <div>
+            <label for="area">Practice area</label>
+            <select id="area">
+              <option>Personal Injury</option>
+              <option>Criminal Defense</option>
+              <option>Family Law</option>
+              <option>Business Law</option>
+            </select>
+          </div>
+          <div>
+            <label for="message">Brief description</label>
+            <textarea id="message" placeholder="Tell us what happened…"></textarea>
+          </div>
+          <button type="submit" class="btn">Submit inquiry</button>
+        </form>
+      </div>
     </div>
   </section>
-  <section class="section">
-    <h2 class="section-title">Client Testimonials</h2>
-    <div class="testimonials">
-      <blockquote class="quote">"They treated my case like it was the only one on their desk. I received a settlement three times what the insurance company first offered."<cite>— Maria S., Personal Injury</cite></blockquote>
-      <blockquote class="quote">"Professional, prepared, and unflappable in court. Worth every penny."<cite>— Robert K., Criminal Defense</cite></blockquote>
-    </div>
-  </section>
-  <section class="section contact">
-    <h2 class="section-title">Contact Us</h2>
-    <p style="color:#9ca3af;">1200 Commerce St, Suite 400 · Dallas, TX · (214) 555-0192</p>
-    <form class="form">
-      <input type="text" placeholder="Full name" />
-      <input type="email" placeholder="Email address" />
-      <input type="tel" placeholder="Phone number" />
-      <textarea placeholder="Brief description of your case"></textarea>
-      <button type="button" class="btn" style="border:none;cursor:pointer;">Submit inquiry</button>
-    </form>
-  </section>
-  <footer>© 2026 Atlas Law Group · Attorney Advertising</footer>
+
+  <footer class="site-footer">
+    © 2026 Atlas Law Group · Attorney Advertising · All rights reserved<br />
+    Past results do not guarantee a similar outcome.
+  </footer>
 </body>
 </html>
