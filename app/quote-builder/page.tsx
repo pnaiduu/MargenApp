@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { SiteFooter } from '../components/SiteFooter'
 import { SiteNav } from '../components/SiteNav'
+import { CustomSelect } from '../components/CustomSelect'
 import { YesNoToggle } from '../components/YesNoToggle'
 import { FEATURE_SECTIONS, PLANS } from '../quote/quoteData'
 import { formatUsd } from '../../lib/formatUsd'
@@ -235,12 +236,12 @@ export default function QuoteBuilderPage() {
               </div>
               <label className={`form-field${err('timeline')}`} ref={setRef('timeline')}>
                 <span className="form-label">How soon do you want your site live?</span>
-                <select className="form-input" value={timeline} onChange={(e) => setTimeline(e.target.value)}>
-                  <option value="">Select...</option>
-                  {TIMELINE_OPTIONS.map((o) => (
-                    <option key={o} value={o}>{o}</option>
-                  ))}
-                </select>
+                <CustomSelect
+                  value={timeline}
+                  onChange={setTimeline}
+                  placeholder="Select..."
+                  options={TIMELINE_OPTIONS.map((o) => ({ label: o, value: o }))}
+                />
               </label>
               <label className={`form-field${err('heardFrom')}`} ref={setRef('heardFrom')}>
                 <span className="form-label">How did you hear about us?</span>

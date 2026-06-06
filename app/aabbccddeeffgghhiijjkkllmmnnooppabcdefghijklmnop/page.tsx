@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { getSupabase } from '../../lib/supabase'
 import { formatUsd } from '../../lib/formatUsd'
+import { CustomSelect } from '../components/CustomSelect'
 import { generateRepCode } from '../../lib/repCode'
 
 type Tab = 'quotes' | 'devApps' | 'salesApps' | 'devTeam' | 'salesTeam'
@@ -170,7 +171,8 @@ export default function AdminDashboardPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [appStatuses, setAppStatuses] = useState<Record<string, AppStatus>>({})
   const [loading, setLoading] = useState(true)
-  const [teamAddSuccess, setTeamAddSuccess] = useState<string | null>(null)
+  const [teamToast, setTeamToast] = useState<string | null>(null)
+  const [savingTeamMember, setSavingTeamMember] = useState(false)
 
   const [addTeamOpen, setAddTeamOpen] = useState<'developer' | 'salesperson' | null>(null)
   const [addTeamForm, setAddTeamForm] = useState({ fullName: '', email: '', phone: '', repCode: '', notes: '' })
@@ -220,6 +222,19 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!teamToast) return
+    const timer = window.setTimeout(() => setTeamToast(null), 3000)
+    return () => window.clearTimeout(timer)
+  }, [teamToast])
+
+  const loadTeamMembers = useCallback(async () => {
+    const sb = getSupabase()
+    if (!sb) return
+    const { data, error } = await sb.from('team_members').select('*').order('created_at', { ascending: false })
+    if (!error && data) setTeam(data as TeamMember[])
+  }, [])
 
   const developers = useMemo(() => team.filter((m) => m.role === 'developer'), [team])
   const salespeople = useMemo(() => team.filter((m) => m.role === 'salesperson'), [team])
@@ -277,10 +292,29 @@ export default function AdminDashboardPage() {
     )
   }, [salesApps, search])
 
+  function matchesTeamSearch(member: TeamMember, query: string) {
+    return (
+      (member.full_name ?? '').toLowerCase().includes(query) ||
+      (member.email ?? '').toLowerCase().includes(query) ||
+      (member.rep_code ?? '').toLowerCase().includes(query)
+    )
+  }
+
+  const filteredDevelopers = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    if (!q) return developers
+    return developers.filter((m) => matchesTeamSearch(m, q))
+  }, [developers, search])
+
+  const filteredSalespeople = useMemo(() => {
+    const q = search.toLowerCase().trim()
+    if (!q) return salespeople
+    return salespeople.filter((m) => matchesTeamSearch(m, q))
+  }, [salespeople, search])
+
   function toggleExpanded(id: string) {
     setExpandedId((prev) => (prev === id ? null : id))
     setAddToTeamApp(null)
-    setTeamAddSuccess(null)
   }
 
   function setAppStatus(id: string, status: AppStatus) {
@@ -354,25 +388,41 @@ export default function AdminDashboardPage() {
   async function saveTeamMember(
     role: 'developer' | 'salesperson',
     data: { fullName: string; email: string; phone: string; repCode: string; notes: string },
-  ) {
+  ): Promise<boolean> {
     const sb = getSupabase()
-    if (!sb) return
-    const { error } = await sb.from('team_members').insert({
-      full_name: data.fullName,
-      email: data.email,
-      phone: data.phone,
-      role,
-      rep_code: data.repCode,
-      notes: data.notes || null,
-      status: 'active',
-    })
-    if (error) return
-    const label = role === 'developer' ? 'dev team' : 'sales team'
-    setTeamAddSuccess(`Added to ${label}. Rep code: ${data.repCode}`)
+    if (!sb || savingTeamMember) return false
+
+    setSavingTeamMember(true)
+    const { data: created, error } = await sb
+      .from('team_members')
+      .insert({
+        full_name: data.fullName.trim(),
+        email: data.email.trim(),
+        phone: data.phone.trim(),
+        role,
+        rep_code: data.repCode.trim(),
+        notes: data.notes.trim() || null,
+        status: 'active',
+      })
+      .select()
+      .single()
+
+    setSavingTeamMember(false)
+    if (error) {
+      console.error('Team member insert failed:', error.message)
+      return false
+    }
+
+    if (created) {
+      setTeam((prev) => [created as TeamMember, ...prev.filter((m) => m.id !== created.id)])
+    }
+    await loadTeamMembers()
+
     setAddTeamOpen(null)
     setAddTeamForm({ fullName: '', email: '', phone: '', repCode: '', notes: '' })
     setAddToTeamApp(null)
-    void load()
+    setTeamToast('Team member added successfully')
+    return true
   }
 
   async function addAppToTeam(
@@ -518,18 +568,12 @@ export default function AdminDashboardPage() {
           <h3>Actions</h3>
           <label className="admin-field-label">
             Status
-            <select
-              className="form-input"
+            <CustomSelect
               value={row.status ?? 'new'}
-              onChange={(e) => void saveQuoteStatus(row.id, e.target.value as QuoteStatus)}
+              onChange={(v) => void saveQuoteStatus(row.id, v as QuoteStatus)}
               onClick={(e) => e.stopPropagation()}
-            >
-              {QUOTE_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {quoteStatusLabel(s)}
-                </option>
-              ))}
-            </select>
+              options={QUOTE_STATUSES.map((s) => ({ label: quoteStatusLabel(s), value: s }))}
+            />
           </label>
 
           {row.assigned_developer_name ? (
@@ -539,41 +583,35 @@ export default function AdminDashboardPage() {
               </p>
               <label className="admin-field-label">
                 Reassign developer
-                <select
-                  className="form-input"
-                  defaultValue=""
-                  onChange={(e) => {
-                    if (e.target.value) void assignDeveloper(row, e.target.value)
+                <CustomSelect
+                  value=""
+                  placeholder="Select developer..."
+                  onChange={(v) => {
+                    if (v) void assignDeveloper(row, v)
                   }}
                   onClick={(e) => e.stopPropagation()}
-                >
-                  <option value="">Select developer...</option>
-                  {activeDevelopers.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.full_name} ({d.rep_code})
-                    </option>
-                  ))}
-                </select>
+                  options={activeDevelopers.map((d) => ({
+                    label: `${d.full_name} (${d.rep_code})`,
+                    value: d.id,
+                  }))}
+                />
               </label>
             </div>
           ) : (
             <label className="admin-field-label">
               Assign developer
-              <select
-                className="form-input"
-                defaultValue=""
-                onChange={(e) => {
-                  if (e.target.value) void assignDeveloper(row, e.target.value)
+              <CustomSelect
+                value=""
+                placeholder="Select developer..."
+                onChange={(v) => {
+                  if (v) void assignDeveloper(row, v)
                 }}
                 onClick={(e) => e.stopPropagation()}
-              >
-                <option value="">Select developer...</option>
-                {activeDevelopers.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.full_name} ({d.rep_code})
-                  </option>
-                ))}
-              </select>
+                options={activeDevelopers.map((d) => ({
+                  label: `${d.full_name} (${d.rep_code})`,
+                  value: d.id,
+                }))}
+              />
             </label>
           )}
         </div>
@@ -653,12 +691,11 @@ export default function AdminDashboardPage() {
               value={addToTeamApp.notes}
               onChange={(e) => setAddToTeamApp((a) => (a ? { ...a, notes: e.target.value } : a))}
             />
-            <button type="submit" className="btn btn--accent">
-              Add to team
+            <button type="submit" className="btn btn--accent" disabled={savingTeamMember}>
+              {savingTeamMember ? 'Adding...' : 'Add to team'}
             </button>
           </form>
         ) : null}
-        {teamAddSuccess && addToTeamApp?.id === row.id ? <p className="admin-success">{teamAddSuccess}</p> : null}
       </div>
     )
   }
@@ -725,15 +762,21 @@ export default function AdminDashboardPage() {
               value={addToTeamApp.notes}
               onChange={(e) => setAddToTeamApp((a) => (a ? { ...a, notes: e.target.value } : a))}
             />
-            <button type="submit" className="btn btn--accent">
-              Add to team
+            <button type="submit" className="btn btn--accent" disabled={savingTeamMember}>
+              {savingTeamMember ? 'Adding...' : 'Add to team'}
             </button>
           </form>
         ) : null}
-        {teamAddSuccess && addToTeamApp?.id === row.id ? <p className="admin-success">{teamAddSuccess}</p> : null}
       </div>
     )
   }
+
+  const searchPlaceholder =
+    tab === 'quotes'
+      ? 'Search by name, business, or rep code...'
+      : tab === 'devTeam' || tab === 'salesTeam'
+        ? 'Search by name, email, or rep code...'
+        : 'Search by name or city...'
 
   return (
     <div className="page admin-page">
@@ -754,7 +797,7 @@ export default function AdminDashboardPage() {
                 setSearch('')
                 setExpandedId(null)
                 setAddToTeamApp(null)
-                setTeamAddSuccess(null)
+                setAddTeamOpen(null)
               }}
             >
               {t.label}
@@ -809,17 +852,17 @@ export default function AdminDashboardPage() {
           </div>
         ) : null}
 
-        {tab !== 'devTeam' && tab !== 'salesTeam' ? (
+        {tab === 'quotes' || tab === 'devApps' || tab === 'salesApps' || tab === 'devTeam' || tab === 'salesTeam' ? (
           <input
             type="search"
             className="admin-search form-input"
-            placeholder={
-              tab === 'quotes' ? 'Search by name, business, or rep code...' : 'Search by name or city...'
-            }
+            placeholder={searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         ) : null}
+
+        {teamToast ? <p className="admin-toast">{teamToast}</p> : null}
 
         {loading ? <p className="admin-loading">Loading...</p> : null}
 
@@ -957,7 +1000,6 @@ export default function AdminDashboardPage() {
               onClick={() => {
                 setAddTeamOpen('developer')
                 setAddTeamForm({ fullName: '', email: '', phone: '', repCode: generateRepCode('DEV'), notes: '' })
-                setTeamAddSuccess(null)
               }}
             >
               Add developer manually
@@ -1004,16 +1046,19 @@ export default function AdminDashboardPage() {
                   value={addTeamForm.notes}
                   onChange={(e) => setAddTeamForm((f) => ({ ...f, notes: e.target.value }))}
                 />
-                <button type="submit" className="btn btn--accent">
-                  Save
+                <button type="submit" className="btn btn--accent" disabled={savingTeamMember}>
+                  {savingTeamMember ? 'Saving...' : 'Save'}
                 </button>
               </form>
             ) : null}
-            {teamAddSuccess && tab === 'devTeam' && !addToTeamApp ? (
-              <p className="admin-success">{teamAddSuccess}</p>
+
+            {filteredDevelopers.length === 0 ? (
+              <p className="admin-muted">
+                {search.trim() ? 'No team members found.' : 'No developers on the team yet.'}
+              </p>
             ) : null}
 
-            {developers.map((dev) => {
+            {filteredDevelopers.map((dev) => {
               const devAssignments = assignments.filter((a) => a.developer_id === dev.id)
               const activeAssignments = devAssignments.filter((a) => a.status === 'active')
               const monthlyCommission = activeAssignments.reduce(
@@ -1072,17 +1117,18 @@ export default function AdminDashboardPage() {
                             {a.status ?? 'inactive'}
                           </span>
                           <span>{formatDate(a.created_at)}</span>
-                          <select
-                            className="form-input form-input--compact"
+                          <CustomSelect
+                            className="custom-select--compact"
                             value={a.status ?? 'active'}
-                            onChange={(e) =>
-                              void updateAssignmentStatus(a.id, e.target.value as 'active' | 'inactive' | 'completed')
+                            onChange={(v) =>
+                              void updateAssignmentStatus(a.id, v as 'active' | 'inactive' | 'completed')
                             }
-                          >
-                            <option value="active">Active</option>
-                            <option value="completed">Completed</option>
-                            <option value="inactive">Inactive</option>
-                          </select>
+                            options={[
+                              { label: 'Active', value: 'active' },
+                              { label: 'Completed', value: 'completed' },
+                              { label: 'Inactive', value: 'inactive' },
+                            ]}
+                          />
                         </div>
                       ))
                     )}
@@ -1171,7 +1217,6 @@ export default function AdminDashboardPage() {
               onClick={() => {
                 setAddTeamOpen('salesperson')
                 setAddTeamForm({ fullName: '', email: '', phone: '', repCode: generateRepCode('SAL'), notes: '' })
-                setTeamAddSuccess(null)
               }}
             >
               Add salesperson manually
@@ -1218,16 +1263,19 @@ export default function AdminDashboardPage() {
                   value={addTeamForm.notes}
                   onChange={(e) => setAddTeamForm((f) => ({ ...f, notes: e.target.value }))}
                 />
-                <button type="submit" className="btn btn--accent">
-                  Save
+                <button type="submit" className="btn btn--accent" disabled={savingTeamMember}>
+                  {savingTeamMember ? 'Saving...' : 'Save'}
                 </button>
               </form>
             ) : null}
-            {teamAddSuccess && tab === 'salesTeam' && !addToTeamApp ? (
-              <p className="admin-success">{teamAddSuccess}</p>
+
+            {filteredSalespeople.length === 0 ? (
+              <p className="admin-muted">
+                {search.trim() ? 'No team members found.' : 'No salespeople on the team yet.'}
+              </p>
             ) : null}
 
-            {salespeople.map((sp) => {
+            {filteredSalespeople.map((sp) => {
               const spCommissions = commissions.filter((c) => c.team_member_id === sp.id)
               const repQuotes = quotes.filter(
                 (q) => sp.rep_code && q.rep_code && q.rep_code.toLowerCase() === sp.rep_code.toLowerCase(),
@@ -1305,15 +1353,16 @@ export default function AdminDashboardPage() {
                         <span>{c.client_name}</span>
                         <span>{c.amount != null ? formatUsd(Number(c.amount)) : '-'}</span>
                         <span>{formatDate(c.created_at)}</span>
-                        <select
-                          className="form-input form-input--compact"
+                        <CustomSelect
+                          className="custom-select--compact"
                           value={c.commission_status ?? 'pending'}
-                          onChange={(e) => void updateCommissionStatus(c.id, e.target.value as CommissionStatus)}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="earned">Earned</option>
-                          <option value="paid_out">Paid Out</option>
-                        </select>
+                          onChange={(v) => void updateCommissionStatus(c.id, v as CommissionStatus)}
+                          options={[
+                            { label: 'Pending', value: 'pending' },
+                            { label: 'Earned', value: 'earned' },
+                            { label: 'Paid Out', value: 'paid_out' },
+                          ]}
+                        />
                       </div>
                     ))}
                     <div className="admin-summary-row">
@@ -1361,17 +1410,17 @@ export default function AdminDashboardPage() {
                           onChange={(e) => setSalesCommissionForm((f) => ({ ...f, month: e.target.value }))}
                           required
                         />
-                        <select
-                          className="form-input"
+                        <CustomSelect
                           value={salesCommissionForm.status}
-                          onChange={(e) =>
-                            setSalesCommissionForm((f) => ({ ...f, status: e.target.value as CommissionStatus }))
+                          onChange={(v) =>
+                            setSalesCommissionForm((f) => ({ ...f, status: v as CommissionStatus }))
                           }
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="earned">Earned</option>
-                          <option value="paid_out">Paid Out</option>
-                        </select>
+                          options={[
+                            { label: 'Pending', value: 'pending' },
+                            { label: 'Earned', value: 'earned' },
+                            { label: 'Paid Out', value: 'paid_out' },
+                          ]}
+                        />
                         <button type="submit" className="btn btn--accent">
                           Save commission
                         </button>

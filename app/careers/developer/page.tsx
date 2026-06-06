@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { SiteFooter } from '../../components/SiteFooter'
 import { SiteNav } from '../../components/SiteNav'
+import { CustomSelect } from '../../components/CustomSelect'
 import { YesNoToggle } from '../../components/YesNoToggle'
 
 const HOURS_OPTIONS = ['1 to 2 hours', '2 to 5 hours', '5 to 10 hours', '10 or more hours']
@@ -172,10 +173,12 @@ export default function DeveloperCareersPage() {
                 </div>
                 <label className={`form-field${err('hoursPerWeek')}`}>
                   <span className="form-label">How many hours per week can you dedicate?</span>
-                  <select className="form-input" value={hoursPerWeek} onChange={(e) => setHoursPerWeek(e.target.value)}>
-                    <option value="">Select...</option>
-                    {HOURS_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
+                  <CustomSelect
+                    value={hoursPerWeek}
+                    onChange={setHoursPerWeek}
+                    placeholder="Select..."
+                    options={HOURS_OPTIONS.map((o) => ({ label: o, value: o }))}
+                  />
                 </label>
                 <label className={`form-field${err('whyJoin')}`}>
                   <span className="form-label">Why do you want to join Margen?</span>
