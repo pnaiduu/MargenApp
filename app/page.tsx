@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { SiteFooter } from './components/SiteFooter'
 import { SiteNav } from './components/SiteNav'
 import { HeroWaveDecor } from './components/HeroWaveDecor'
-import { InlineQuoteBuilder } from './components/InlineQuoteBuilder'
 import { WaveDivider } from './components/WaveDivider'
+import Link from 'next/link'
 
 const LOGO = '/margen-logo.png'
 
@@ -235,13 +235,13 @@ export default function Home() {
         <div className="container">
           <FadeIn>
             <p className="section-label">Pricing</p>
-            <h2 className="section-headline">See what your site would cost.</h2>
+            <h2 className="section-headline">Build your own quote</h2>
             <p className="section-subtext">
-              Select what you need and get an instant estimate. No commitment.
+              See exactly what your site would cost. No commitment.
             </p>
-          </FadeIn>
-          <FadeIn>
-            <InlineQuoteBuilder />
+            <Link href="/quote-builder" className="btn btn--accent quote-cta-btn">
+              Start building
+            </Link>
           </FadeIn>
         </div>
       </section>

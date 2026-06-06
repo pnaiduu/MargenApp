@@ -251,17 +251,22 @@ h3,
 .hero-wave-decor {
   position: absolute;
   top: 0;
-  right: 0;
-  width: min(480px, 55vw);
+  right: -2rem;
+  width: min(500px, 60vw);
+  height: min(400px, 50vh);
   pointer-events: none;
   z-index: 0;
-  opacity: 0.9;
+  animation: waveBreathe 10s ease-in-out infinite;
 }
 
-.hero-wave-decor__svg {
-  width: 100%;
-  height: auto;
-  display: block;
+@keyframes waveBreathe {
+  0%,
+  100% {
+    transform: scale(0.97);
+  }
+  50% {
+    transform: scale(1.03);
+  }
 }
 
 .hero-logo {
@@ -771,7 +776,7 @@ h3,
 
 .plan-card--selected {
   border-color: var(--accent);
-  background: #080808;
+  background: rgba(201, 168, 76, 0.08);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
@@ -1015,24 +1020,125 @@ h3,
   }
 }
 
-/* ─── Inline quote (homepage) ─── */
-.inline-quote {
-  margin-top: 2.5rem;
+/* ─── Homepage quote CTA ─── */
+.quote-cta-btn {
+  margin-top: 1.5rem;
+}
+
+/* ─── Shared forms ─── */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-field--check {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.form-field--check input {
+  margin-top: 0.2rem;
+  accent-color: var(--accent);
+}
+
+.form-field--error .form-input,
+.form-field--error .yes-no {
+  border-color: #e57373;
+  box-shadow: 0 0 0 1px #e57373;
+}
+
+.form-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.form-optional {
+  font-weight: 400;
+  color: var(--text-subtle);
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--text);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: clamp(1.5rem, 4vw, 2.5rem);
-  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.2s;
 }
 
-.inline-quote-block {
-  margin-bottom: 2rem;
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
-.inline-quote-block:last-of-type {
-  margin-bottom: 0;
+.form-textarea {
+  resize: vertical;
+  line-height: 1.6;
 }
 
-.inline-quote-label {
+.yes-no {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.yes-no-btn {
+  padding: 0.5rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.yes-no-btn--active {
+  border-color: var(--accent);
+  background: rgba(201, 168, 76, 0.12);
+  color: var(--accent);
+}
+
+/* ─── Quote builder page ─── */
+.qb-page {
+  padding-bottom: 6rem;
+}
+
+.qb-main {
+  padding-top: 5.5rem;
+  padding-bottom: 7rem;
+}
+
+.qb-header {
+  padding-bottom: 2.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2.5rem;
+}
+
+.qb-title {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  margin-bottom: 0.75rem;
+}
+
+.qb-subtitle {
+  font-size: 1rem;
+  color: var(--text-muted);
+  max-width: 42ch;
+  line-height: 1.7;
+}
+
+.qb-section {
+  margin-bottom: 2.5rem;
+}
+
+.qb-section-title {
   font-family: var(--font-body), 'DM Sans', sans-serif;
   font-size: 0.6875rem;
   font-weight: 600;
@@ -1042,159 +1148,232 @@ h3,
   margin-bottom: 1.25rem;
 }
 
-.inline-quote-footer {
+.qb-grid {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.qb-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.qb-sticky {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 90;
+  background: rgba(8, 8, 8, 0.96);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+.qb-sticky-inner {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  margin-top: 2.5rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border);
+  padding-block: 1rem;
 }
 
-.inline-quote-total-label {
-  display: block;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-subtle);
-  margin-bottom: 0.35rem;
-}
-
-.inline-quote-total-amount {
+.qb-sticky-amount {
   font-family: var(--font-heading), 'Cormorant Garamond', Georgia, serif;
-  font-size: clamp(2rem, 5vw, 2.75rem);
-  font-weight: 500;
+  font-size: 1.75rem;
   color: var(--accent);
-  line-height: 1.1;
+  display: block;
 }
 
-.inline-quote-total-note {
-  margin-top: 0.35rem;
+.qb-sticky-breakdown {
   font-size: 0.8125rem;
   color: var(--text-muted);
 }
 
-.inline-quote-extra {
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--border);
+/* ─── Success page ─── */
+.success-page {
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
 }
 
-.inline-quote-extra .quote-field {
+.success-main {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-}
-
-.quote-textarea {
-  resize: vertical;
-  min-height: 6rem;
-  line-height: 1.6;
-}
-
-.inline-quote-phone-note {
-  font-size: 0.75rem;
-  color: var(--text-subtle);
-  line-height: 1.55;
-  margin-top: 0.25rem;
-}
-
-.inline-quote-error {
-  margin-top: 1rem;
-  font-size: 0.875rem;
-  color: #e57373;
-}
-
-.inline-quote-submit {
-  margin-top: 1.5rem;
-}
-
-.inline-quote-submit .btn {
-  width: 100%;
+  align-items: center;
   justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
 }
 
-.inline-quote-submit .btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
+.success-logo {
+  margin-bottom: 2.5rem;
 }
 
-.plan-grid--inline {
-  margin-top: 0;
+.success-headline {
+  font-size: clamp(3.5rem, 12vw, 5.5rem);
+  margin-bottom: 1rem;
+}
+
+.success-subheadline {
+  font-family: var(--font-heading), 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  color: var(--text);
+  margin-bottom: 1.25rem;
+}
+
+.success-note {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  max-width: 36ch;
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+.success-footer {
+  text-align: center;
+  padding: 1.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-subtle);
+  border-top: 1px solid var(--border);
 }
 
 /* ─── Careers ─── */
-.careers-page main {
+.careers-page main,
+.careers-role-page main {
   padding-top: 5rem;
 }
 
-.careers-hero {
+.careers-hero,
+.careers-role-hero {
   padding-bottom: 2rem;
 }
 
-.careers-grid {
+.careers-pick-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
 }
 
-.careers-card {
+.careers-pick-card {
   display: flex;
   flex-direction: column;
-  padding: 2rem 1.75rem;
+  padding: 2.5rem 2rem;
   border: 1px solid var(--border);
   border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.2s, background 0.2s;
+  text-decoration: none;
+  color: inherit;
 }
 
-.careers-card-title {
-  font-size: clamp(1.75rem, 3vw, 2.25rem);
-  margin-bottom: 1rem;
+.careers-pick-card:hover {
+  border-color: var(--accent);
+  background: rgba(201, 168, 76, 0.06);
 }
 
-.careers-card-desc {
+.careers-pick-title {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  margin-bottom: 0.75rem;
+}
+
+.careers-pick-desc {
   font-size: 0.9375rem;
   color: var(--text-muted);
-  line-height: 1.7;
   margin-bottom: 1.5rem;
   flex: 1;
 }
 
-.careers-commission {
-  margin-bottom: 1.75rem;
+.careers-pick-arrow {
+  align-self: flex-start;
 }
 
-.careers-commission-title {
-  font-family: var(--font-body), 'DM Sans', sans-serif;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+.careers-role-title {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  margin-bottom: 1rem;
+}
+
+.careers-section-head {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  margin-bottom: 1.25rem;
+}
+
+.careers-section-note {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.earnings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.earnings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.earnings-card strong {
+  font-family: var(--font-heading), 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 500;
   color: var(--accent);
-  margin-bottom: 0.75rem;
 }
 
-.careers-commission-list {
+.careers-steps {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
-.careers-commission-list li {
-  font-size: 0.875rem;
+.careers-steps li {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.careers-step-num {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.careers-bullets {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.careers-bullets li {
+  font-size: 0.9375rem;
   color: var(--text-muted);
   padding-left: 1rem;
   position: relative;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
-.careers-commission-list li::before {
+.careers-bullets li::before {
   content: '';
   position: absolute;
   left: 0;
@@ -1205,21 +1384,168 @@ h3,
   background: var(--accent);
 }
 
-.careers-card .btn {
-  align-self: flex-start;
+.careers-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-@media (max-width: 768px) {
-  .careers-grid {
+.apply-success {
+  padding: 1.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(201, 168, 76, 0.08);
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+/* ─── Admin dashboard ─── */
+.admin-page {
+  padding: 5.5rem 0 3rem;
+}
+
+.admin-title {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  margin-bottom: 2rem;
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-tab {
+  padding: 0.6rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.admin-tab--active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(201, 168, 76, 0.1);
+}
+
+.admin-search {
+  margin-bottom: 1.5rem;
+  max-width: 24rem;
+}
+
+.admin-loading {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-table th {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.admin-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.admin-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-row--accepted {
+  background: rgba(76, 175, 80, 0.12);
+}
+
+.admin-row--rejected {
+  background: rgba(229, 115, 115, 0.12);
+}
+
+.admin-actions {
+  display: flex;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.admin-btn {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.admin-btn--accept:hover {
+  border-color: #4caf50;
+  color: #4caf50;
+}
+
+.admin-btn--reject:hover {
+  border-color: #e57373;
+  color: #e57373;
+}
+
+.admin-detail-row td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.admin-detail {
+  padding: 0.5rem 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.admin-detail p {
+  margin-bottom: 0.5rem;
+}
+
+.admin-detail ul {
+  margin: 0.25rem 0 0.75rem 1.25rem;
+}
+
+@media (max-width: 900px) {
+  .qb-grid--2,
+  .earnings-grid,
+  .careers-pick-grid {
     grid-template-columns: 1fr;
   }
 
-  .inline-quote-footer {
+  .qb-sticky-inner {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
   }
 
-  .inline-quote-footer .btn {
+  .qb-sticky-inner .btn {
     width: 100%;
     justify-content: center;
   }

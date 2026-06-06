@@ -1,30 +1,40 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
-type QuoteFeature = {
-  id: string
-  name: string
-  price: number
-}
+type QuoteFeature = { name: string; price: number }
 
 type QuotePayload = {
-  planId: string
-  planName: string
+  fullName: string
+  businessName: string
+  email: string
+  phone: string
+  cityState: string
+  businessDescription: string
+  hasExistingSite: boolean
+  existingSiteUrl?: string
+  hasLogo: boolean
+  hasPhotos: boolean
+  timeline: string
+  heardFrom: string
+  repCode?: string
+  planId?: string
+  plan: string
   planPrice: number
-  selectedFeatures: QuoteFeature[]
-  addonsTotal: number
+  features: QuoteFeature[]
   monthlyTotal: number
-  additionalNotes?: string
-  phone?: string
+  anythingElse?: string
+}
+
+function supabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return null
+  return createClient(url, key)
 }
 
 export async function POST(request: Request) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!url || !key) {
-    return NextResponse.json({ error: 'Quote service is not configured.' }, { status: 503 })
-  }
+  const sb = supabase()
+  if (!sb) return NextResponse.json({ error: 'Quote service is not configured.' }, { status: 503 })
 
   let body: QuotePayload
   try {
@@ -33,26 +43,48 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
   }
 
-  const phone = body.phone?.trim()
-  if (!phone) {
-    return NextResponse.json({ error: 'Phone number is required.' }, { status: 400 })
+  const required = [
+    body.fullName?.trim(),
+    body.businessName?.trim(),
+    body.email?.trim(),
+    body.phone?.trim(),
+    body.cityState?.trim(),
+    body.businessDescription?.trim(),
+    body.timeline?.trim(),
+    body.heardFrom?.trim(),
+    body.plan?.trim(),
+  ]
+  if (required.some((v) => !v)) {
+    return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
   }
 
-  if (!body.planId || !body.planName || typeof body.planPrice !== 'number' || typeof body.monthlyTotal !== 'number') {
-    return NextResponse.json({ error: 'Invalid quote data.' }, { status: 400 })
+  if (body.hasExistingSite === undefined || body.hasLogo === undefined || body.hasPhotos === undefined) {
+    return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
   }
 
-  const supabase = createClient(url, key)
-
-  const { error } = await supabase.from('quotes').insert({
-    plan_id: body.planId,
-    plan_name: body.planName,
+  const { error } = await sb.from('quotes').insert({
+    plan_id: body.planId || body.plan.toLowerCase().replace(/\s+/g, '-'),
+    full_name: body.fullName.trim(),
+    business_name: body.businessName.trim(),
+    email: body.email.trim(),
+    phone: body.phone.trim(),
+    city_state: body.cityState.trim(),
+    business_description: body.businessDescription.trim(),
+    has_existing_site: body.hasExistingSite,
+    existing_site_url: body.existingSiteUrl?.trim() || null,
+    has_logo: body.hasLogo,
+    has_photos: body.hasPhotos,
+    timeline: body.timeline.trim(),
+    heard_from: body.heardFrom.trim(),
+    rep_code: body.repCode?.trim() || null,
+    plan: body.plan.trim(),
+    plan_name: body.plan.trim(),
     plan_price: body.planPrice,
-    selected_features: body.selectedFeatures ?? [],
-    addons_total: body.addonsTotal ?? 0,
+    features: body.features ?? [],
+    selected_features: body.features ?? [],
     monthly_total: body.monthlyTotal,
-    additional_notes: body.additionalNotes?.trim() || null,
-    phone,
+    anything_else: body.anythingElse?.trim() || null,
+    additional_notes: body.anythingElse?.trim() || null,
   })
 
   if (error) {
