@@ -10,6 +10,11 @@ import { formatUsd } from '../../lib/formatUsd'
 
 const TIMELINE_OPTIONS = ['ASAP', 'Within a month', 'No rush']
 
+const FIELD_ORDER = [
+  'firstName', 'lastName', 'businessName', 'email', 'phone', 'cityState', 'businessDescription',
+  'hasExistingSite', 'existingSiteUrl', 'hasLogo', 'hasPhotos', 'timeline', 'heardFrom', 'plan',
+] as const
+
 type Errors = Record<string, boolean>
 
 export default function QuoteBuilderPage() {
@@ -60,7 +65,23 @@ export default function QuoteBuilderPage() {
     return list
   }, [selectedFeatures])
 
+  const notSelectedFeatureList = useMemo(() => {
+    const list: { name: string; price: number }[] = []
+    for (const section of FEATURE_SECTIONS) {
+      for (const f of section.features) {
+        if (!selectedFeatures[f.id]) list.push({ name: f.name, price: f.price })
+      }
+    }
+    return list
+  }, [selectedFeatures])
+
   const monthlyTotal = selectedPlan.price + addonsTotal
+
+  function sectionSelectedCount(sectionId: string) {
+    const section = FEATURE_SECTIONS.find((s) => s.id === sectionId)
+    if (!section) return 0
+    return section.features.filter((f) => selectedFeatures[f.id]).length
+  }
 
   function toggleSection(id: string) {
     setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }))
@@ -91,6 +112,7 @@ export default function QuoteBuilderPage() {
     if (hasPhotos === null) e.hasPhotos = true
     if (!timeline) e.timeline = true
     if (!heardFrom.trim()) e.heardFrom = true
+    if (!selectedPlanId) e.plan = true
     return e
   }
 
@@ -98,8 +120,8 @@ export default function QuoteBuilderPage() {
     const nextErrors = validate()
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
-      const firstKey = Object.keys(nextErrors)[0]
-      fieldRefs.current[firstKey]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const firstKey = FIELD_ORDER.find((k) => nextErrors[k])
+      if (firstKey) fieldRefs.current[firstKey]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
 
@@ -125,7 +147,8 @@ export default function QuoteBuilderPage() {
           planId: selectedPlan.id,
           plan: selectedPlan.name,
           planPrice: selectedPlan.price,
-          features: selectedFeatureList,
+          selectedFeatures: selectedFeatureList,
+          notSelectedFeatures: notSelectedFeatureList,
           monthlyTotal,
           anythingElse: anythingElse.trim() || undefined,
         }),
@@ -230,9 +253,9 @@ export default function QuoteBuilderPage() {
             </div>
           </section>
 
-          <section className="qb-section">
+          <section className="qb-section" ref={setRef('plan')}>
             <h2 className="qb-section-title">Base plan</h2>
-            <div className="plan-grid">
+            <div className={`plan-grid${errors.plan ? ' plan-grid--error' : ''}`}>
               {PLANS.map((plan) => (
                 <button
                   key={plan.id}
@@ -256,7 +279,12 @@ export default function QuoteBuilderPage() {
                 return (
                   <div key={section.id} className="feature-section">
                     <button type="button" className="feature-section-header" onClick={() => toggleSection(section.id)} aria-expanded={isOpen}>
-                      <span>{section.title}</span>
+                      <span>
+                        {section.title}
+                        {sectionSelectedCount(section.id) > 0 ? (
+                          <span className="feature-section-count"> ({sectionSelectedCount(section.id)} selected)</span>
+                        ) : null}
+                      </span>
                       <span className="feature-section-chevron" aria-hidden>{isOpen ? '−' : '+'}</span>
                     </button>
                     {isOpen ? (
@@ -303,9 +331,6 @@ export default function QuoteBuilderPage() {
         <div className="qb-sticky-inner container">
           <div className="qb-sticky-totals">
             <span className="qb-sticky-amount">{formatUsd(monthlyTotal)}/mo</span>
-            <span className="qb-sticky-breakdown">
-              {formatUsd(selectedPlan.price)} base · +{formatUsd(addonsTotal)} add-ons
-            </span>
           </div>
           <button type="button" className="btn btn--accent" onClick={() => void handleSubmit()} disabled={submitting}>
             {submitting ? 'Sending...' : 'Send my quote request'}

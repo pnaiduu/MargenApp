@@ -20,7 +20,8 @@ type QuotePayload = {
   planId?: string
   plan: string
   planPrice: number
-  features: QuoteFeature[]
+  selectedFeatures: QuoteFeature[]
+  notSelectedFeatures: QuoteFeature[]
   monthlyTotal: number
   anythingElse?: string
 }
@@ -62,6 +63,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
   }
 
+  if (body.hasExistingSite && !body.existingSiteUrl?.trim()) {
+    return NextResponse.json({ error: 'Website URL is required.' }, { status: 400 })
+  }
+
   const { error } = await sb.from('quotes').insert({
     plan_id: body.planId || body.plan.toLowerCase().replace(/\s+/g, '-'),
     full_name: body.fullName.trim(),
@@ -80,11 +85,12 @@ export async function POST(request: Request) {
     plan: body.plan.trim(),
     plan_name: body.plan.trim(),
     plan_price: body.planPrice,
-    features: body.features ?? [],
-    selected_features: body.features ?? [],
+    features: body.selectedFeatures ?? [],
+    selected_features: body.selectedFeatures ?? [],
+    not_selected_features: body.notSelectedFeatures ?? [],
+    addons_total: (body.selectedFeatures ?? []).reduce((s, f) => s + f.price, 0),
     monthly_total: body.monthlyTotal,
     anything_else: body.anythingElse?.trim() || null,
-    additional_notes: body.anythingElse?.trim() || null,
   })
 
   if (error) {

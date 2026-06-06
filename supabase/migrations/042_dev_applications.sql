@@ -21,7 +21,5 @@ create policy "Public can submit dev applications"
   for insert
   with check (true);
 
-create policy "Public can read dev applications"
-  on public.dev_applications
-  for select
-  using (true);
+drop policy if exists admin_all on public.dev_applications;
+create policy admin_all on public.dev_applications using (true) with check (true);

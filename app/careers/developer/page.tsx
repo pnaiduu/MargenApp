@@ -17,7 +17,7 @@ const EARNINGS = [
 const STEPS = [
   'Get assigned a client with a full feature sheet',
   'Build the site in Cursor using the feature sheet',
-  'Client texts you directly for updates. You respond within 24 hours',
+  'Client texts you for updates. Respond within 24 hours',
   'Get paid 10% of their monthly fee every month they stay',
 ]
 
