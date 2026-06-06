@@ -91,31 +91,27 @@ h3,
   overflow: visible;
 }
 
-.wave-divider__group--1 {
-  animation: waveDrift 10s ease-in-out infinite;
+.wave-art__group--1 {
+  animation: waveBreathe 10s ease-in-out infinite;
 }
 
-.wave-divider__group--2 {
-  animation: waveDriftAlt 10s ease-in-out infinite;
+.wave-art__group--2 {
+  animation: waveBreathe 10s ease-in-out infinite;
+  animation-delay: -3.3s;
 }
 
-@keyframes waveDrift {
+.wave-art__group--3 {
+  animation: waveBreathe 10s ease-in-out infinite;
+  animation-delay: -6.6s;
+}
+
+@keyframes waveBreathe {
   0%,
   100% {
     transform: translateX(0) translateY(0);
   }
   50% {
-    transform: translateX(5px) translateY(-1px);
-  }
-}
-
-@keyframes waveDriftAlt {
-  0%,
-  100% {
-    transform: translateX(0) translateY(0);
-  }
-  50% {
-    transform: translateX(-4px) translateY(1px);
+    transform: translateX(4px) translateY(-2px);
   }
 }
 
@@ -237,16 +233,35 @@ h3,
 
 /* ─── Hero ─── */
 .hero {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding-top: 5rem;
   padding-bottom: 4rem;
+  overflow: hidden;
 }
 
 .hero-content {
   position: relative;
+  z-index: 1;
+}
+
+.hero-wave-decor {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(480px, 55vw);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.9;
+}
+
+.hero-wave-decor__svg {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 .hero-logo {
@@ -494,12 +509,29 @@ h3,
 .footer {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 2rem clamp(1.25rem, 4vw, 2.5rem);
   border-top: 1px solid var(--border);
   font-size: 0.8125rem;
   color: var(--text-subtle);
+}
+
+.footer-nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.footer-nav a {
+  color: var(--accent);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  transition: opacity 0.2s;
+}
+
+.footer-nav a:hover {
+  opacity: 0.8;
 }
 
 /* ─── Modal ─── */
@@ -980,5 +1012,215 @@ h3,
 
   .quote-summary-actions {
     flex-direction: column;
+  }
+}
+
+/* ─── Inline quote (homepage) ─── */
+.inline-quote {
+  margin-top: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.inline-quote-block {
+  margin-bottom: 2rem;
+}
+
+.inline-quote-block:last-of-type {
+  margin-bottom: 0;
+}
+
+.inline-quote-label {
+  font-family: var(--font-body), 'DM Sans', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin-bottom: 1.25rem;
+}
+
+.inline-quote-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+}
+
+.inline-quote-total-label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  margin-bottom: 0.35rem;
+}
+
+.inline-quote-total-amount {
+  font-family: var(--font-heading), 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 500;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+.inline-quote-total-note {
+  margin-top: 0.35rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.inline-quote-extra {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.inline-quote-extra .quote-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.quote-textarea {
+  resize: vertical;
+  min-height: 6rem;
+  line-height: 1.6;
+}
+
+.inline-quote-phone-note {
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  line-height: 1.55;
+  margin-top: 0.25rem;
+}
+
+.inline-quote-error {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: #e57373;
+}
+
+.inline-quote-submit {
+  margin-top: 1.5rem;
+}
+
+.inline-quote-submit .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.inline-quote-submit .btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.plan-grid--inline {
+  margin-top: 0;
+}
+
+/* ─── Careers ─── */
+.careers-page main {
+  padding-top: 5rem;
+}
+
+.careers-hero {
+  padding-bottom: 2rem;
+}
+
+.careers-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.careers-card {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.careers-card-title {
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  margin-bottom: 1rem;
+}
+
+.careers-card-desc {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+  flex: 1;
+}
+
+.careers-commission {
+  margin-bottom: 1.75rem;
+}
+
+.careers-commission-title {
+  font-family: var(--font-body), 'DM Sans', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+
+.careers-commission-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.careers-commission-list li {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  padding-left: 1rem;
+  position: relative;
+  line-height: 1.55;
+}
+
+.careers-commission-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.careers-card .btn {
+  align-self: flex-start;
+}
+
+@media (max-width: 768px) {
+  .careers-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-quote-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .inline-quote-footer .btn {
+    width: 100%;
+    justify-content: center;
   }
 }

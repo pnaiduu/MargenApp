@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SiteFooter } from './components/SiteFooter'
 import { SiteNav } from './components/SiteNav'
+import { HeroWaveDecor } from './components/HeroWaveDecor'
+import { InlineQuoteBuilder } from './components/InlineQuoteBuilder'
 import { WaveDivider } from './components/WaveDivider'
 
 const LOGO = '/margen-logo.png'
@@ -115,6 +117,7 @@ export default function Home() {
 
       {/* Hero */}
       <section className="hero section">
+        <HeroWaveDecor />
         <div className="container hero-content">
           <FadeIn>
             <img src={LOGO} alt="Margen" className="hero-logo" height={120} />
@@ -221,6 +224,24 @@ export default function Home() {
                 Schedule my free audit
               </a>
             </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      <WaveDivider />
+
+      {/* Build your own quote */}
+      <section id="quote" className="section">
+        <div className="container">
+          <FadeIn>
+            <p className="section-label">Pricing</p>
+            <h2 className="section-headline">See what your site would cost.</h2>
+            <p className="section-subtext">
+              Select what you need and get an instant estimate. No commitment.
+            </p>
+          </FadeIn>
+          <FadeIn>
+            <InlineQuoteBuilder />
           </FadeIn>
         </div>
       </section>
