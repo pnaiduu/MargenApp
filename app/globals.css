@@ -76,41 +76,46 @@ h3,
 /* ─── Layout ─── */
 .page {
   overflow-x: hidden;
-  position: relative;
 }
 
-.page-decor--left {
-  position: absolute;
-  left: -2rem;
-  top: 52vh;
-  width: min(180px, 22vw);
-  height: auto;
-  pointer-events: none;
-  z-index: 0;
-  animation: decorDrift 11s ease-in-out infinite;
-}
-
-.section-flourish {
+.wave-divider {
   display: flex;
   justify-content: center;
-  padding-block: 0.5rem;
+  padding-block: 0.75rem;
   pointer-events: none;
 }
 
-.section-flourish svg {
-  width: min(260px, 70vw);
+.wave-divider__svg {
+  width: min(400px, 85vw);
   height: auto;
+  overflow: visible;
 }
 
-@keyframes decorDrift {
+.wave-divider__group--1 {
+  animation: waveDrift 10s ease-in-out infinite;
+}
+
+.wave-divider__group--2 {
+  animation: waveDriftAlt 10s ease-in-out infinite;
+}
+
+@keyframes waveDrift {
   0%,
   100% {
-    transform: translate(0, 0);
-    opacity: 0.85;
+    transform: translateX(0) translateY(0);
   }
   50% {
-    transform: translate(6px, -10px);
-    opacity: 1;
+    transform: translateX(5px) translateY(-1px);
+  }
+}
+
+@keyframes waveDriftAlt {
+  0%,
+  100% {
+    transform: translateX(0) translateY(0);
+  }
+  50% {
+    transform: translateX(-4px) translateY(1px);
   }
 }
 
@@ -232,44 +237,16 @@ h3,
 
 /* ─── Hero ─── */
 .hero {
-  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding-top: 5rem;
   padding-bottom: 4rem;
-  overflow: hidden;
 }
 
 .hero-content {
   position: relative;
-  z-index: 1;
-}
-
-.hero-decor--tr {
-  position: absolute;
-  top: -2rem;
-  right: -3rem;
-  width: min(420px, 55vw);
-  height: auto;
-  pointer-events: none;
-  z-index: 0;
-  animation: decorDrift 10s ease-in-out infinite;
-}
-
-@media (max-width: 640px) {
-  .hero-decor--tr {
-    right: -5rem;
-    width: min(320px, 70vw);
-    opacity: 0.85;
-  }
-
-  .page-decor--left {
-    left: -3rem;
-    width: 120px;
-    opacity: 0.7;
-  }
 }
 
 .hero-logo {
