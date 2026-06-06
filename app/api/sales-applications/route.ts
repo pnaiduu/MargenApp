@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { getSupabaseConfig } from '../../../lib/supabaseConfig'
 
 export async function POST(request: Request) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const { url, key } = getSupabaseConfig()
   if (!url || !key) return NextResponse.json({ error: 'Service not configured.' }, { status: 503 })
 
   const body = await request.json()

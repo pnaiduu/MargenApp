@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
+import { getSupabaseConfig } from '../../../lib/supabaseConfig'
 
 type QuoteFeature = { name: string; price: number }
 
@@ -27,8 +28,7 @@ type QuotePayload = {
 }
 
 function supabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const { url, key } = getSupabaseConfig()
   if (!url || !key) return null
   return createClient(url, key)
 }

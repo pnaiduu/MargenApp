@@ -2069,6 +2069,16 @@ h3,
   margin-top: 0.5rem;
 }
 
+.admin-form-error {
+  padding: 0.65rem 0.85rem;
+  border: 1px solid rgba(229, 115, 115, 0.45);
+  border-radius: 4px;
+  background: rgba(229, 115, 115, 0.12);
+  color: #ef9a9a;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
 .admin-toast {
   padding: 0.75rem 1rem;
   margin-bottom: 1rem;

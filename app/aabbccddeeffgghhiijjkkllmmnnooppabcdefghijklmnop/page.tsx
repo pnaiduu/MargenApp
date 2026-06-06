@@ -172,6 +172,7 @@ export default function AdminDashboardPage() {
   const [appStatuses, setAppStatuses] = useState<Record<string, AppStatus>>({})
   const [loading, setLoading] = useState(true)
   const [teamToast, setTeamToast] = useState<string | null>(null)
+  const [teamFormError, setTeamFormError] = useState<string | null>(null)
   const [savingTeamMember, setSavingTeamMember] = useState(false)
 
   const [addTeamOpen, setAddTeamOpen] = useState<'developer' | 'salesperson' | null>(null)
@@ -385,44 +386,94 @@ export default function AdminDashboardPage() {
     void load()
   }
 
+  function isUniqueViolation(error: { code?: string; message?: string }) {
+    return error.code === '23505' || /duplicate|unique/i.test(error.message ?? '')
+  }
+
   async function saveTeamMember(
     role: 'developer' | 'salesperson',
     data: { fullName: string; email: string; phone: string; repCode: string; notes: string },
   ): Promise<boolean> {
+    if (savingTeamMember) return false
+
     const sb = getSupabase()
-    if (!sb || savingTeamMember) return false
-
-    setSavingTeamMember(true)
-    const { data: created, error } = await sb
-      .from('team_members')
-      .insert({
-        full_name: data.fullName.trim(),
-        email: data.email.trim(),
-        phone: data.phone.trim(),
-        role,
-        rep_code: data.repCode.trim(),
-        notes: data.notes.trim() || null,
-        status: 'active',
-      })
-      .select()
-      .single()
-
-    setSavingTeamMember(false)
-    if (error) {
-      console.error('Team member insert failed:', error.message)
+    if (!sb) {
+      const msg = 'Supabase is not configured. Check NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.'
+      console.error(msg)
+      setTeamFormError(msg)
       return false
     }
 
-    if (created) {
-      setTeam((prev) => [created as TeamMember, ...prev.filter((m) => m.id !== created.id)])
-    }
-    await loadTeamMembers()
+    const full_name = (data.fullName ?? '').trim()
+    const email = (data.email ?? '').trim()
+    const phone = (data.phone ?? '').trim()
+    let rep_code = (data.repCode ?? '').trim()
+    const notes = (data.notes ?? '').trim() || null
+    const memberRole: 'developer' | 'salesperson' = role === 'salesperson' ? 'salesperson' : 'developer'
+    const repPrefix: 'DEV' | 'SAL' = memberRole === 'developer' ? 'DEV' : 'SAL'
 
-    setAddTeamOpen(null)
-    setAddTeamForm({ fullName: '', email: '', phone: '', repCode: '', notes: '' })
-    setAddToTeamApp(null)
-    setTeamToast('Team member added successfully')
-    return true
+    if (!full_name || !email || !phone || !rep_code) {
+      const msg = 'Please fill in full name, email, phone, and rep code.'
+      setTeamFormError(msg)
+      return false
+    }
+
+    setSavingTeamMember(true)
+    setTeamFormError(null)
+
+    const maxAttempts = 5
+    let lastError: { code?: string; message?: string } | null = null
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const payload = {
+        full_name,
+        email,
+        phone,
+        role: memberRole,
+        rep_code,
+        notes,
+        status: 'active' as const,
+      }
+
+      console.log('Inserting team member:', payload)
+
+      const { error } = await sb.from('team_members').insert(payload)
+
+      if (!error) {
+        await loadTeamMembers()
+
+        setAddTeamOpen(null)
+        setAddTeamForm({ fullName: '', email: '', phone: '', repCode: '', notes: '' })
+        setAddToTeamApp(null)
+        setTeamFormError(null)
+        setTeamToast('Team member added successfully')
+        setSavingTeamMember(false)
+        return true
+      }
+
+      lastError = error
+      console.error('Team member insert failed:', error)
+
+      if (isUniqueViolation(error) && attempt < maxAttempts - 1) {
+        rep_code = generateRepCode(repPrefix)
+        if (addTeamOpen) {
+          setAddTeamForm((f) => ({ ...f, repCode: rep_code }))
+        }
+        if (addToTeamApp) {
+          setAddToTeamApp((a) => (a ? { ...a, repCode: rep_code } : a))
+        }
+        continue
+      }
+
+      break
+    }
+
+    const msg =
+      lastError?.message ??
+      'Could not save team member. Please try again.'
+    setTeamFormError(msg)
+    setSavingTeamMember(false)
+    return false
   }
 
   async function addAppToTeam(
@@ -654,9 +705,10 @@ export default function AdminDashboardPage() {
           <button
             type="button"
             className="btn btn--accent btn--sm"
-            onClick={() =>
+            onClick={() => {
+              setTeamFormError(null)
               setAddToTeamApp({ type: 'dev', id: row.id, phone: '', repCode: generateRepCode('DEV'), notes: '' })
-            }
+            }}
           >
             Add to dev team
           </button>
@@ -667,10 +719,12 @@ export default function AdminDashboardPage() {
             onSubmit={(e) => {
               e.preventDefault()
               e.stopPropagation()
+              setTeamFormError(null)
               void addAppToTeam(row, 'developer', addToTeamApp.phone, addToTeamApp.repCode, addToTeamApp.notes)
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {teamFormError ? <p className="admin-form-error">{teamFormError}</p> : null}
             <input
               className="form-input"
               placeholder="Phone number"
@@ -725,9 +779,10 @@ export default function AdminDashboardPage() {
           <button
             type="button"
             className="btn btn--accent btn--sm"
-            onClick={() =>
+            onClick={() => {
+              setTeamFormError(null)
               setAddToTeamApp({ type: 'sales', id: row.id, phone: '', repCode: generateRepCode('SAL'), notes: '' })
-            }
+            }}
           >
             Add to sales team
           </button>
@@ -738,10 +793,12 @@ export default function AdminDashboardPage() {
             onSubmit={(e) => {
               e.preventDefault()
               e.stopPropagation()
+              setTeamFormError(null)
               void addAppToTeam(row, 'salesperson', addToTeamApp.phone, addToTeamApp.repCode, addToTeamApp.notes)
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {teamFormError ? <p className="admin-form-error">{teamFormError}</p> : null}
             <input
               className="form-input"
               placeholder="Phone number"
@@ -999,6 +1056,7 @@ export default function AdminDashboardPage() {
               className="btn btn--accent"
               onClick={() => {
                 setAddTeamOpen('developer')
+                setTeamFormError(null)
                 setAddTeamForm({ fullName: '', email: '', phone: '', repCode: generateRepCode('DEV'), notes: '' })
               }}
             >
@@ -1009,9 +1067,11 @@ export default function AdminDashboardPage() {
                 className="admin-inline-form"
                 onSubmit={(e) => {
                   e.preventDefault()
+                  setTeamFormError(null)
                   void saveTeamMember('developer', addTeamForm)
                 }}
               >
+                {teamFormError ? <p className="admin-form-error">{teamFormError}</p> : null}
                 <input
                   className="form-input"
                   placeholder="Full name"
@@ -1216,6 +1276,7 @@ export default function AdminDashboardPage() {
               className="btn btn--accent"
               onClick={() => {
                 setAddTeamOpen('salesperson')
+                setTeamFormError(null)
                 setAddTeamForm({ fullName: '', email: '', phone: '', repCode: generateRepCode('SAL'), notes: '' })
               }}
             >
@@ -1226,9 +1287,11 @@ export default function AdminDashboardPage() {
                 className="admin-inline-form"
                 onSubmit={(e) => {
                   e.preventDefault()
+                  setTeamFormError(null)
                   void saveTeamMember('salesperson', addTeamForm)
                 }}
               >
+                {teamFormError ? <p className="admin-form-error">{teamFormError}</p> : null}
                 <input
                   className="form-input"
                   placeholder="Full name"
