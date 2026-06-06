@@ -3,14 +3,18 @@ create table if not exists public.commissions (
   created_at timestamptz default now(),
   team_member_id uuid references public.team_members(id),
   client_name text,
-  quote_id uuid references public.quotes(id),
+  quote_id uuid,
   amount numeric,
   month text,
   paid boolean default false,
-  paid_at timestamptz
+  paid_at timestamptz,
+  commission_status text default 'pending' check (commission_status in ('pending', 'earned', 'paid_out'))
 );
 
 alter table public.commissions enable row level security;
 
-drop policy if exists admin_all on public.commissions;
-create policy admin_all on public.commissions using (true) with check (true);
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'commissions' and policyname = 'admin_all_commissions') then
+    create policy admin_all_commissions on public.commissions using (true) with check (true);
+  end if;
+end $$;

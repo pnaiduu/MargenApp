@@ -1437,15 +1437,9 @@ h3,
 }
 
 .admin-body {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
-}
-
-@media (min-width: 1100px) {
-  .admin-body:has(.admin-panel) {
-    grid-template-columns: 1fr 380px;
-  }
 }
 
 .admin-stats {
@@ -1795,6 +1789,226 @@ h3,
 
 .admin-detail ul {
   margin: 0.25rem 0 0.75rem 1.25rem;
+}
+
+.admin-expand-panel {
+  padding: 1.25rem 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.admin-expand-panel--accepted {
+  background: rgba(76, 175, 80, 0.06);
+}
+
+.admin-expand-panel--rejected {
+  background: rgba(229, 115, 115, 0.06);
+}
+
+.admin-panel-section--first {
+  border-top: none;
+  padding-top: 0;
+}
+
+.admin-field-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-subtle);
+  margin-bottom: 0.75rem;
+}
+
+.admin-field-label .form-input {
+  margin-top: 0.35rem;
+}
+
+.admin-assigned-dev {
+  margin-top: 0.75rem;
+}
+
+.admin-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 3px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-badge--quote-new {
+  background: rgba(158, 158, 158, 0.2);
+  color: #bdbdbd;
+}
+
+.admin-badge--quote-reviewed {
+  background: rgba(66, 165, 245, 0.15);
+  color: #64b5f6;
+}
+
+.admin-badge--quote-accepted {
+  background: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+}
+
+.admin-badge--quote-dev_assigned {
+  background: rgba(201, 168, 76, 0.2);
+  color: var(--accent);
+}
+
+.admin-badge--quote-site_live {
+  background: rgba(38, 166, 154, 0.15);
+  color: #4db6ac;
+}
+
+.admin-badge--quote-active_client {
+  background: rgba(102, 187, 106, 0.25);
+  color: #a5d6a7;
+}
+
+.admin-badge--quote-rejected {
+  background: rgba(229, 115, 115, 0.15);
+  color: #ef9a9a;
+}
+
+.admin-badge--member-active {
+  background: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+  margin-left: 0.5rem;
+}
+
+.admin-badge--member-inactive {
+  background: rgba(158, 158, 158, 0.15);
+  color: #bdbdbd;
+  margin-left: 0.5rem;
+}
+
+.admin-badge--assignment-active {
+  background: rgba(76, 175, 80, 0.15);
+  color: #81c784;
+}
+
+.admin-badge--assignment-completed {
+  background: rgba(66, 165, 245, 0.15);
+  color: #64b5f6;
+}
+
+.admin-badge--assignment-inactive {
+  background: rgba(158, 158, 158, 0.15);
+  color: #bdbdbd;
+}
+
+.admin-rep-badge {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  margin-top: 0.35rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(201, 168, 76, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+}
+
+.admin-btn--accept-solid {
+  border-color: #4caf50;
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.admin-btn--reject-solid {
+  border-color: #e57373;
+  color: #e57373;
+  background: rgba(229, 115, 115, 0.1);
+}
+
+.admin-success {
+  color: #81c784;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+
+.admin-subsection {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.admin-subsection h4 {
+  font-family: var(--font-body), 'DM Sans', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.75rem;
+}
+
+.admin-muted {
+  font-size: 0.8125rem;
+  color: var(--text-subtle);
+}
+
+.admin-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  margin: 1rem 0;
+  font-size: 0.8125rem;
+  color: var(--accent);
+}
+
+.admin-assignment-item {
+  grid-template-columns: 1.2fr auto auto auto auto;
+}
+
+.form-input--compact {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.75rem;
+  min-width: 7rem;
+}
+
+.admin-rep-quote-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 3px;
+  margin-bottom: 0.35rem;
+}
+
+.admin-sales-commission-row {
+  display: grid;
+  grid-template-columns: 1.2fr auto auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.8125rem;
+  padding: 0.65rem;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  margin-bottom: 0.35rem;
+}
+
+.admin-sales-commission-row--pending {
+  background: rgba(158, 158, 158, 0.08);
+}
+
+.admin-sales-commission-row--earned {
+  background: rgba(201, 168, 76, 0.1);
+  border-color: rgba(201, 168, 76, 0.35);
+}
+
+.admin-sales-commission-row--paid_out {
+  background: rgba(76, 175, 80, 0.1);
+  border-color: rgba(76, 175, 80, 0.35);
+}
+
+.btn--sm {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.75rem;
 }
 
 @media (max-width: 900px) {

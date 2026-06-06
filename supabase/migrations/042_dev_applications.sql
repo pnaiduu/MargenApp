@@ -16,10 +16,14 @@ create table if not exists public.dev_applications (
 
 alter table public.dev_applications enable row level security;
 
-create policy "Public can submit dev applications"
-  on public.dev_applications
-  for insert
-  with check (true);
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'dev_applications' and policyname = 'public_insert_dev') then
+    create policy public_insert_dev on public.dev_applications for insert with check (true);
+  end if;
+end $$;
 
-drop policy if exists admin_all on public.dev_applications;
-create policy admin_all on public.dev_applications using (true) with check (true);
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'dev_applications' and policyname = 'admin_all_dev') then
+    create policy admin_all_dev on public.dev_applications using (true) with check (true);
+  end if;
+end $$;

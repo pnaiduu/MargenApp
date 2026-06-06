@@ -91,6 +91,7 @@ export async function POST(request: Request) {
     addons_total: (body.selectedFeatures ?? []).reduce((s, f) => s + f.price, 0),
     monthly_total: body.monthlyTotal,
     anything_else: body.anythingElse?.trim() || null,
+    status: 'new',
   })
 
   if (error) {

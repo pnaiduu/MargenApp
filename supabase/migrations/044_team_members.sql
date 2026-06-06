@@ -12,5 +12,8 @@ create table if not exists public.team_members (
 
 alter table public.team_members enable row level security;
 
-drop policy if exists admin_all on public.team_members;
-create policy admin_all on public.team_members using (true) with check (true);
+do $$ begin
+  if not exists (select 1 from pg_policies where tablename = 'team_members' and policyname = 'admin_all_team') then
+    create policy admin_all_team on public.team_members using (true) with check (true);
+  end if;
+end $$;
