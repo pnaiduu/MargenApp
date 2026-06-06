@@ -8,23 +8,25 @@
   <style>
     :root { --cream: #faf7f2; --blush: #e8c5b8; --rose: #8b6f5c; --text: #3d3530; --muted: #8a7b72; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; scroll-behavior: smooth; overflow-y: auto; cursor: crosshair; }
-    body { font-family: 'Jost', sans-serif; font-weight: 300; background: var(--cream); color: var(--text); line-height: 1.7; overflow-x: hidden; }
+    html, body { height: 100%; overflow: hidden; cursor: crosshair; }
+    body { font-family: 'Jost', sans-serif; font-weight: 300; background: var(--cream); color: var(--text); line-height: 1.7; }
     button, input, select, textarea { font: inherit; cursor: crosshair; }
-    .app { min-height: 100%; display: flex; flex-direction: column; }
-    .top { position: sticky; top: 0; z-index: 20; background: rgba(250,247,242,0.96); border-bottom: 1px solid rgba(232,197,184,0.5); }
-    .bar { padding: 1.25rem 1.5rem 0.5rem; text-align: center; font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--rose); }
+    .app { height: 100%; display: flex; flex-direction: column; }
+    .top { flex-shrink: 0; position: sticky; top: 0; z-index: 20; background: rgba(250,247,242,0.96); border-bottom: 1px solid rgba(232,197,184,0.5); }
+    .bar { padding: 1.25rem 1.5rem 0.35rem; text-align: center; font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--rose); }
+    .bar-sub { text-align: center; font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); padding-bottom: 0.35rem; }
     .tabs { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.5rem 1.75rem; padding: 0 1.5rem 1rem; }
     .tab { background: none; border: none; color: var(--muted); font-size: 0.68rem; letter-spacing: 0.2em; text-transform: uppercase; padding: 0.35rem 0; transition: color 0.3s, transform 0.3s; }
     .tab:hover { color: var(--rose); transform: scale(1.04); }
     .tab.active { color: var(--rose); font-weight: 500; }
+    .scroll-main { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
     .panel { display: none; animation: softIn 0.6s ease; }
     .panel.active { display: block; }
     @keyframes softIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes float { 0%,100% { transform: translate(0,0); } 50% { transform: translate(12px,-18px); } }
-    .hero { min-height: 75vh; display: flex; align-items: center; justify-content: center; text-align: center; position: relative; overflow: hidden; padding: 3rem 1.5rem; }
+    .hero { min-height: 65vh; display: flex; align-items: center; justify-content: center; text-align: center; position: relative; overflow: hidden; padding: 3rem 1.5rem; }
     .shape { position: absolute; border-radius: 50%; background: var(--blush); opacity: 0.35; filter: blur(2px); animation: float 8s ease-in-out infinite; }
-    .shape.a { width: 280px; height: 280px; top: 10%; left: 5%; animation-delay: 0s; }
+    .shape.a { width: 280px; height: 280px; top: 10%; left: 5%; }
     .shape.b { width: 180px; height: 180px; bottom: 15%; right: 8%; animation-delay: 2s; }
     .shape.c { width: 120px; height: 120px; top: 40%; right: 20%; animation-delay: 4s; opacity: 0.25; }
     .hero-inner { position: relative; z-index: 1; animation: softIn 0.8s ease; }
@@ -33,16 +35,23 @@
     .btn { display: inline-block; padding: 0.9rem 2.2rem; border: 1px solid var(--blush); background: transparent; color: var(--rose); font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; transition: transform 0.3s, background 0.3s; }
     .btn:hover { background: var(--rose); color: #fff; transform: scale(1.03); }
     .wrap { padding: 2rem 0 3rem; }
-    .section-title { font-family: 'Cormorant Garamond', serif; font-size: 2rem; text-align: center; color: var(--rose); margin-bottom: 1.5rem; padding: 0 1.5rem; }
+    .section-title { font-family: 'Cormorant Garamond', serif; font-size: 2rem; text-align: center; color: var(--rose); margin-bottom: 0.5rem; padding: 0 1.5rem; }
+    .section-lead { text-align: center; color: var(--muted); font-size: 0.92rem; max-width: 28rem; margin: 0 auto 1.5rem; padding: 0 1.5rem; }
     .scroll-row { display: flex; gap: 1rem; overflow-x: auto; padding: 0 1.5rem 1rem; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; }
     .scroll-row::-webkit-scrollbar { height: 6px; }
     .scroll-row::-webkit-scrollbar-thumb { background: var(--blush); border-radius: 3px; }
-    .svc { flex: 0 0 260px; scroll-snap-align: start; padding: 1.75rem; border: 1px solid rgba(232,197,184,0.6); background: #fff; transition: transform 0.35s ease; animation: softIn 0.6s ease both; }
+    .svc { flex: 0 0 260px; scroll-snap-align: start; padding: 1.75rem; border: 1px solid rgba(232,197,184,0.6); background: #fff; transition: transform 0.35s ease; }
     .svc:hover { transform: scale(1.02); }
+    .svc-icon { width: 32px; height: 32px; margin-bottom: 0.75rem; stroke: var(--rose); fill: none; stroke-width: 1.3; }
     .svc h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; color: var(--rose); margin-bottom: 0.35rem; }
     .svc .price { font-size: 0.8rem; color: var(--blush); font-weight: 500; margin-bottom: 0.65rem; }
     .svc p { font-size: 0.88rem; color: var(--muted); margin-bottom: 1rem; line-height: 1.55; }
     .svc .btn { padding: 0.55rem 1.25rem; font-size: 0.6rem; }
+    .filler { padding: 2.5rem 1.5rem; border-top: 1px solid rgba(232,197,184,0.4); }
+    .pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; max-width: 720px; margin: 0 auto; text-align: center; }
+    .pillar svg { width: 28px; height: 28px; stroke: var(--rose); fill: none; stroke-width: 1.3; margin-bottom: 0.65rem; }
+    .pillar h4 { font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; color: var(--rose); margin-bottom: 0.35rem; }
+    .pillar p { font-size: 0.82rem; color: var(--muted); }
     .ba-wrap { max-width: 520px; margin: 0 auto; padding: 0 1.5rem; }
     .ba { position: relative; aspect-ratio: 4/5; border: 1px solid rgba(232,197,184,0.6); overflow: hidden; user-select: none; }
     .ba-before, .ba-after { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
@@ -51,16 +60,22 @@
     .ba-handle { position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; background: var(--rose); z-index: 3; cursor: ew-resize; transform: translateX(-50%); }
     .ba-handle::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 36px; height: 36px; border-radius: 50%; background: var(--rose); border: 3px solid #fff; }
     .ba-caption { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: 1rem; }
+    .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; max-width: 720px; margin: 2rem auto 0; padding: 0 1.5rem; }
+    .result-note { background: #fff; border: 1px solid rgba(232,197,184,0.5); padding: 1.25rem; font-size: 0.85rem; color: var(--muted); }
+    .result-note strong { display: block; font-family: 'Cormorant Garamond', serif; color: var(--rose); font-size: 1rem; margin-bottom: 0.35rem; font-weight: 400; }
     .book-form { max-width: 420px; margin: 0 auto; padding: 0 1.5rem; display: flex; flex-direction: column; gap: 0.85rem; }
     .book-form label { font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted); }
     .book-form input, .book-form select { padding: 0.8rem 1rem; border: 1px solid rgba(232,197,184,0.7); background: #fff; color: var(--text); }
     .book-form .btn { width: 100%; margin-top: 0.5rem; background: var(--rose); color: #fff; border-color: var(--rose); }
+    .book-aside { max-width: 420px; margin: 2rem auto 0; padding: 0 1.5rem 3rem; font-size: 0.85rem; color: var(--muted); text-align: center; }
+    @media (max-width: 640px) { .pillars, .results-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <div class="app">
     <header class="top">
       <div class="bar">Lumière</div>
+      <p class="bar-sub">Southlake · By appointment</p>
       <nav class="tabs">
         <button type="button" class="tab active" data-panel="home">Home</button>
         <button type="button" class="tab" data-panel="services">Services</button>
@@ -68,7 +83,7 @@
         <button type="button" class="tab" data-panel="book">Book</button>
       </nav>
     </header>
-    <main>
+    <main class="scroll-main" id="scrollMain">
       <section id="home" class="panel active">
         <div class="hero">
           <div class="shape a"></div><div class="shape b"></div><div class="shape c"></div>
@@ -78,22 +93,67 @@
             <button type="button" class="btn" data-goto="book">Book Consultation</button>
           </div>
         </div>
+        <div class="filler">
+          <div class="pillars">
+            <div class="pillar">
+              <svg viewBox="0 0 32 32"><path d="M16 4l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6z"/></svg>
+              <h4>Physician-led</h4>
+              <p>Every treatment plan is overseen by Dr. Elena Moreau, board-certified in aesthetic medicine.</p>
+            </div>
+            <div class="pillar">
+              <svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10"/><path d="M16 10v6l4 2"/></svg>
+              <h4>Unhurried care</h4>
+              <p>45-minute consultations. No assembly line. Your goals guide every recommendation.</p>
+            </div>
+            <div class="pillar">
+              <svg viewBox="0 0 32 32"><path d="M8 16c0-4 4-8 8-8s8 4 8 8-4 8-8 8"/><path d="M16 12v8M12 16h8"/></svg>
+              <h4>Natural results</h4>
+              <p>Subtle enhancement over dramatic change. You leave looking refreshed, never overdone.</p>
+            </div>
+          </div>
+        </div>
+        <div class="filler">
+          <p style="text-align:center;font-family:'Cormorant Garamond',serif;font-size:1.35rem;color:var(--rose);font-style:italic;max-width:28rem;margin:0 auto">"The most beautiful version of you already exists. We simply reveal it."</p>
+          <p style="text-align:center;font-size:0.75rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-top:0.75rem">Dr. Elena Moreau</p>
+        </div>
       </section>
       <section id="services" class="panel">
         <div class="wrap">
           <h2 class="section-title">Services</h2>
+          <p class="section-lead">Curated treatments using FDA-cleared technology and medical-grade products.</p>
           <div class="scroll-row">
-            <article class="svc"><h3>Botox</h3><p class="price">From $12/unit</p><p>Smooth expression lines with precision injection techniques for a refreshed, natural look.</p><button type="button" class="btn">Book</button></article>
-            <article class="svc"><h3>Dermal Fillers</h3><p class="price">From $650</p><p>Restore volume and contour with hyaluronic acid fillers tailored to your facial structure.</p><button type="button" class="btn">Book</button></article>
-            <article class="svc"><h3>Laser Treatment</h3><p class="price">From $350</p><p>IPL, resurfacing, and hair removal with FDA-cleared technology for all skin types.</p><button type="button" class="btn">Book</button></article>
-            <article class="svc"><h3>HydraFacial</h3><p class="price">From $199</p><p>Deep cleanse, extract, and hydrate in one luxurious 45-minute treatment.</p><button type="button" class="btn">Book</button></article>
-            <article class="svc"><h3>Chemical Peel</h3><p class="price">From $175</p><p>Clinical-grade peels to refine texture, tone, and luminosity over a custom protocol.</p><button type="button" class="btn">Book</button></article>
+            <article class="svc">
+              <svg class="svc-icon" viewBox="0 0 32 32"><path d="M16 6v20M12 10h8M12 14h8"/></svg>
+              <h3>Botox</h3><p class="price">From $12/unit</p><p>Smooth expression lines with precision injection techniques for a refreshed, natural look.</p>
+              <button type="button" class="btn">Book</button>
+            </article>
+            <article class="svc">
+              <svg class="svc-icon" viewBox="0 0 32 32"><ellipse cx="16" cy="16" rx="8" ry="10"/><path d="M16 6v20"/></svg>
+              <h3>Dermal Fillers</h3><p class="price">From $650</p><p>Restore volume and contour with hyaluronic acid fillers tailored to your facial structure.</p>
+              <button type="button" class="btn">Book</button>
+            </article>
+            <article class="svc">
+              <svg class="svc-icon" viewBox="0 0 32 32"><path d="M8 24l8-16 8 16"/><circle cx="16" cy="12" r="3"/></svg>
+              <h3>Laser Treatment</h3><p class="price">From $350</p><p>IPL, resurfacing, and hair removal with FDA-cleared technology for all skin types.</p>
+              <button type="button" class="btn">Book</button>
+            </article>
+            <article class="svc">
+              <svg class="svc-icon" viewBox="0 0 32 32"><path d="M10 8h12v16H10z"/><path d="M14 12h4M14 16h4M14 20h4"/></svg>
+              <h3>HydraFacial</h3><p class="price">From $199</p><p>Deep cleanse, extract, and hydrate in one luxurious 45-minute treatment.</p>
+              <button type="button" class="btn">Book</button>
+            </article>
+            <article class="svc">
+              <svg class="svc-icon" viewBox="0 0 32 32"><path d="M16 4c-4 4-6 8-6 12a6 6 0 0012 0c0-4-2-8-6-12z"/></svg>
+              <h3>Chemical Peel</h3><p class="price">From $175</p><p>Clinical-grade peels to refine texture, tone, and luminosity over a custom protocol.</p>
+              <button type="button" class="btn">Book</button>
+            </article>
           </div>
         </div>
       </section>
       <section id="results" class="panel">
         <div class="wrap">
           <h2 class="section-title">Results</h2>
+          <p class="section-lead">Real patients, real outcomes. Individual results vary based on treatment plan and skin type.</p>
           <div class="ba-wrap">
             <div class="ba" id="ba">
               <div class="ba-after">After</div>
@@ -102,11 +162,16 @@
             </div>
             <p class="ba-caption">Drag the divider to compare. Filler and Botox, 2 weeks post-treatment.</p>
           </div>
+          <div class="results-grid">
+            <div class="result-note"><strong>Laser resurfacing</strong>Reduced sun damage and fine lines after three sessions. Downtime under 48 hours.</div>
+            <div class="result-note"><strong>Lip enhancement</strong>0.5ml hyaluronic filler for natural volume. Swelling resolved within 5 days.</div>
+          </div>
         </div>
       </section>
       <section id="book" class="panel">
         <div class="wrap">
           <h2 class="section-title">Book Your Visit</h2>
+          <p class="section-lead">New clients receive a complimentary skin analysis with every first visit.</p>
           <form class="book-form" onsubmit="return false;">
             <div><label for="svc">Service</label><select id="svc"><option>Botox</option><option>Fillers</option><option>Laser</option><option>HydraFacial</option><option>Chemical Peel</option></select></div>
             <div><label for="date">Preferred date</label><input id="date" type="date" /></div>
@@ -115,21 +180,20 @@
             <div><label for="bemail">Email</label><input id="bemail" type="email" placeholder="you@email.com" /></div>
             <button type="submit" class="btn">Request appointment</button>
           </form>
+          <p class="book-aside">1400 Southlake Boulevard, Suite 210 · Southlake, TX 76092<br />Tuesday to Saturday, 9:00 AM to 6:00 PM</p>
         </div>
       </section>
     </main>
   </div>
   <script>
-    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
-      const id = t.dataset.panel;
-      document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === id));
-      document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
-    }));
-    document.querySelectorAll('[data-goto]').forEach(el => el.addEventListener('click', () => {
-      const id = el.dataset.goto;
+    const scrollMain = document.getElementById('scrollMain');
+    function showPanel(id) {
       document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === id));
       document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.panel === id));
-    }));
+      if (scrollMain) scrollMain.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showPanel(t.dataset.panel)));
+    document.querySelectorAll('[data-goto]').forEach(el => el.addEventListener('click', () => showPanel(el.dataset.goto)));
     const ba = document.getElementById('ba');
     const before = document.getElementById('baBefore');
     const handle = document.getElementById('baHandle');

@@ -7,25 +7,26 @@
   <style>
     :root { --navy: #0a0f1e; --gold: #c9a84c; --cream: #f4f0e8; --muted: #9aa3b5; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; scroll-behavior: smooth; overflow-y: auto; }
-    body { font-family: Georgia, 'Times New Roman', serif; background: var(--navy); color: var(--cream); line-height: 1.65; overflow-x: hidden; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: Georgia, 'Times New Roman', serif; background: var(--navy); color: var(--cream); line-height: 1.65; }
     button, input, select, textarea { font: inherit; }
-    .app { min-height: 100%; display: flex; flex-direction: column; }
-    .top { position: sticky; top: 0; z-index: 20; background: rgba(10,15,30,0.97); border-bottom: 1px solid rgba(201,168,76,0.2); }
+    .app { height: 100%; display: flex; flex-direction: column; }
+    .top { flex-shrink: 0; position: sticky; top: 0; z-index: 20; background: rgba(10,15,30,0.97); border-bottom: 1px solid rgba(201,168,76,0.2); }
     .bar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; gap: 1rem; }
     .brand { font-size: 1.2rem; letter-spacing: 0.06em; color: var(--gold); }
+    .bar-note { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.08em; }
     .tabs { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; padding: 0 1.5rem 1rem; }
     .tab { background: none; border: none; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; padding: 0.35rem 0; position: relative; transition: color 0.25s; }
     .tab:hover, .tab.active { color: var(--gold); }
     .tab::after { content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: var(--gold); transition: width 0.3s ease; }
     .tab:hover::after, .tab.active::after { width: 100%; }
-    .panels { flex: 1; }
+    .scroll-main { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
     .panel { display: none; animation: fadeUp 0.55s ease; }
     .panel.active { display: block; }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes heroIn { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
     .wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 3rem; }
-    .hero { min-height: 70vh; display: flex; align-items: center; text-align: center; padding: 3rem 1.5rem; background: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.08), transparent 60%); }
+    .hero { min-height: 65vh; display: flex; align-items: center; text-align: center; padding: 3rem 1.5rem; background: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.08), transparent 60%); }
     .hero h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); font-weight: 400; line-height: 1.15; margin-bottom: 1rem; animation: heroIn 0.9s ease both; }
     .hero p { max-width: 34rem; margin: 0 auto 2rem; color: var(--muted); font-size: 1.05rem; animation: heroIn 0.9s 0.15s ease both; }
     .btn { display: inline-block; padding: 0.85rem 2rem; background: var(--gold); color: var(--navy); border: none; font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: transform 0.2s, opacity 0.2s; animation: heroIn 0.9s 0.3s ease both; }
@@ -33,7 +34,8 @@
     .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(201,168,76,0.15); animation: heroIn 0.9s 0.45s ease both; }
     .stat-num { font-size: 2rem; color: var(--gold); display: block; }
     .stat-label { font-size: 0.8rem; color: var(--muted); letter-spacing: 0.06em; }
-    .section-title { font-size: 1.75rem; color: var(--gold); text-align: center; margin-bottom: 2rem; }
+    .section-title { font-size: 1.75rem; color: var(--gold); text-align: center; margin-bottom: 0.75rem; }
+    .section-lead { text-align: center; color: var(--muted); max-width: 36rem; margin: 0 auto 2rem; font-size: 0.95rem; }
     .flip-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; }
     .flip { perspective: 1000px; height: 220px; }
     .flip-inner { position: relative; width: 100%; height: 100%; transition: transform 0.65s ease; transform-style: preserve-3d; }
@@ -41,25 +43,45 @@
     .flip-face { position: absolute; inset: 0; backface-visibility: hidden; border: 1px solid rgba(201,168,76,0.3); padding: 1.5rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: rgba(255,255,255,0.03); transition: transform 0.3s, box-shadow 0.3s; }
     .flip:hover .flip-face { box-shadow: 0 12px 40px rgba(0,0,0,0.35); transform: translateY(-4px); }
     .flip-back { transform: rotateY(180deg); }
-    .flip-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+    .flip-icon { width: 40px; height: 40px; margin-bottom: 0.75rem; }
     .flip-name { font-size: 1.05rem; color: var(--cream); }
     .flip-desc { font-size: 0.88rem; color: var(--muted); line-height: 1.55; }
     .about-grid { display: grid; grid-template-columns: 180px 1fr; gap: 2rem; align-items: start; }
-    .photo { width: 180px; height: 220px; background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.25); }
+    .photo { width: 180px; height: 220px; background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.25); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
     .about-copy p { color: var(--muted); margin-bottom: 1rem; font-size: 0.98rem; }
+    .cred-list { list-style: none; margin: 1.5rem 0; }
+    .cred-list li { font-size: 0.88rem; color: var(--muted); padding: 0.45rem 0; border-bottom: 1px solid rgba(201,168,76,0.12); display: flex; align-items: center; gap: 0.65rem; }
+    .cred-list svg { width: 16px; height: 16px; flex-shrink: 0; stroke: var(--gold); fill: none; stroke-width: 1.5; }
     .pull-quote { margin-top: 2rem; padding: 1.5rem 1.5rem 1.5rem 1.25rem; border-left: 3px solid var(--gold); font-size: 1.25rem; font-style: italic; color: var(--gold); line-height: 1.5; }
     .form { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 0.85rem; }
     .form label { font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
     .form input, .form select, .form textarea { width: 100%; padding: 0.8rem 1rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(201,168,76,0.28); color: var(--cream); border-radius: 2px; }
     .form textarea { min-height: 110px; resize: vertical; }
-    .form .btn { width: 100%; margin-top: 0.5rem; }
-    @media (max-width: 640px) { .stats { grid-template-columns: 1fr; } .about-grid { grid-template-columns: 1fr; } .photo { width: 100%; } }
+    .form .btn { width: 100%; margin-top: 0.5rem; animation: none; }
+    .filler { padding: 2.5rem 1.5rem; border-top: 1px solid rgba(201,168,76,0.1); }
+    .filler-inner { max-width: 960px; margin: 0 auto; }
+    .filler h3 { font-size: 1.15rem; color: var(--gold); margin-bottom: 1rem; text-align: center; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .filler p { color: var(--muted); font-size: 0.92rem; margin-bottom: 0.75rem; }
+    .verdict-list { list-style: none; }
+    .verdict-list li { display: flex; justify-content: space-between; padding: 0.65rem 0; border-bottom: 1px solid rgba(201,168,76,0.1); font-size: 0.88rem; color: var(--muted); gap: 1rem; }
+    .verdict-list strong { color: var(--gold); font-weight: 400; white-space: nowrap; }
+    .testimonial { background: rgba(255,255,255,0.03); border: 1px solid rgba(201,168,76,0.2); padding: 1.5rem; margin-top: 2rem; font-style: italic; color: var(--muted); font-size: 0.95rem; }
+    .testimonial cite { display: block; margin-top: 0.75rem; font-style: normal; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); }
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 960px; margin: 0 auto; padding: 0 1.5rem 3rem; }
+    .info-block h4 { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 0.5rem; }
+    .info-block p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+    .scroll-hint { text-align: center; padding: 1rem; font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); opacity: 0.6; animation: fadeUp 1s 1s ease both; }
+    @media (max-width: 640px) { .stats, .two-col, .contact-grid, .about-grid { grid-template-columns: 1fr; } .photo { width: 100%; } }
   </style>
 </head>
 <body>
   <div class="app">
     <header class="top">
-      <div class="bar"><div class="brand">Atlas Law Group</div></div>
+      <div class="bar">
+        <div class="brand">Atlas Law Group</div>
+        <span class="bar-note">Dallas · Plano · Frisco</span>
+      </div>
       <nav class="tabs" aria-label="Site sections">
         <button type="button" class="tab active" data-panel="home">Home</button>
         <button type="button" class="tab" data-panel="areas">Practice Areas</button>
@@ -68,7 +90,7 @@
       </nav>
     </header>
 
-    <main class="panels">
+    <main class="scroll-main" id="scrollMain">
       <section id="home" class="panel active">
         <div class="hero">
           <div>
@@ -82,29 +104,71 @@
             </div>
           </div>
         </div>
+        <div class="filler">
+          <div class="filler-inner">
+            <h3>Why clients choose Atlas</h3>
+            <div class="two-col">
+              <div>
+                <p>No case is handed off to a junior associate. James Atlas and senior partners remain involved from intake through resolution.</p>
+                <p>We advance all litigation costs so injured clients never pay out of pocket to pursue justice.</p>
+              </div>
+              <div>
+                <p>Evening and weekend consultations available by appointment. Spanish-speaking staff on request.</p>
+                <p>Contingency fees on injury cases. Transparent flat rates on criminal and family matters.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="filler">
+          <div class="filler-inner">
+            <h3>Recent results</h3>
+            <ul class="verdict-list">
+              <li><span>Commercial trucking collision, Tarrant County</span><strong>$4.2M settlement</strong></li>
+              <li><span>Medical malpractice, Dallas County</span><strong>$2.8M verdict</strong></li>
+              <li><span>Wrongful termination, Collin County</span><strong>$890K settlement</strong></li>
+              <li><span>Premises liability, Denton County</span><strong>$1.1M settlement</strong></li>
+            </ul>
+            <p style="text-align:center;margin-top:1rem;font-size:0.8rem;color:var(--muted)">Past results do not guarantee future outcomes.</p>
+          </div>
+        </div>
+        <p class="scroll-hint">Scroll for more</p>
       </section>
 
       <section id="areas" class="panel">
         <div class="wrap">
           <h2 class="section-title">Practice Areas</h2>
+          <p class="section-lead">Focused litigation across four core disciplines. Each practice group is led by partners with decades of courtroom experience.</p>
           <div class="flip-grid">
             <div class="flip"><div class="flip-inner">
-              <div class="flip-face"><span class="flip-icon">⚖️</span><span class="flip-name">Personal Injury</span></div>
+              <div class="flip-face">
+                <svg class="flip-icon" viewBox="0 0 32 32" fill="none" stroke="#c9a84c" stroke-width="1.4"><path d="M16 6v20M9 10h14M7 24h18"/><circle cx="11" cy="14" r="4"/><circle cx="21" cy="14" r="4"/></svg>
+                <span class="flip-name">Personal Injury</span>
+              </div>
               <div class="flip-face flip-back"><p class="flip-desc">Car accidents, wrongful death, and catastrophic injury claims pursued with trial-ready preparation.</p></div>
             </div></div>
             <div class="flip"><div class="flip-inner">
-              <div class="flip-face"><span class="flip-icon">🛡️</span><span class="flip-name">Criminal Defense</span></div>
+              <div class="flip-face">
+                <svg class="flip-icon" viewBox="0 0 32 32" fill="none" stroke="#c9a84c" stroke-width="1.4"><path d="M16 4l9 4v8c0 6-4 10-9 12-5-2-9-6-9-12V8l9-4z"/></svg>
+                <span class="flip-name">Criminal Defense</span>
+              </div>
               <div class="flip-face flip-back"><p class="flip-desc">DWI, felony charges, and white-collar defense from arraignment through verdict.</p></div>
             </div></div>
             <div class="flip"><div class="flip-inner">
-              <div class="flip-face"><span class="flip-icon">👨‍👩‍👧</span><span class="flip-name">Family Law</span></div>
+              <div class="flip-face">
+                <svg class="flip-icon" viewBox="0 0 32 32" fill="none" stroke="#c9a84c" stroke-width="1.4"><path d="M6 14l10-8 10 8v12H6V14z"/><path d="M12 26v-8h8v8"/></svg>
+                <span class="flip-name">Family Law</span>
+              </div>
               <div class="flip-face flip-back"><p class="flip-desc">Divorce, custody, and support matters handled with discretion and strength.</p></div>
             </div></div>
             <div class="flip"><div class="flip-inner">
-              <div class="flip-face"><span class="flip-icon">🏛️</span><span class="flip-name">Business Law</span></div>
+              <div class="flip-face">
+                <svg class="flip-icon" viewBox="0 0 32 32" fill="none" stroke="#c9a84c" stroke-width="1.4"><path d="M8 28V12l8-6 8 6v16"/><path d="M12 28v-8h8v8"/><path d="M14 12h4M14 16h4"/></svg>
+                <span class="flip-name">Business Law</span>
+              </div>
               <div class="flip-face flip-back"><p class="flip-desc">Contract disputes, entity formation, and commercial litigation for growing companies.</p></div>
             </div></div>
           </div>
+          <blockquote class="testimonial">"They treated my case like it was the only one on their desk. Fought hard, communicated clearly, and delivered."<cite>M.R., Plano</cite></blockquote>
         </div>
       </section>
 
@@ -112,10 +176,16 @@
         <div class="wrap">
           <h2 class="section-title">About James Atlas</h2>
           <div class="about-grid">
-            <div class="photo" aria-hidden="true"></div>
+            <div class="photo">Portrait</div>
             <div class="about-copy">
               <p>James Atlas founded Atlas Law Group in 1998 after serving as a prosecutor in Dallas County. He has secured over $120 million in verdicts and settlements for clients across Texas.</p>
               <p>Every case receives partner-level attention. We prepare for trial from day one, which is why insurers take our demands seriously.</p>
+              <ul class="cred-list">
+                <li><svg viewBox="0 0 16 16"><path d="M3 8l3 3 7-7"/></svg>SMU Dedman School of Law, J.D.</li>
+                <li><svg viewBox="0 0 16 16"><path d="M3 8l3 3 7-7"/></svg>Texas Board Certified in Personal Injury Trial Law</li>
+                <li><svg viewBox="0 0 16 16"><path d="M3 8l3 3 7-7"/></svg>Super Lawyers, 2010 to present</li>
+                <li><svg viewBox="0 0 16 16"><path d="M3 8l3 3 7-7"/></svg>AV Preeminent rated by Martindale-Hubbell</li>
+              </ul>
               <blockquote class="pull-quote">"The courtroom is where truth meets consequence. Our job is to make sure your story is heard."</blockquote>
             </div>
           </div>
@@ -125,6 +195,9 @@
       <section id="contact" class="panel">
         <div class="wrap">
           <h2 class="section-title">Contact Us</h2>
+          <p class="section-lead">Confidential consultations are free. We respond within one business day.</p>
+        </div>
+        <div class="contact-grid">
           <form class="form" onsubmit="return false;">
             <div><label for="name">Full name</label><input id="name" type="text" placeholder="Jane Smith" /></div>
             <div><label for="email">Email</label><input id="email" type="email" placeholder="you@email.com" /></div>
@@ -135,17 +208,24 @@
             <div><label for="msg">Message</label><textarea id="msg" placeholder="Tell us about your situation"></textarea></div>
             <button type="submit" class="btn">Submit inquiry</button>
           </form>
+          <div>
+            <div class="info-block"><h4>Main office</h4><p>1200 Commerce Street, Suite 400<br />Dallas, TX 75202</p></div>
+            <div class="info-block"><h4>Hours</h4><p>Monday to Friday, 8:00 AM to 6:00 PM<br />Evening appointments available</p></div>
+            <div class="info-block"><h4>Direct line</h4><p>(214) 555-0100</p></div>
+          </div>
         </div>
       </section>
     </main>
   </div>
   <script>
+    const scrollMain = document.getElementById('scrollMain');
     const tabs = document.querySelectorAll('.tab');
     const panels = document.querySelectorAll('.panel');
     let countersStarted = false;
     function showPanel(id) {
       panels.forEach(p => p.classList.toggle('active', p.id === id));
       tabs.forEach(t => t.classList.toggle('active', t.dataset.panel === id));
+      if (scrollMain) scrollMain.scrollTo({ top: 0, behavior: 'smooth' });
       if (id === 'home' && !countersStarted) { countersStarted = true; runCounters(); }
     }
     tabs.forEach(t => t.addEventListener('click', () => showPanel(t.dataset.panel)));

@@ -76,6 +76,42 @@ h3,
 /* ─── Layout ─── */
 .page {
   overflow-x: hidden;
+  position: relative;
+}
+
+.page-decor--left {
+  position: absolute;
+  left: -2rem;
+  top: 52vh;
+  width: min(180px, 22vw);
+  height: auto;
+  pointer-events: none;
+  z-index: 0;
+  animation: decorDrift 11s ease-in-out infinite;
+}
+
+.section-flourish {
+  display: flex;
+  justify-content: center;
+  padding-block: 0.5rem;
+  pointer-events: none;
+}
+
+.section-flourish svg {
+  width: min(260px, 70vw);
+  height: auto;
+}
+
+@keyframes decorDrift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(6px, -10px);
+    opacity: 1;
+  }
 }
 
 .container {
@@ -91,6 +127,8 @@ h3,
 
 .section {
   padding-block: var(--section-pad);
+  position: relative;
+  z-index: 1;
 }
 
 .section-label {
@@ -149,7 +187,7 @@ h3,
 }
 
 .nav-logo img {
-  height: 36px;
+  height: 44px;
   width: auto;
   display: block;
 }
@@ -194,18 +232,50 @@ h3,
 
 /* ─── Hero ─── */
 .hero {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding-top: 5rem;
   padding-bottom: 4rem;
+  overflow: hidden;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-decor--tr {
+  position: absolute;
+  top: -2rem;
+  right: -3rem;
+  width: min(420px, 55vw);
+  height: auto;
+  pointer-events: none;
+  z-index: 0;
+  animation: decorDrift 10s ease-in-out infinite;
+}
+
+@media (max-width: 640px) {
+  .hero-decor--tr {
+    right: -5rem;
+    width: min(320px, 70vw);
+    opacity: 0.85;
+  }
+
+  .page-decor--left {
+    left: -3rem;
+    width: 120px;
+    opacity: 0.7;
+  }
 }
 
 .hero-logo {
   display: block;
   margin: 0 auto 2rem;
-  height: 64px;
+  height: 120px;
   width: auto;
 }
 
@@ -579,7 +649,7 @@ h3,
 
 @media (max-width: 600px) {
   .nav-logo img {
-    height: 32px;
+    height: 38px;
   }
 
   .nav .btn--accent {

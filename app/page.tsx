@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SiteFooter } from './components/SiteFooter'
 import { SiteNav } from './components/SiteNav'
+import { HeroDecorTopRight, PageDecorLeft, SectionFlourish } from './components/HeroDecor'
 
 const CALENDLY = 'https://calendly.com/davynaidu/30min'
 
@@ -107,14 +108,17 @@ export default function Home() {
 
   return (
     <div className="page">
+      <PageDecorLeft />
+
       {/* Nav */}
       <SiteNav />
 
       {/* Hero */}
       <section className="hero section">
-        <div className="container">
+        <HeroDecorTopRight />
+        <div className="container hero-content">
           <FadeIn>
-            <img src="/logo.png" alt="Margen" className="hero-logo" height={64} />
+            <img src="/logo.png" alt="Margen" className="hero-logo" height={120} />
             <h1 className="hero-headline">Your web presence. Handled.</h1>
             <p className="hero-subtext">
               One flat monthly rate. Updates, new pages, fixes, and SEO: all included. You text us, it gets done. No
@@ -131,6 +135,8 @@ export default function Home() {
           </FadeIn>
         </div>
       </section>
+
+      <SectionFlourish />
 
       {/* Sample sites */}
       <section id="work" className="section">
@@ -157,6 +163,8 @@ export default function Home() {
         </div>
       </section>
 
+      <SectionFlourish />
+
       {/* How it works */}
       <section id="process" className="section">
         <div className="container">
@@ -180,6 +188,8 @@ export default function Home() {
         </div>
       </section>
 
+      <SectionFlourish />
+
       {/* Work CTA */}
       <section className="section">
         <div className="container">
@@ -195,6 +205,8 @@ export default function Home() {
           </FadeIn>
         </div>
       </section>
+
+      <SectionFlourish />
 
       {/* CTA */}
       <section id="contact" className="section">
