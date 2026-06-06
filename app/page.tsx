@@ -40,7 +40,7 @@ const STEPS = [
   },
   {
     title: 'We build or rebuild',
-    desc: 'Clean, fast, mobile-first. Usually live within 7–10 days.',
+    desc: 'Clean, fast, mobile-first. Usually live within 7 to 10 days.',
   },
   {
     title: 'You text us changes',
@@ -114,16 +114,17 @@ export default function Home() {
       <section className="hero section">
         <div className="container">
           <FadeIn>
+            <img src="/logo.png" alt="Margen" className="hero-logo" height={64} />
             <h1 className="hero-headline">Your web presence. Handled.</h1>
             <p className="hero-subtext">
-              One flat monthly rate. Updates, new pages, fixes, SEO — all included. You text us, it gets done. No
+              One flat monthly rate. Updates, new pages, fixes, and SEO: all included. You text us, it gets done. No
               project fees, no surprises, cancel anytime.
             </p>
             <a href={CALENDLY} target="_blank" rel="noopener noreferrer" className="btn btn--accent">
               Get a free 20-min audit
             </a>
             <div className="hero-stats">
-              <span className="hero-stat">$500–$2k / flat monthly</span>
+              <span className="hero-stat">$500 to $2k / flat monthly</span>
               <span className="hero-stat">Cancel anytime</span>
               <span className="hero-stat">48hr turnaround</span>
             </div>
@@ -136,9 +137,9 @@ export default function Home() {
         <div className="container">
           <FadeIn>
             <p className="section-label">Portfolio</p>
-            <h2 className="section-headline">See what we build</h2>
+            <h2 className="section-headline">A glimpse of what we build.</h2>
             <p className="section-subtext">
-              Click any sample to preview a full website we could build for your business.
+              Every site is custom. This is just the beginning.
             </p>
           </FadeIn>
           <div className="samples-grid">

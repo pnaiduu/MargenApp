@@ -1,43 +1,24 @@
-/* ─── Design tokens ─── */
+/* ─── Design tokens (dark only) ─── */
 :root {
-  --bg: #f7f5f0;
-  --text: #0f0f0f;
-  --text-muted: #5c5a55;
-  --text-subtle: #8a8780;
+  --bg: #080808;
+  --text: #f0ece3;
+  --text-muted: #a8a49c;
+  --text-subtle: #6b6760;
   --accent: #c9a84c;
-  --accent-fg: #0f0f0f;
-  --border: rgba(15, 15, 15, 0.1);
-  --surface: rgba(15, 15, 15, 0.03);
-  --nav-bg: rgba(247, 245, 240, 0.92);
+  --accent-fg: #080808;
+  --border: rgba(240, 236, 227, 0.1);
+  --surface: #080808;
+  --nav-bg: #080808;
   --cta-bg: #c9a84c;
-  --cta-text: #0f0f0f;
-  --cta-btn-bg: #0f0f0f;
+  --cta-text: #080808;
+  --cta-btn-bg: #080808;
   --cta-btn-text: #c9a84c;
-  --modal-bg: rgba(15, 15, 15, 0.6);
+  --modal-bg: rgba(0, 0, 0, 0.85);
   --font-heading: var(--font-heading);
   --font-body: var(--font-body);
   --section-pad: clamp(5rem, 12vw, 8rem);
   --content-max: 72rem;
   --narrow-max: 40rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #080808;
-    --text: #f0ece3;
-    --text-muted: #a8a49c;
-    --text-subtle: #6b6760;
-    --accent: #c9a84c;
-    --accent-fg: #080808;
-    --border: rgba(240, 236, 227, 0.1);
-    --surface: rgba(240, 236, 227, 0.04);
-    --nav-bg: rgba(8, 8, 8, 0.92);
-    --cta-bg: #c9a84c;
-    --cta-text: #080808;
-    --cta-btn-bg: #080808;
-    --cta-btn-text: #c9a84c;
-    --modal-bg: rgba(0, 0, 0, 0.75);
-  }
 }
 
 /* ─── Reset & base ─── */
@@ -51,6 +32,7 @@
 
 html {
   scroll-behavior: smooth;
+  color-scheme: dark;
 }
 
 body {
@@ -61,7 +43,6 @@ body {
   font-size: 0.9375rem;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 a {
@@ -158,16 +139,19 @@ h3,
   justify-content: space-between;
   padding: 1.125rem clamp(1.25rem, 4vw, 2.5rem);
   background: var(--nav-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
 
 .nav-logo {
-  font-family: var(--font-heading), 'Cormorant Garamond', Georgia, serif;
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.nav-logo img {
+  height: 36px;
+  width: auto;
+  display: block;
 }
 
 /* ─── Buttons ─── */
@@ -216,6 +200,13 @@ h3,
   justify-content: center;
   padding-top: 5rem;
   padding-bottom: 4rem;
+}
+
+.hero-logo {
+  display: block;
+  margin: 0 auto 2rem;
+  height: 64px;
+  width: auto;
 }
 
 .hero-headline {
@@ -587,13 +578,13 @@ h3,
 }
 
 @media (max-width: 600px) {
+  .nav-logo img {
+    height: 32px;
+  }
+
   .nav .btn--accent {
     padding: 0.6rem 1rem;
     font-size: 0.75rem;
-  }
-
-  .nav-logo {
-    font-size: 1.25rem;
   }
 }
 
@@ -701,7 +692,8 @@ h3,
 
 .plan-card--selected {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  background: #080808;
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .plan-card-name {
@@ -750,7 +742,7 @@ h3,
 }
 
 .feature-section-header:hover {
-  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  background: #080808;
 }
 
 .feature-section-chevron {
@@ -783,7 +775,7 @@ h3,
 }
 
 .feature-row:hover {
-  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  background: #080808;
 }
 
 .feature-row input[type='checkbox'] {
@@ -835,10 +827,7 @@ h3,
   right: 0;
   z-index: 90;
   background: var(--nav-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border-top: 1px solid var(--border);
-  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.08);
 }
 
 .quote-summary-inner {

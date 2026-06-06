@@ -4,7 +4,7 @@ export function SiteNav() {
   return (
     <header className="nav">
       <a href="/" className="nav-logo">
-        Margen
+        <img src="/logo.png" alt="Margen" height={36} />
       </a>
       <a href={CALENDLY} target="_blank" rel="noopener noreferrer" className="btn btn--accent">
         Book a free audit

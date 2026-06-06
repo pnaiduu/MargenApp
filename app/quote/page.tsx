@@ -10,7 +10,7 @@ function formatUsd(n: number) {
 }
 
 function getUpsellTip(total: number): string {
-  if (total >= 1000) return 'Strong quote — Growth tier client'
+  if (total >= 1000) return 'Strong quote. Growth tier client.'
   if (total >= 600) return 'Consider upselling: Monthly SEO reporting (+$100) and Priority same-day support (+$150)'
   return 'Consider upselling: Full SEO setup (+$100) and Google Reviews feed (+$75)'
 }
@@ -66,19 +66,19 @@ export default function QuotePage() {
 
   async function copyQuote() {
     const lines = [
-      'MARGEN — WEBSITE QUOTE',
-      '═'.repeat(40),
-      clientName ? `Client: ${clientName}` : 'Client: —',
+      'MARGEN WEBSITE QUOTE',
+      '='.repeat(40),
+      clientName ? `Client: ${clientName}` : 'Client: (not set)',
       businessInfo ? `Business: ${businessInfo}` : '',
       '',
-      `Base plan: ${selectedPlan.name} — ${formatUsd(selectedPlan.price)}/mo (${selectedPlan.pages})`,
+      `Base plan: ${selectedPlan.name}, ${formatUsd(selectedPlan.price)}/mo (${selectedPlan.pages})`,
       '',
     ]
 
     if (selectedFeatureList.length > 0) {
       lines.push('Add-ons:')
       for (const f of selectedFeatureList) {
-        lines.push(`  • ${f.name} — +${formatUsd(f.price)}/mo`)
+        lines.push(`  • ${f.name}: +${formatUsd(f.price)}/mo`)
       }
       lines.push('')
     }
@@ -90,7 +90,7 @@ export default function QuotePage() {
     lines.push(`  • Dev (recurring): ${formatUsd(Math.round(monthlyTotal * 0.1))}/mo (10%)`)
     lines.push(`  • Sales (first month): ${formatUsd(Math.round(monthlyTotal * 0.1))} (10% one-time)`)
     lines.push('')
-    lines.push('— Margen · trymargen.com')
+    lines.push('Margen · trymargen.com')
 
     try {
       await navigator.clipboard.writeText(lines.filter(Boolean).join('\n'))
@@ -110,7 +110,7 @@ export default function QuotePage() {
           <header className="quote-header">
             <p className="section-label">Internal</p>
             <h1 className="quote-title">Quote Builder</h1>
-            <p className="quote-subtitle">Internal tool — for sales calls only</p>
+            <p className="quote-subtitle">Internal tool for sales calls only</p>
           </header>
 
           <section className="quote-block">
@@ -226,9 +226,9 @@ export default function QuotePage() {
             </div>
             <div className="quote-summary-split">
               <p className="quote-split-title">Revenue split</p>
-              <p className="quote-split-line">You — 90% recurring ({formatUsd(Math.round(monthlyTotal * 0.9))}/mo)</p>
-              <p className="quote-split-line">Dev — 10% recurring ({formatUsd(Math.round(monthlyTotal * 0.1))}/mo)</p>
-              <p className="quote-split-line">Sales — 10% first month only ({formatUsd(Math.round(monthlyTotal * 0.1))})</p>
+              <p className="quote-split-line">You: 90% recurring ({formatUsd(Math.round(monthlyTotal * 0.9))}/mo)</p>
+              <p className="quote-split-line">Dev: 10% recurring ({formatUsd(Math.round(monthlyTotal * 0.1))}/mo)</p>
+              <p className="quote-split-line">Sales: 10% first month only ({formatUsd(Math.round(monthlyTotal * 0.1))})</p>
             </div>
             <div className="quote-summary-actions">
               <button type="button" className="btn btn--accent" onClick={() => void copyQuote()}>

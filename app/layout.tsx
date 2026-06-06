@@ -17,9 +17,10 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Margen — Premium Web Retainer Agency',
+  title: 'Margen | Premium Web Retainer Agency',
   description:
-    'One flat monthly rate for your web presence. Updates, new pages, fixes, and SEO — all included. Based in Allen, Texas.',
+    'One flat monthly rate for your web presence. Updates, new pages, fixes, and SEO: all included. Based in Allen, Texas.',
+  icons: { icon: '/logo.png' },
 }
 
 export default function RootLayout({
@@ -28,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`}>
+    <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`} style={{ colorScheme: 'dark' }}>
       <body>{children}</body>
     </html>
   )
