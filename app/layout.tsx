@@ -30,6 +30,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable}`} style={{ colorScheme: 'dark' }}>
+      <head>
+        <meta name="google-site-verification" content="PQSFj42BAV4zAA1gU0NbpD5kydq-ioAncQQmlPJ6a8U" />
+      </head>
       <body>{children}</body>
     </html>
   )

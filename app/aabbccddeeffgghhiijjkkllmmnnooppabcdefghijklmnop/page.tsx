@@ -173,6 +173,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [teamToast, setTeamToast] = useState<string | null>(null)
   const [teamFormError, setTeamFormError] = useState<string | null>(null)
+  const [memberErrors, setMemberErrors] = useState<Record<string, string>>({})
   const [savingTeamMember, setSavingTeamMember] = useState(false)
 
   const [addTeamOpen, setAddTeamOpen] = useState<'developer' | 'salesperson' | null>(null)
@@ -492,11 +493,71 @@ export default function AdminDashboardPage() {
     })
   }
 
-  async function updateMemberStatus(id: string, status: 'active' | 'inactive') {
+  function clearMemberError(id: string) {
+    setMemberErrors((prev) => {
+      if (!prev[id]) return prev
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }
+
+  async function updateMemberStatus(id: string, status: 'active' | 'inactive'): Promise<boolean> {
+    if (!id) {
+      console.error('updateMemberStatus: member id is undefined')
+      return false
+    }
+
     const sb = getSupabase()
-    if (!sb) return
-    await sb.from('team_members').update({ status }).eq('id', id)
+    if (!sb) {
+      const msg = 'Supabase is not configured.'
+      console.error(msg)
+      setMemberErrors((prev) => ({ ...prev, [id]: msg }))
+      return false
+    }
+
+    console.log('Updating team member status:', { id, status })
+
+    const { error } = await sb.from('team_members').update({ status }).eq('id', id)
+
+    if (error) {
+      console.error('Team member status update failed:', error)
+      setMemberErrors((prev) => ({ ...prev, [id]: error.message }))
+      return false
+    }
+
+    clearMemberError(id)
     setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, status } : m)))
+    return true
+  }
+
+  async function removeTeamMember(id: string): Promise<boolean> {
+    if (!id) {
+      console.error('removeTeamMember: member id is undefined')
+      return false
+    }
+
+    const sb = getSupabase()
+    if (!sb) {
+      const msg = 'Supabase is not configured.'
+      console.error(msg)
+      setMemberErrors((prev) => ({ ...prev, [id]: msg }))
+      return false
+    }
+
+    console.log('Removing team member (setting inactive):', id)
+
+    const { error } = await sb.from('team_members').update({ status: 'inactive' }).eq('id', id)
+
+    if (error) {
+      console.error('Team member remove failed:', error)
+      setMemberErrors((prev) => ({ ...prev, [id]: error.message }))
+      return false
+    }
+
+    clearMemberError(id)
+    setTeam((prev) => prev.filter((m) => m.id !== id))
+    return true
   }
 
   async function updateMemberNotes(id: string, notes: string) {
@@ -1130,6 +1191,7 @@ export default function AdminDashboardPage() {
 
               return (
                 <div key={dev.id} className="admin-team-card">
+                  {memberErrors[dev.id] ? <p className="admin-form-error">{memberErrors[dev.id]}</p> : null}
                   <div className="admin-team-card-head">
                     <div>
                       <h3>{dev.full_name}</h3>
@@ -1145,13 +1207,18 @@ export default function AdminDashboardPage() {
                       <button
                         type="button"
                         className="admin-btn"
-                        onClick={() =>
-                          void updateMemberStatus(dev.id, dev.status === 'active' ? 'inactive' : 'active')
-                        }
+                        onClick={() => {
+                          const nextStatus = dev.status === 'active' ? 'inactive' : 'active'
+                          void updateMemberStatus(dev.id, nextStatus)
+                        }}
                       >
                         {dev.status === 'active' ? 'Mark inactive' : 'Mark active'}
                       </button>
-                      <button type="button" className="admin-btn admin-btn--reject" onClick={() => void updateMemberStatus(dev.id, 'inactive')}>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--reject"
+                        onClick={() => void removeTeamMember(dev.id)}
+                      >
                         Remove
                       </button>
                     </div>
@@ -1355,6 +1422,7 @@ export default function AdminDashboardPage() {
 
               return (
                 <div key={sp.id} className="admin-team-card">
+                  {memberErrors[sp.id] ? <p className="admin-form-error">{memberErrors[sp.id]}</p> : null}
                   <div className="admin-team-card-head">
                     <div>
                       <h3>{sp.full_name}</h3>
@@ -1370,13 +1438,18 @@ export default function AdminDashboardPage() {
                       <button
                         type="button"
                         className="admin-btn"
-                        onClick={() =>
-                          void updateMemberStatus(sp.id, sp.status === 'active' ? 'inactive' : 'active')
-                        }
+                        onClick={() => {
+                          const nextStatus = sp.status === 'active' ? 'inactive' : 'active'
+                          void updateMemberStatus(sp.id, nextStatus)
+                        }}
                       >
                         {sp.status === 'active' ? 'Mark inactive' : 'Mark active'}
                       </button>
-                      <button type="button" className="admin-btn admin-btn--reject" onClick={() => void updateMemberStatus(sp.id, 'inactive')}>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--reject"
+                        onClick={() => void removeTeamMember(sp.id)}
+                      >
                         Remove
                       </button>
                     </div>
