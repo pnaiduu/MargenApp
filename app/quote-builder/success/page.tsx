@@ -8,8 +8,8 @@ export default function QuoteSuccessPage() {
         <h1 className="success-headline">We got you.</h1>
         <p className="success-subheadline">We will reach out to you shortly.</p>
         <p className="success-note">
-          Expect a call from (808) 379-7937 within 24 hours. In the meantime feel free to book a time that works for
-          you.
+          You will receive a text from one of our team members shortly. In the meantime feel free to book a time that
+          works for you.
         </p>
         <a href={CALENDLY} target="_blank" rel="noopener noreferrer" className="btn btn--accent">
           Book your audit now
