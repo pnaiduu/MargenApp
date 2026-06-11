@@ -28,6 +28,7 @@ const REQUIREMENTS = [
 export default function SalesCareersPage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [age, setAge] = useState('')
   const [cityState, setCityState] = useState('')
   const [hasSalesExperience, setHasSalesExperience] = useState<boolean | null>(null)
@@ -45,6 +46,7 @@ export default function SalesCareersPage() {
     const next: Record<string, boolean> = {}
     if (!fullName.trim()) next.fullName = true
     if (!email.trim()) next.email = true
+    if (!phone.trim()) next.phone = true
     if (!age.trim()) next.age = true
     if (!cityState.trim()) next.cityState = true
     if (hasSalesExperience === null) next.hasSalesExperience = true
@@ -62,7 +64,7 @@ export default function SalesCareersPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fullName, email, age, cityState, hasSalesExperience, doesColdCalls, approachDescription, hasCar, whyJoin, commissionOk,
+          fullName, email, phone, age, cityState, hasSalesExperience, doesColdCalls, approachDescription, hasCar, whyJoin, commissionOk,
         }),
       })
       if (!res.ok) throw new Error()
@@ -140,6 +142,17 @@ export default function SalesCareersPage() {
                 <label className={`form-field${err('email')}`}>
                   <span className="form-label">Email address</span>
                   <input type="email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </label>
+                <label className={`form-field${err('phone')}`}>
+                  <span className="form-label">Phone number</span>
+                  <input
+                    type="tel"
+                    className="form-input"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. (214) 555-0123"
+                    required
+                  />
                 </label>
                 <label className={`form-field${err('age')}`}>
                   <span className="form-label">Age</span>

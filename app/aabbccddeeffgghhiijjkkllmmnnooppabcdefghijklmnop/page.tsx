@@ -54,6 +54,7 @@ type DevAppRow = {
   created_at: string
   full_name: string | null
   email: string | null
+  phone: string | null
   age: string | null
   city_state: string | null
   built_before: boolean | null
@@ -70,6 +71,7 @@ type SalesAppRow = {
   created_at: string
   full_name: string | null
   email: string | null
+  phone: string | null
   age: string | null
   city_state: string | null
   has_sales_experience: boolean | null
@@ -737,6 +739,7 @@ export default function AdminDashboardPage() {
         <div className="admin-panel-section admin-panel-section--first">
           <p>Full name: {row.full_name ?? '-'}</p>
           <p>Email: {row.email ?? '-'}</p>
+          <p>Phone: {row.phone ?? '-'}</p>
           <p>Age: {row.age ?? '-'}</p>
           <p>City / State: {row.city_state ?? '-'}</p>
           <p>Experience: {row.experience ?? '-'}</p>
@@ -768,7 +771,7 @@ export default function AdminDashboardPage() {
             className="btn btn--accent btn--sm"
             onClick={() => {
               setTeamFormError(null)
-              setAddToTeamApp({ type: 'dev', id: row.id, phone: '', repCode: generateRepCode('DEV'), notes: '' })
+              setAddToTeamApp({ type: 'dev', id: row.id, phone: row.phone ?? '', repCode: generateRepCode('DEV'), notes: '' })
             }}
           >
             Add to dev team
@@ -821,6 +824,7 @@ export default function AdminDashboardPage() {
         <div className="admin-panel-section admin-panel-section--first">
           <p>Full name: {row.full_name ?? '-'}</p>
           <p>Email: {row.email ?? '-'}</p>
+          <p>Phone: {row.phone ?? '-'}</p>
           <p>Age: {row.age ?? '-'}</p>
           <p>City / State: {row.city_state ?? '-'}</p>
           <p>Has sales experience: {yn(row.has_sales_experience)}</p>
@@ -842,7 +846,7 @@ export default function AdminDashboardPage() {
             className="btn btn--accent btn--sm"
             onClick={() => {
               setTeamFormError(null)
-              setAddToTeamApp({ type: 'sales', id: row.id, phone: '', repCode: generateRepCode('SAL'), notes: '' })
+              setAddToTeamApp({ type: 'sales', id: row.id, phone: row.phone ?? '', repCode: generateRepCode('SAL'), notes: '' })
             }}
           >
             Add to sales team

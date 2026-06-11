@@ -12,6 +12,7 @@ export async function POST(request: Request) {
   const { error } = await sb.from('sales_applications').insert({
     full_name: body.fullName?.trim(),
     email: body.email?.trim(),
+    phone: body.phone?.trim(),
     age: body.age?.trim(),
     city_state: body.cityState?.trim(),
     has_sales_experience: body.hasSalesExperience,
