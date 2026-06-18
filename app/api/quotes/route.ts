@@ -92,6 +92,7 @@ export async function POST(request: Request) {
     monthly_total: body.monthlyTotal,
     anything_else: body.anythingElse?.trim() || null,
     status: 'new',
+    payment_status: 'pending',
   })
 
   if (error) {

@@ -33,7 +33,7 @@ export default function CareersPage() {
             <p className="section-subtext">Choose your path. Commission only. No cap.</p>
           </div>
         </section>
-        <section className="section">
+        <section className="section section--alt">
           <div className="container careers-pick-grid">
             {ROLES.map((role) => (
               <Link key={role.href} href={role.href} className="careers-pick-card">

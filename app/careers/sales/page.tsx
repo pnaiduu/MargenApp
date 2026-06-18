@@ -93,7 +93,7 @@ export default function SalesCareersPage() {
           </div>
         </section>
 
-        <section className="section">
+        <section className="section section--alt">
           <div className="container container--narrow">
             <h2 className="careers-section-head">What you can earn</h2>
             <div className="earnings-grid">
@@ -119,7 +119,7 @@ export default function SalesCareersPage() {
           </div>
         </section>
 
-        <section className="section">
+        <section className="section section--alt">
           <div className="container container--narrow">
             <h2 className="careers-section-head">Requirements</h2>
             <ul className="careers-bullets">

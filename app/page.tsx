@@ -57,6 +57,14 @@ const STEPS = [
   },
 ]
 
+const BUILDER_COMPARISON = [
+  'Website builders leave you alone with a tool and a tutorial. We give you a real person who knows your business.',
+  'With a builder, updates mean logging in, figuring out the interface, and hoping nothing breaks. With Margen, you text your developer and it\'s done in 48 hours.',
+  'Builders give everyone the same templates. We build something custom to your business from scratch.',
+  'When something goes wrong with a builder, you\'re on your own. When something goes wrong with Margen, your developer fixes it.',
+  'Builders charge you for every feature upgrade. Margen is one flat rate — everything included.',
+]
+
 function FadeIn({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -123,8 +131,8 @@ export default function Home() {
             <img src={LOGO} alt="Margen" className="hero-logo" height={120} />
             <h1 className="hero-headline">Your web presence. Handled.</h1>
             <p className="hero-subtext">
-              One flat monthly rate. Updates, new pages, fixes, and SEO: all included. You text us, it gets done. No
-              project fees, no surprises, cancel anytime.
+              Your own dedicated developer. One flat monthly rate. Text them anything, anytime — they know your business
+              and handle everything.
             </p>
             <a href={CALENDLY} target="_blank" rel="noopener noreferrer" className="btn btn--accent">
               Get a free 20-min audit
@@ -141,7 +149,7 @@ export default function Home() {
       <WaveDivider />
 
       {/* Sample sites */}
-      <section id="work" className="section">
+      <section id="work" className="section section--alt">
         <div className="container">
           <FadeIn>
             <p className="section-label">Portfolio</p>
@@ -192,6 +200,31 @@ export default function Home() {
 
       <WaveDivider />
 
+      {/* Why not a website builder */}
+      <section id="why-margen" className="section section--alt">
+        <div className="container">
+          <FadeIn>
+            <p className="section-label">The difference</p>
+            <h2 className="section-headline">Why not just use a website builder?</h2>
+          </FadeIn>
+          <FadeIn>
+            <ul className="comparison-points">
+              {BUILDER_COMPARISON.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
+          </FadeIn>
+          <FadeIn>
+            <blockquote className="developer-callout">
+              Your developer&apos;s number is in your phone. Not a ticket system. Not a chatbot. A real person who knows
+              your business.
+            </blockquote>
+          </FadeIn>
+        </div>
+      </section>
+
+      <WaveDivider />
+
       {/* Work CTA */}
       <section className="section">
         <div className="container">
@@ -211,7 +244,7 @@ export default function Home() {
       <WaveDivider />
 
       {/* CTA */}
-      <section id="contact" className="section">
+      <section id="contact" className="section section--alt">
         <div className="container">
           <FadeIn>
             <div className="cta-box">

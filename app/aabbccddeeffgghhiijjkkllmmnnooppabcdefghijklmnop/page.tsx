@@ -17,6 +17,8 @@ type QuoteStatus =
   | 'active_client'
   | 'rejected'
 type CommissionStatus = 'pending' | 'earned' | 'paid_out'
+type PaymentStatus = 'pending' | 'paid' | 'cancelled'
+type PaymentFilter = 'all' | PaymentStatus
 
 type QuoteFeature = { name: string; price: number }
 
@@ -47,6 +49,7 @@ type QuoteRow = {
   notes: string | null
   assigned_developer_id: string | null
   assigned_developer_name: string | null
+  payment_status: PaymentStatus | null
 }
 
 type DevAppRow = {
@@ -153,6 +156,17 @@ function quoteStatusClass(s: QuoteStatus | null | undefined) {
   return `admin-badge admin-badge--quote-${status}`
 }
 
+function paymentStatusLabel(s: PaymentStatus | null | undefined) {
+  if (!s || s === 'pending') return 'Pending'
+  if (s === 'paid') return 'Paid'
+  return 'Cancelled'
+}
+
+function paymentStatusClass(s: PaymentStatus | null | undefined) {
+  const status = s ?? 'pending'
+  return `admin-badge admin-badge--payment-${status}`
+}
+
 function selectedFeatures(quote: QuoteRow) {
   return quote.selected_features ?? quote.features ?? []
 }
@@ -170,6 +184,7 @@ export default function AdminDashboardPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [commissions, setCommissions] = useState<Commission[]>([])
   const [search, setSearch] = useState('')
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [appStatuses, setAppStatuses] = useState<Record<string, AppStatus>>({})
   const [loading, setLoading] = useState(true)
@@ -210,7 +225,7 @@ export default function AdminDashboardPage() {
       sb.from('quotes').select('*').order('created_at', { ascending: false }),
       sb.from('dev_applications').select('*').order('created_at', { ascending: false }),
       sb.from('sales_applications').select('*').order('created_at', { ascending: false }),
-      sb.from('team_members').select('*').order('created_at', { ascending: false }),
+      sb.from('team_members').select('*').eq('status', 'active').order('created_at', { ascending: false }),
       sb.from('client_assignments').select('*').order('created_at', { ascending: false }),
       sb.from('commissions').select('*').order('created_at', { ascending: false }),
     ])
@@ -236,7 +251,7 @@ export default function AdminDashboardPage() {
   const loadTeamMembers = useCallback(async () => {
     const sb = getSupabase()
     if (!sb) return
-    const { data, error } = await sb.from('team_members').select('*').order('created_at', { ascending: false })
+    const { data, error } = await sb.from('team_members').select('*').eq('status', 'active').order('created_at', { ascending: false })
     if (!error && data) setTeam(data as TeamMember[])
   }, [])
 
@@ -244,18 +259,21 @@ export default function AdminDashboardPage() {
   const salespeople = useMemo(() => team.filter((m) => m.role === 'salesperson'), [team])
   const activeDevelopers = useMemo(() => developers.filter((d) => d.status === 'active'), [developers])
 
+  const paymentCounts = useMemo(() => {
+    const pending = quotes.filter((q) => (q.payment_status ?? 'pending') === 'pending').length
+    const paid = quotes.filter((q) => q.payment_status === 'paid').length
+    const cancelled = quotes.filter((q) => q.payment_status === 'cancelled').length
+    return { all: quotes.length, pending, paid, cancelled }
+  }, [quotes])
+
   const quoteStats = useMemo(() => {
-    const now = new Date()
-    const acceptedThisMonth = quotes.filter((q) => {
-      const d = new Date(q.created_at)
-      return (q.status ?? 'new') === 'accepted' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-    })
-    const accepted = quotes.filter((q) => (q.status ?? 'new') === 'accepted')
+    const paidQuotes = quotes.filter((q) => q.payment_status === 'paid')
+    const cancelledQuotes = quotes.filter((q) => q.payment_status === 'cancelled')
     return {
       total: quotes.length,
-      acceptedThisMonth: acceptedThisMonth.length,
-      acceptedMrr: accepted.reduce((s, q) => s + (q.monthly_total ?? 0), 0),
-      pipelineValue: quotes.reduce((s, q) => s + (q.monthly_total ?? 0), 0),
+      paidClients: paidQuotes.length,
+      cancelled: cancelledQuotes.length,
+      paidMrr: paidQuotes.reduce((s, q) => s + (q.monthly_total ?? 0), 0),
     }
   }, [quotes])
 
@@ -270,15 +288,19 @@ export default function AdminDashboardPage() {
   }, [salesApps, appStatuses])
 
   const filteredQuotes = useMemo(() => {
+    let list = quotes
+    if (paymentFilter !== 'all') {
+      list = list.filter((r) => (r.payment_status ?? 'pending') === paymentFilter)
+    }
     const q = search.toLowerCase().trim()
-    if (!q) return quotes
-    return quotes.filter(
+    if (!q) return list
+    return list.filter(
       (r) =>
         (r.full_name ?? '').toLowerCase().includes(q) ||
         (r.business_name ?? '').toLowerCase().includes(q) ||
         (r.rep_code ?? '').toLowerCase().includes(q),
     )
-  }, [quotes, search])
+  }, [quotes, search, paymentFilter])
 
   const filteredDevApps = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -352,6 +374,10 @@ export default function AdminDashboardPage() {
 
   async function saveQuoteStatus(id: string, status: QuoteStatus) {
     await updateQuote(id, { status })
+  }
+
+  async function saveQuotePaymentStatus(id: string, payment_status: PaymentStatus) {
+    await updateQuote(id, { payment_status })
   }
 
   async function assignDeveloper(quote: QuoteRow, developerId: string) {
@@ -440,24 +466,31 @@ export default function AdminDashboardPage() {
 
       console.log('Inserting team member:', payload)
 
-      const { error } = await sb.from('team_members').insert(payload)
+      const { data: created, error } = await sb.from('team_members').insert(payload).select().single()
 
-      if (!error) {
+      if (!error && created) {
+        const member = created as TeamMember
+        setTeam((prev) => [member, ...prev.filter((m) => m.id !== member.id)])
         await loadTeamMembers()
 
+        const fromApplication = Boolean(addToTeamApp)
         setAddTeamOpen(null)
         setAddTeamForm({ fullName: '', email: '', phone: '', repCode: '', notes: '' })
         setAddToTeamApp(null)
         setTeamFormError(null)
-        setTeamToast('Team member added successfully')
+        setTeamToast(`Team member added successfully. Rep code: ${member.rep_code ?? rep_code}`)
+        if (fromApplication) {
+          setTab(memberRole === 'developer' ? 'devTeam' : 'salesTeam')
+          setExpandedId(null)
+        }
         setSavingTeamMember(false)
         return true
       }
 
-      lastError = error
-      console.error('Team member insert failed:', error)
+      lastError = error ?? { message: 'Insert succeeded but no row was returned.' }
+      console.error('Team member insert failed:', lastError)
 
-      if (isUniqueViolation(error) && attempt < maxAttempts - 1) {
+      if (error && isUniqueViolation(error) && attempt < maxAttempts - 1) {
         rep_code = generateRepCode(repPrefix)
         if (addTeamOpen) {
           setAddTeamForm((f) => ({ ...f, repCode: rep_code }))
@@ -529,7 +562,11 @@ export default function AdminDashboardPage() {
     }
 
     clearMemberError(id)
-    setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, status } : m)))
+    if (status === 'inactive') {
+      setTeam((prev) => prev.filter((m) => m.id !== id))
+    } else {
+      setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, status } : m)))
+    }
     return true
   }
 
@@ -681,12 +718,25 @@ export default function AdminDashboardPage() {
         <div className="admin-panel-section">
           <h3>Actions</h3>
           <label className="admin-field-label">
-            Status
+            Pipeline status
             <CustomSelect
               value={row.status ?? 'new'}
               onChange={(v) => void saveQuoteStatus(row.id, v as QuoteStatus)}
               onClick={(e) => e.stopPropagation()}
               options={QUOTE_STATUSES.map((s) => ({ label: quoteStatusLabel(s), value: s }))}
+            />
+          </label>
+          <label className="admin-field-label">
+            Payment status
+            <CustomSelect
+              value={row.payment_status ?? 'pending'}
+              onChange={(v) => void saveQuotePaymentStatus(row.id, v as PaymentStatus)}
+              onClick={(e) => e.stopPropagation()}
+              options={[
+                { label: 'Pending', value: 'pending' },
+                { label: 'Paid', value: 'paid' },
+                { label: 'Cancelled', value: 'cancelled' },
+              ]}
             />
           </label>
 
@@ -917,6 +967,7 @@ export default function AdminDashboardPage() {
               onClick={() => {
                 setTab(t.id)
                 setSearch('')
+                setPaymentFilter('all')
                 setExpandedId(null)
                 setAddToTeamApp(null)
                 setAddTeamOpen(null)
@@ -928,24 +979,45 @@ export default function AdminDashboardPage() {
         </div>
 
         {tab === 'quotes' ? (
-          <div className="admin-stats">
-            <div className="admin-stat-card">
-              <span>Total submissions</span>
-              <strong>{quoteStats.total}</strong>
+          <>
+            <div className="admin-stats">
+              <div className="admin-stat-card">
+                <span>Total quotes submitted</span>
+                <strong>{quoteStats.total}</strong>
+              </div>
+              <div className="admin-stat-card">
+                <span>Total paid clients</span>
+                <strong>{quoteStats.paidClients}</strong>
+              </div>
+              <div className="admin-stat-card">
+                <span>Total cancelled</span>
+                <strong>{quoteStats.cancelled}</strong>
+              </div>
+              <div className="admin-stat-card">
+                <span>Paid MRR</span>
+                <strong>{formatUsd(quoteStats.paidMrr)}/mo</strong>
+              </div>
             </div>
-            <div className="admin-stat-card">
-              <span>Accepted this month</span>
-              <strong>{quoteStats.acceptedThisMonth}</strong>
+            <div className="admin-payment-filters">
+              {(
+                [
+                  { id: 'all' as const, label: 'All' },
+                  { id: 'pending' as const, label: 'Pending' },
+                  { id: 'paid' as const, label: 'Paid' },
+                  { id: 'cancelled' as const, label: 'Cancelled' },
+                ] as const
+              ).map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`admin-payment-filter${paymentFilter === f.id ? ' admin-payment-filter--active' : ''}`}
+                  onClick={() => setPaymentFilter(f.id)}
+                >
+                  {f.label} ({paymentCounts[f.id]})
+                </button>
+              ))}
             </div>
-            <div className="admin-stat-card">
-              <span>Accepted MRR</span>
-              <strong>{formatUsd(quoteStats.acceptedMrr)}/mo</strong>
-            </div>
-            <div className="admin-stat-card">
-              <span>Pipeline value</span>
-              <strong>{formatUsd(quoteStats.pipelineValue)}/mo</strong>
-            </div>
-          </div>
+          </>
         ) : null}
 
         {tab === 'devApps' ? (
@@ -1002,6 +1074,7 @@ export default function AdminDashboardPage() {
                   <th>Monthly Total</th>
                   <th>Rep Code</th>
                   <th>Status</th>
+                  <th>Payment Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -1019,10 +1092,15 @@ export default function AdminDashboardPage() {
                       <td>
                         <span className={quoteStatusClass(row.status)}>{quoteStatusLabel(row.status)}</span>
                       </td>
+                      <td>
+                        <span className={paymentStatusClass(row.payment_status)}>
+                          {paymentStatusLabel(row.payment_status)}
+                        </span>
+                      </td>
                     </tr>
                     {expandedId === row.id ? (
                       <tr className="admin-detail-row">
-                        <td colSpan={9}>{renderQuoteDetail(row)}</td>
+                        <td colSpan={10}>{renderQuoteDetail(row)}</td>
                       </tr>
                     ) : null}
                   </Fragment>
