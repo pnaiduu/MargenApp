@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { getSupabase } from '../../lib/supabase'
 import { formatUsd } from '../../lib/formatUsd'
 import { CustomSelect } from '../components/CustomSelect'
+import { PageShell } from '../components/PageShell'
 import { generateRepCode } from '../../lib/repCode'
 
 type Tab = 'quotes' | 'devApps' | 'salesApps' | 'devTeam' | 'salesTeam'
@@ -951,7 +952,8 @@ export default function AdminDashboardPage() {
         : 'Search by name or city...'
 
   return (
-    <div className="page admin-page">
+    <PageShell showQuoteCta={false}>
+    <div className="admin-page">
       <div className="container admin-layout">
         <header className="admin-header">
           <img src="/margen-logo.png" alt="Margen" className="admin-logo" height={48} />
@@ -1652,5 +1654,6 @@ export default function AdminDashboardPage() {
         ) : null}
       </div>
     </div>
+    </PageShell>
   )
 }

@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { SiteFooter } from '../../components/SiteFooter'
-import { SiteNav } from '../../components/SiteNav'
+import { PageShell } from '../../components/PageShell'
 import { YesNoToggle } from '../../components/YesNoToggle'
 
 const EARNINGS = [
@@ -79,9 +78,8 @@ export default function SalesCareersPage() {
   const err = (k: string) => (errors[k] ? ' form-field--error' : '')
 
   return (
-    <div className="page careers-role-page">
-      <SiteNav />
-      <main>
+    <PageShell>
+      <main className="careers-role-page">
         <section className="section careers-role-hero">
           <div className="container container--narrow">
             <p className="section-label">Careers</p>
@@ -194,7 +192,6 @@ export default function SalesCareersPage() {
           </div>
         </section>
       </main>
-      <SiteFooter />
-    </div>
+    </PageShell>
   )
 }

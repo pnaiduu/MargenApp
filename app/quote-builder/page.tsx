@@ -2,8 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { SiteFooter } from '../components/SiteFooter'
-import { SiteNav } from '../components/SiteNav'
+import { PageShell } from '../components/PageShell'
 import { CustomSelect } from '../components/CustomSelect'
 import { YesNoToggle } from '../components/YesNoToggle'
 import { FEATURE_SECTIONS, PLANS } from '../quote/quoteData'
@@ -166,8 +165,8 @@ export default function QuoteBuilderPage() {
   const err = (key: string) => (errors[key] ? ' form-field--error' : '')
 
   return (
-    <div className="page qb-page">
-      <SiteNav />
+    <PageShell showQuoteCta={false}>
+      <div className="qb-page">
       <main className="qb-main">
         <div className="container">
           <header className="qb-header">
@@ -339,7 +338,7 @@ export default function QuoteBuilderPage() {
         </div>
       </div>
 
-      <SiteFooter />
-    </div>
+      </div>
+    </PageShell>
   )
 }

@@ -1,8 +1,10 @@
-const CALENDLY = 'https://calendly.com/davynaidu/30min'
+import Link from 'next/link'
+import { PageShell } from '../../components/PageShell'
+import { CALENDLY } from '../../../lib/site'
 
 export default function QuoteSuccessPage() {
   return (
-    <div className="page success-page">
+    <PageShell showQuoteCta={false}>
       <main className="success-main">
         <img src="/margen-logo.png" alt="Margen" className="success-logo" height={80} />
         <h1 className="success-headline">We got you.</h1>
@@ -14,8 +16,10 @@ export default function QuoteSuccessPage() {
         <a href={CALENDLY} target="_blank" rel="noopener noreferrer" className="btn btn--accent">
           Book your audit now
         </a>
+        <Link href="/" className="btn btn--ghost success-home-btn">
+          Back to home
+        </Link>
       </main>
-      <footer className="success-footer">Margen · Allen, Texas · trymargen.com</footer>
-    </div>
+    </PageShell>
   )
 }

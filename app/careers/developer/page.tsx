@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { SiteFooter } from '../../components/SiteFooter'
-import { SiteNav } from '../../components/SiteNav'
+import { PageShell } from '../../components/PageShell'
 import { CustomSelect } from '../../components/CustomSelect'
 import { YesNoToggle } from '../../components/YesNoToggle'
 
@@ -85,9 +84,8 @@ export default function DeveloperCareersPage() {
   const err = (k: string) => (errors[k] ? ' form-field--error' : '')
 
   return (
-    <div className="page careers-role-page">
-      <SiteNav />
-      <main>
+    <PageShell>
+      <main className="careers-role-page">
         <section className="section careers-role-hero">
           <div className="container container--narrow">
             <p className="section-label">Careers</p>
@@ -209,7 +207,6 @@ export default function DeveloperCareersPage() {
           </div>
         </section>
       </main>
-      <SiteFooter />
-    </div>
+    </PageShell>
   )
 }

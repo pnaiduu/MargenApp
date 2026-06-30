@@ -1,8 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { SiteFooter } from '../components/SiteFooter'
-import { SiteNav } from '../components/SiteNav'
+import { PageShell } from '../components/PageShell'
 import { FEATURE_SECTIONS, PLANS } from './quoteData'
 
 function formatUsd(n: number) {
@@ -102,10 +101,8 @@ export default function QuotePage() {
   }
 
   return (
-    <div className="page quote-page">
-      <SiteNav />
-
-      <main className="quote-main">
+    <PageShell showQuoteCta={false}>
+      <main className="quote-main quote-page">
         <div className="container">
           <header className="quote-header">
             <p className="section-label">Internal</p>
@@ -205,8 +202,6 @@ export default function QuotePage() {
         </div>
       </main>
 
-      <SiteFooter />
-
       <div className="quote-summary">
         <div className="quote-summary-inner container">
           <div className="quote-summary-grid">
@@ -242,7 +237,6 @@ export default function QuotePage() {
           <p className="quote-tip">{getUpsellTip(monthlyTotal)}</p>
         </div>
       </div>
-
-    </div>
+    </PageShell>
   )
 }

@@ -13,7 +13,6 @@ export const metadata: Metadata = {
   title: 'Margen | Premium Web Retainer Agency',
   description:
     'One flat monthly rate for your web presence. Updates, new pages, fixes, and SEO: all included. Based in Allen, Texas.',
-  icons: { icon: '/margen-logo.png' },
 }
 
 export default function RootLayout({

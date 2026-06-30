@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { SiteFooter } from '../components/SiteFooter'
-import { SiteNav } from '../components/SiteNav'
+import { PageShell } from '../components/PageShell'
 
 export const metadata: Metadata = {
   title: 'Careers | Margen',
@@ -23,9 +22,8 @@ const ROLES = [
 
 export default function CareersPage() {
   return (
-    <div className="page careers-page">
-      <SiteNav />
-      <main>
+    <PageShell>
+      <main className="careers-page">
         <section className="section careers-hero">
           <div className="container">
             <p className="section-label">Careers</p>
@@ -45,7 +43,6 @@ export default function CareersPage() {
           </div>
         </section>
       </main>
-      <SiteFooter />
-    </div>
+    </PageShell>
   )
 }
