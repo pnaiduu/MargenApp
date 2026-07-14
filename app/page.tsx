@@ -12,7 +12,7 @@ export default function Home() {
         <HeroWaveDecor />
         <div className="container hero-content">
           <FadeIn>
-            <img src={LOGO} alt="Margen" className="hero-logo" height={120} />
+            <img src={LOGO} alt="Margen" className="hero-logo" />
             <h1 className="hero-headline">Your web presence. Handled.</h1>
             <p className="hero-subtext">{HERO_VALUE_PROP}</p>
             <Link href="/quote-builder" className="btn btn--accent">

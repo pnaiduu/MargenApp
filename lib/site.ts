@@ -1,5 +1,5 @@
 export const CALENDLY = 'https://calendly.com/davynaidu/30min'
-export const LOGO = '/margen-logo.png'
+export const LOGO = '/margen-logo-red.png'
 export const SITE_NAME = 'Margen'
 export const SITE_LOCATION = 'Allen, Texas'
 export const SITE_DOMAIN = 'trymargen.com'

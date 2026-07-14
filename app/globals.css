@@ -183,19 +183,22 @@ h3,
   top: 0;
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: 300;
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
 
 .nav__bar {
+  position: relative;
+  z-index: 320;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem clamp(1.25rem, 4vw, 2.5rem);
   max-width: 100%;
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .nav-logo {
@@ -295,23 +298,32 @@ h3,
 
 .nav__toggle {
   display: none;
+  position: relative;
+  z-index: 330;
   flex-direction: column;
   justify-content: center;
+  align-items: stretch;
   gap: 5px;
-  width: 40px;
-  height: 40px;
-  padding: 8px;
-  background: transparent;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  flex-shrink: 0;
 }
 
 .nav__toggle span {
   display: block;
+  width: 100%;
   height: 2px;
   background: var(--text);
   border-radius: 1px;
   transition: transform 0.2s ease, opacity 0.2s ease;
+  pointer-events: none;
 }
 
 .nav__toggle--open span:nth-child(1) {
@@ -326,39 +338,28 @@ h3,
   transform: translateY(-7px) rotate(-45deg);
 }
 
+/* Backdrop — only used on mobile when open */
+.nav__backdrop {
+  display: none;
+  border: none;
+  padding: 0;
+}
+
+@keyframes navFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Mobile drawer base — hidden on desktop; mobile layout set in media query */
 .nav__mobile {
   display: none;
-}
-
-.nav__mobile--open {
-  display: block;
-  position: fixed;
-  top: 73px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  overflow-y: auto;
-  animation: navMobileIn 0.25s ease;
-}
-
-@keyframes navMobileIn {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .nav__mobile-inner {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 1.25rem clamp(1.25rem, 4vw, 2.5rem) 2rem;
+  gap: 0.15rem;
+  padding: 1.5rem 1.5rem 2.5rem;
 }
 
 .nav__mobile-link {
@@ -366,14 +367,20 @@ h3,
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 0.85rem 0;
-  font-size: 1rem;
+  padding: 1rem 0;
+  font-size: 1.0625rem;
   font-weight: 500;
   color: var(--text);
   background: transparent;
   border: none;
   border-bottom: 1px solid var(--border);
   text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav__mobile-link:active {
+  color: var(--accent);
 }
 
 .nav__mobile-trigger {
@@ -381,27 +388,35 @@ h3,
   font: inherit;
 }
 
+.nav__mobile-trigger--open {
+  color: var(--accent);
+}
+
 .nav__mobile-sub {
-  display: flex;
+  display: none;
   flex-direction: column;
-  padding: 0.25rem 0 0.75rem 1rem;
-  animation: navMobileIn 0.2s ease;
+  padding: 0.15rem 0 0.5rem 1rem;
+}
+
+.nav__mobile-sub--open {
+  display: flex;
+  animation: navFadeIn 0.2s ease;
 }
 
 .nav__mobile-sublink {
-  padding: 0.65rem 0;
+  padding: 0.75rem 0;
   font-size: 0.9375rem;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
   transition: color 0.15s ease;
 }
 
-.nav__mobile-sublink:hover {
+.nav__mobile-sublink:active {
   color: var(--accent);
 }
 
 .nav__mobile-cta {
-  margin-top: 1.25rem;
+  margin-top: 1.5rem;
   width: 100%;
   justify-content: center;
 }
@@ -502,8 +517,8 @@ h3,
 
 .hero-logo {
   display: block;
-  margin: 0 auto 2rem;
-  height: 120px;
+  margin: 0 auto 2.5rem;
+  height: clamp(150px, 22vw, 260px);
   width: auto;
 }
 
@@ -1223,6 +1238,46 @@ h3,
 
   .nav__toggle {
     display: flex;
+  }
+
+  .nav__backdrop.nav__backdrop--open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 310;
+    background: rgba(20, 20, 20, 0.35);
+    cursor: pointer;
+    animation: navFadeIn 0.2s ease;
+  }
+
+  /* Right slide-in drawer */
+  .nav__mobile {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 315;
+    width: min(320px, 86vw);
+    background: #ffffff;
+    border-left: 1px solid var(--border);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    transform: translateX(100%);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 0.28s ease, visibility 0.28s ease;
+  }
+
+  .nav__mobile.nav__mobile--open {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .nav__mobile-inner {
+    padding-top: 5.5rem;
   }
 }
 

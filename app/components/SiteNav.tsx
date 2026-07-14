@@ -19,6 +19,12 @@ export function SiteNav({ logoSrc = LOGO }: SiteNavProps) {
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false)
   const [mobileCompanyOpen, setMobileCompanyOpen] = useState(false)
 
+  function closeMobile() {
+    setMobileOpen(false)
+    setMobileServicesOpen(false)
+    setMobileCompanyOpen(false)
+  }
+
   useEffect(() => {
     setMobileOpen(false)
     setMobileServicesOpen(false)
@@ -26,9 +32,18 @@ export function SiteNav({ logoSrc = LOGO }: SiteNavProps) {
   }, [pathname])
 
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    if (!mobileOpen) return
+
+    document.body.style.overflow = 'hidden'
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') closeMobile()
+    }
+    window.addEventListener('keydown', onKey)
+
     return () => {
       document.body.style.overflow = ''
+      window.removeEventListener('keydown', onKey)
     }
   }, [mobileOpen])
 
@@ -48,7 +63,7 @@ export function SiteNav({ logoSrc = LOGO }: SiteNavProps) {
   return (
     <header className="nav">
       <div className="nav__bar">
-        <Link href="/" className="nav-logo" onClick={() => setMobileOpen(false)}>
+        <Link href="/" className="nav-logo" onClick={closeMobile}>
           <img src={logoSrc} alt="Margen" height={44} />
         </Link>
 
@@ -116,24 +131,39 @@ export function SiteNav({ logoSrc = LOGO }: SiteNavProps) {
           className={`nav__toggle${mobileOpen ? ' nav__toggle--open' : ''}`}
           aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={mobileOpen}
+          aria-controls="mobile-nav-panel"
           onClick={() => setMobileOpen((o) => !o)}
         >
-          <span />
-          <span />
-          <span />
+          <span aria-hidden />
+          <span aria-hidden />
+          <span aria-hidden />
         </button>
       </div>
 
-      <div className={`nav__mobile${mobileOpen ? ' nav__mobile--open' : ''}`} aria-hidden={!mobileOpen}>
+      {/* Backdrop */}
+      <button
+        type="button"
+        className={`nav__backdrop${mobileOpen ? ' nav__backdrop--open' : ''}`}
+        aria-label="Close menu"
+        tabIndex={mobileOpen ? 0 : -1}
+        onClick={closeMobile}
+      />
+
+      {/* Mobile drawer */}
+      <div
+        id="mobile-nav-panel"
+        className={`nav__mobile${mobileOpen ? ' nav__mobile--open' : ''}`}
+        aria-hidden={!mobileOpen}
+      >
         <nav className="nav__mobile-inner" aria-label="Mobile">
-          <Link href="/" className="nav__mobile-link" onClick={() => setMobileOpen(false)}>
+          <Link href="/" className="nav__mobile-link" onClick={closeMobile}>
             Home
           </Link>
 
           <div className="nav__mobile-group">
             <button
               type="button"
-              className="nav__mobile-link nav__mobile-trigger"
+              className={`nav__mobile-link nav__mobile-trigger${mobileServicesOpen ? ' nav__mobile-trigger--open' : ''}`}
               aria-expanded={mobileServicesOpen}
               onClick={() => setMobileServicesOpen((o) => !o)}
             >
@@ -142,21 +172,24 @@ export function SiteNav({ logoSrc = LOGO }: SiteNavProps) {
                 {mobileServicesOpen ? '▴' : '▾'}
               </span>
             </button>
-            {mobileServicesOpen ? (
-              <div className="nav__mobile-sub">
-                {SERVICES_LINKS.map((item) => (
-                  <Link key={item.href} href={item.href} className="nav__mobile-sublink" onClick={() => setMobileOpen(false)}>
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
+            <div className={`nav__mobile-sub${mobileServicesOpen ? ' nav__mobile-sub--open' : ''}`}>
+              {SERVICES_LINKS.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="nav__mobile-sublink"
+                  onClick={closeMobile}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           </div>
 
           <div className="nav__mobile-group">
             <button
               type="button"
-              className="nav__mobile-link nav__mobile-trigger"
+              className={`nav__mobile-link nav__mobile-trigger${mobileCompanyOpen ? ' nav__mobile-trigger--open' : ''}`}
               aria-expanded={mobileCompanyOpen}
               onClick={() => setMobileCompanyOpen((o) => !o)}
             >
@@ -165,22 +198,29 @@ export function SiteNav({ logoSrc = LOGO }: SiteNavProps) {
                 {mobileCompanyOpen ? '▴' : '▾'}
               </span>
             </button>
-            {mobileCompanyOpen ? (
-              <div className="nav__mobile-sub">
-                {COMPANY_LINKS.map((item) => (
-                  <Link key={item.href} href={item.href} className="nav__mobile-sublink" onClick={() => setMobileOpen(false)}>
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
+            <div className={`nav__mobile-sub${mobileCompanyOpen ? ' nav__mobile-sub--open' : ''}`}>
+              {COMPANY_LINKS.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="nav__mobile-sublink"
+                  onClick={closeMobile}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
           </div>
 
-          <Link href="/careers" className="nav__mobile-link" onClick={() => setMobileOpen(false)}>
+          <Link href="/careers" className="nav__mobile-link" onClick={closeMobile}>
             Careers
           </Link>
 
-          <Link href="/quote-builder" className="btn btn--accent nav__mobile-cta" onClick={() => setMobileOpen(false)}>
+          <Link
+            href="/quote-builder"
+            className="btn btn--accent nav__mobile-cta"
+            onClick={closeMobile}
+          >
             Get a Quote
           </Link>
         </nav>

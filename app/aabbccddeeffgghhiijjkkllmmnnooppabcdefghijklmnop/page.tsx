@@ -956,7 +956,7 @@ export default function AdminDashboardPage() {
     <div className="admin-page">
       <div className="container admin-layout">
         <header className="admin-header">
-          <img src="/margen-logo.png" alt="Margen" className="admin-logo" height={48} />
+          <img src="/margen-logo-red.png" alt="Margen" className="admin-logo" height={48} />
           <h1 className="admin-title">Margen Admin</h1>
         </header>
 

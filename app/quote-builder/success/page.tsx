@@ -6,7 +6,7 @@ export default function QuoteSuccessPage() {
   return (
     <PageShell showQuoteCta={false}>
       <main className="success-main">
-        <img src="/margen-logo.png" alt="Margen" className="success-logo" height={80} />
+        <img src="/margen-logo-red.png" alt="Margen" className="success-logo" height={80} />
         <h1 className="success-headline">We got you.</h1>
         <p className="success-subheadline">We will reach out to you shortly.</p>
         <p className="success-note">
