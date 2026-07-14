@@ -153,9 +153,13 @@ export default function QuoteBuilderPage() {
           anythingElse: anythingElse.trim() || undefined,
         }),
       })
-      if (!res.ok) throw new Error('Submit failed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as { error?: string }).error || `Submit failed (${res.status})`)
+      }
       router.push('/quote-builder/success')
-    } catch {
+    } catch (error) {
+      console.error(error)
       alert('Something went wrong. Please try again.')
     } finally {
       setSubmitting(false)
